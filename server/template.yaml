@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Description: F-Wallet API. Single Lambda behind an HTTP API, talking to MongoDB Atlas.
+
+Parameters:
+  MongoUri:
+    Type: String
+    NoEcho: true
+    Description: MongoDB Atlas connection string.
+
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: Random secret used to sign session tokens.
+
+  PasswordHash:
+    Type: String
+    NoEcho: true
+    Description: bcrypt hash of the login password.
+
+  ApiKey:
+    Type: String
+    NoEcho: true
+    Description: Long lived key for automation requests.
+
+  AllowedOrigins:
+    Type: String
+    Description: Comma separated list of allowed browser origins.
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    # 512 MB is not about memory. Lambda scales CPU with memory, so a
+    # larger size actually shortens the cold start and often costs less.
+    MemorySize: 512
+    Timeout: 20
+    Architectures:
+      - arm64
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: f-wallet-api
+      CodeUri: ./
+      Handler: src/lambda.handler
+      Environment:
+        Variables:
+          MONGODB_URI: !Ref MongoUri
+          JWT_SECRET: !Ref JwtSecret
+          PASSWORD_HASH: !Ref PasswordHash
+          API_KEY: !Ref ApiKey
+          ALLOWED_ORIGINS: !Ref AllowedOrigins
+          NODE_OPTIONS: --enable-source-maps
+      Events:
+        AnyRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /{proxy+}
+            Method: ANY
+        RootRequest:
+          Type: HttpApi
+          Properties:
+            ApiId: !Ref HttpApi
+            Path: /
+            Method: ANY
+
+  HttpApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      StageName: $default
+      # CORS is handled in Express so the allowed origin list lives in one
+      # place. API Gateway only needs to not strip the headers.
+      CorsConfiguration:
+        AllowOrigins:
+          - "*"
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+          - x-api-key
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+          - OPTIONS
+
+  # Logs default to never expiring, which is a slow way to accumulate a
+  # bill. Two weeks is plenty for a personal app.
+  ApiFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${ApiFunction}
+      RetentionInDays: 14
+
+Outputs:
+  ApiUrl:
+    Description: Base URL for the API. Put this in the client .env file.
+    Value: !Sub https://${HttpApi}.execute-api.${AWS::Region}.amazonaws.com
