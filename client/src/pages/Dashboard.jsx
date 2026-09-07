@@ -8,6 +8,8 @@ import {
   EmptyState,
   MonthPicker,
   ProgressBar,
+  DonutChart,
+  donutColor,
 } from "../components/ui";
 import {
   accountBalance,
@@ -250,31 +252,51 @@ export default function Dashboard({ onEditTransaction }) {
               message="Once you log expenses for this month they will break down here."
             />
           ) : (
-            <div className="space-y-3">
-              {breakdown.rows.map((row) => {
-                const share =
-                  breakdown.total > 0
-                    ? (row.amount / breakdown.total) * 100
-                    : 0;
+            <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+              <DonutChart
+                data={breakdown.rows.map((row) => ({
+                  id: row.categoryId,
+                  label:
+                    row.categoryId === "uncategorized"
+                      ? "Uncategorized"
+                      : getCategoryName(row.categoryId),
+                  value: row.amount,
+                }))}
+                value={fmt(breakdown.total)}
+                label="Total"
+              />
 
-                return (
-                  <div key={row.categoryId}>
-                    <div className="mb-1.5 flex items-center justify-between text-xs">
-                      <span className="font-semibold">
-                        {row.categoryId === "uncategorized"
-                          ? "Uncategorized"
-                          : getCategoryName(row.categoryId)}
+              <div className="w-full flex-1 space-y-2.5">
+                {breakdown.rows.map((row, index) => {
+                  const share =
+                    breakdown.total > 0
+                      ? (row.amount / breakdown.total) * 100
+                      : 0;
+
+                  return (
+                    <div
+                      key={row.categoryId}
+                      className="flex items-center justify-between gap-3 text-xs"
+                    >
+                      <span className="flex min-w-0 items-center gap-2 font-semibold">
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ background: donutColor(index) }}
+                        />
+                        <span className="truncate">
+                          {row.categoryId === "uncategorized"
+                            ? "Uncategorized"
+                            : getCategoryName(row.categoryId)}
+                        </span>
                       </span>
 
-                      <span className="text-slate-500">
+                      <span className="shrink-0 text-slate-500">
                         {fmt(row.amount)} · {share.toFixed(0)}%
                       </span>
                     </div>
-
-                    <ProgressBar value={share} max={100} tone="" />
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
         </Panel>

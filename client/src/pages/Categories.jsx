@@ -126,6 +126,7 @@ export default function Categories() {
           label="Left to spend"
           value={fmt(Math.max(0, totalBudget - totalSpent))}
           tone={totalBudget - totalSpent < 0 ? "negative" : "positive"}
+          help={formatMonth(month)}
         />
         <StatCard
           label="Income received"

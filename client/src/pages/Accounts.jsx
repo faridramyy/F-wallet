@@ -101,24 +101,26 @@ export default function Accounts() {
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard
-          label="Available credit"
-          value={fmt(totalAvailableCredit(accounts, transactions))}
-          help="Left to spend on your cards"
-        />
-
-        <StatCard
-          label="Card debt"
-          value={fmt(creditCardDebt(accounts, transactions))}
-          tone="negative"
-          help="What you currently owe"
-        />
-
-        <StatCard
           className="col-span-2 sm:col-span-1"
           label="Net money"
           value={fmt(netMoney(accounts, transactions))}
           tone={netMoney(accounts, transactions) >= 0 ? "positive" : "negative"}
           help="What is left after clearing all debt"
+        />
+        <StatCard
+          label="Card debt"
+          value={
+            <span className="text-red-500">
+              {fmt(creditCardDebt(accounts, transactions))}
+            </span>
+          }
+          tone="negative"
+          help="What you currently owe"
+        />
+        <StatCard
+          label="Available credit"
+          value={fmt(totalAvailableCredit(accounts, transactions))}
+          help="Left to spend on your cards"
         />
       </div>
 
