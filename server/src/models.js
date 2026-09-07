@@ -37,7 +37,6 @@ const accountSchema = new mongoose.Schema(
     lastFour: { type: String, default: "" },
     startingBalance: { type: Number, default: 0 },
     creditLimit: { type: Number },
-    createdAt: { type: String },
   },
   baseOptions,
 );
@@ -49,7 +48,6 @@ const categorySchema = new mongoose.Schema(
     type: { type: String, required: true, enum: ["expense", "income"] },
     monthlyBudget: { type: Number, default: 0 },
     expectedIncome: { type: Number, default: 0 },
-    createdAt: { type: String },
   },
   baseOptions,
 );
@@ -85,7 +83,6 @@ const transactionSchema = new mongoose.Schema(
     fromAccountId: { type: String },
     toAccountId: { type: String },
 
-    createdAt: { type: String },
     source: { type: String, default: "app" },
   },
   baseOptions,
@@ -99,7 +96,6 @@ const grocerySchema = new mongoose.Schema(
     store: { type: String, default: "Unknown store" },
     date: { type: String, required: true },
     description: { type: String, default: "" },
-    createdAt: { type: String },
   },
   baseOptions,
 );
@@ -113,10 +109,16 @@ const settingsSchema = new mongoose.Schema(
   baseOptions,
 );
 
-const Account = mongoose.models.Account || mongoose.model("Account", accountSchema);
-const Category = mongoose.models.Category || mongoose.model("Category", categorySchema);
-const Transaction = mongoose.models.Transaction || mongoose.model("Transaction", transactionSchema);
-const Grocery = mongoose.models.Grocery || mongoose.model("Grocery", grocerySchema);
-const Settings = mongoose.models.Settings || mongoose.model("Settings", settingsSchema);
+const Account =
+  mongoose.models.Account || mongoose.model("Account", accountSchema);
+const Category =
+  mongoose.models.Category || mongoose.model("Category", categorySchema);
+const Transaction =
+  mongoose.models.Transaction ||
+  mongoose.model("Transaction", transactionSchema);
+const Grocery =
+  mongoose.models.Grocery || mongoose.model("Grocery", grocerySchema);
+const Settings =
+  mongoose.models.Settings || mongoose.model("Settings", settingsSchema);
 
 module.exports = { Account, Category, Transaction, Grocery, Settings };
