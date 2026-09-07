@@ -21,9 +21,9 @@ export function Panel({ title, subtitle, action, children, className = "" }) {
   );
 }
 
-export function StatCard({ label, value, help, tone = "" }) {
+export function StatCard({ label, value, help, tone = "", className = "" }) {
   return (
-    <div className="stat-card">
+    <div className={`stat-card ${className}`}>
       <div className="stat-label">{label}</div>
       <div className={`stat-value ${tone}`}>{value}</div>
       {help && <div className="stat-help">{help}</div>}
@@ -96,7 +96,11 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
         aria-modal="true"
         style={
           dragOffset
-            ? { transform: `translateY(${dragOffset}px)`, animation: "none", transition: "none" }
+            ? {
+                transform: `translateY(${dragOffset}px)`,
+                animation: "none",
+                transition: "none",
+              }
             : undefined
         }
       >
@@ -110,7 +114,10 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
 
             // Only downward drags count. Anything upward is ignored so the
             // sheet cannot be pulled above its resting position.
-            const distance = Math.max(0, event.touches[0].clientY - startY.current);
+            const distance = Math.max(
+              0,
+              event.touches[0].clientY - startY.current,
+            );
 
             setDragOffset(distance);
           }}
@@ -131,7 +138,12 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
         <div className="modal-header">
           <h3 className="modal-title">{title}</h3>
 
-          <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
+          <button
+            type="button"
+            className="modal-close"
+            onClick={onClose}
+            aria-label="Close"
+          >
             <i className="fa-solid fa-xmark" />
           </button>
         </div>
@@ -144,7 +156,13 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
   );
 }
 
-export function ConfirmModal({ title, message, confirmLabel = "Delete", onConfirm, onClose }) {
+export function ConfirmModal({
+  title,
+  message,
+  confirmLabel = "Delete",
+  onConfirm,
+  onClose,
+}) {
   return (
     <Modal
       title={title}
@@ -182,7 +200,9 @@ export function Toasts() {
     <div className="toast-container">
       {toasts.map((toast) => (
         <div key={toast.id} className={`toast ${toast.tone}`}>
-          <i className={`fa-solid ${toast.tone === "error" ? "fa-circle-exclamation" : "fa-circle-check"}`} />
+          <i
+            className={`fa-solid ${toast.tone === "error" ? "fa-circle-exclamation" : "fa-circle-check"}`}
+          />
           <span>{toast.message}</span>
         </div>
       ))}
@@ -196,18 +216,30 @@ export function MonthPicker({ month, onChange, label }) {
 
     const date = new Date(year, monthNumber - 1 + delta, 1);
 
-    onChange(`${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`);
+    onChange(
+      `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`,
+    );
   };
 
   return (
     <div className="month-picker">
-      <button type="button" className="icon-button" onClick={() => shift(-1)} aria-label="Previous month">
+      <button
+        type="button"
+        className="icon-button"
+        onClick={() => shift(-1)}
+        aria-label="Previous month"
+      >
         <i className="fa-solid fa-chevron-left" />
       </button>
 
       <span className="month-label">{label}</span>
 
-      <button type="button" className="icon-button" onClick={() => shift(1)} aria-label="Next month">
+      <button
+        type="button"
+        className="icon-button"
+        onClick={() => shift(1)}
+        aria-label="Next month"
+      >
         <i className="fa-solid fa-chevron-right" />
       </button>
     </div>
@@ -217,11 +249,15 @@ export function MonthPicker({ month, onChange, label }) {
 export function ProgressBar({ value, max, tone }) {
   const percent = max > 0 ? Math.min(100, (value / max) * 100) : 0;
 
-  const resolvedTone = tone || (percent >= 100 ? "danger" : percent >= 80 ? "warning" : "");
+  const resolvedTone =
+    tone || (percent >= 100 ? "danger" : percent >= 80 ? "warning" : "");
 
   return (
     <div className="progress-track">
-      <div className={`progress-fill ${resolvedTone}`} style={{ width: `${percent}%` }} />
+      <div
+        className={`progress-fill ${resolvedTone}`}
+        style={{ width: `${percent}%` }}
+      />
     </div>
   );
 }

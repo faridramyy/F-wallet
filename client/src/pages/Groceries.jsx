@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react";
 
 import { useApp } from "../store";
-import { Panel, StatCard, EmptyState, ConfirmModal, Field } from "../components/ui";
+import {
+  Panel,
+  StatCard,
+  EmptyState,
+  ConfirmModal,
+  Field,
+} from "../components/ui";
 import { money, formatDate } from "../lib/format";
 import GroceryModal from "../modals/GroceryModal";
 
@@ -16,12 +22,18 @@ export default function Groceries() {
 
   const fmt = (value) => money(value, { currency });
 
-  const stores = useMemo(() => new Set(groceries.map((entry) => entry.store)).size, [groceries]);
+  const stores = useMemo(
+    () => new Set(groceries.map((entry) => entry.store)).size,
+    [groceries],
+  );
 
   const average = useMemo(() => {
     if (groceries.length === 0) return 0;
 
-    return groceries.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0) / groceries.length;
+    return (
+      groceries.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0) /
+      groceries.length
+    );
   }, [groceries]);
 
   const filtered = useMemo(() => {
@@ -30,7 +42,9 @@ export default function Groceries() {
     const rows = groceries.filter((entry) => {
       if (!term) return true;
 
-      return `${entry.item} ${entry.store} ${entry.description}`.toLowerCase().includes(term);
+      return `${entry.item} ${entry.store} ${entry.description}`
+        .toLowerCase()
+        .includes(term);
     });
 
     const sorters = {
@@ -63,7 +77,9 @@ export default function Groceries() {
 
     return [...groups.entries()]
       .map(([, entries]) => {
-        const sorted = [...entries].sort((a, b) => (Number(a.price) || 0) - (Number(b.price) || 0));
+        const sorted = [...entries].sort(
+          (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0),
+        );
 
         const cheapest = sorted[0];
         const priciest = sorted[sorted.length - 1];
@@ -87,7 +103,9 @@ export default function Groceries() {
         <div>
           <p className="eyebrow">Shopping</p>
           <h2 className="page-title">Grocery prices</h2>
-          <p className="page-description">Track what things cost so you know where to buy them.</p>
+          <p className="page-description">
+            Track what things cost so you know where to buy them.
+          </p>
         </div>
 
         <button
@@ -110,7 +128,10 @@ export default function Groceries() {
       </div>
 
       {bestPrices.length > 0 && (
-        <Panel title="Where to buy" subtitle="Items you have priced at more than one store">
+        <Panel
+          title="Where to buy"
+          subtitle="Items you have priced at more than one store"
+        >
           <div className="grid gap-3 sm:grid-cols-2">
             {bestPrices.map((group) => (
               <div key={group.item} className="grocery-best-item">
@@ -120,11 +141,13 @@ export default function Groceries() {
                 </div>
 
                 <p className="mt-1.5 text-xs text-emerald-600">
-                  Cheapest at {group.cheapest.store} for {fmt(group.cheapest.price)}
+                  Cheapest at {group.cheapest.store} for{" "}
+                  {fmt(group.cheapest.price)}
                 </p>
 
                 <p className="text-[11px] text-slate-400">
-                  Most expensive at {group.priciest.store} for {fmt(group.priciest.price)}
+                  Most expensive at {group.priciest.store} for{" "}
+                  {fmt(group.priciest.price)}
                 </p>
               </div>
             ))}
@@ -145,7 +168,11 @@ export default function Groceries() {
           </Field>
 
           <Field label="Sort by">
-            <select className="input" value={sort} onChange={(event) => setSort(event.target.value)}>
+            <select
+              className="input"
+              value={sort}
+              onChange={(event) => setSort(event.target.value)}
+            >
               <option value="recent">Newest first</option>
               <option value="oldest">Oldest first</option>
               <option value="cheapest">Cheapest first</option>
@@ -158,7 +185,11 @@ export default function Groceries() {
         {filtered.length === 0 ? (
           <EmptyState
             icon="fa-basket-shopping"
-            title={groceries.length === 0 ? "No prices logged" : "Nothing matches that search"}
+            title={
+              groceries.length === 0
+                ? "No prices logged"
+                : "Nothing matches that search"
+            }
             message={
               groceries.length === 0
                 ? "Log what you paid for an item and where, and this page will tell you where it is cheapest."
@@ -208,15 +239,17 @@ export default function Groceries() {
         )}
       </Panel>
 
-      {showModal && <GroceryModal grocery={editing} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <GroceryModal grocery={editing} onClose={() => setShowModal(false)} />
+      )}
 
       {confirming && (
         <ConfirmModal
           title="Delete price entry?"
           message={
             <>
-              This will remove <strong>{confirming.item}</strong> from {confirming.store} on{" "}
-              {formatDate(confirming.date)}.
+              This will remove <strong>{confirming.item}</strong> from{" "}
+              {confirming.store} on {formatDate(confirming.date)}.
             </>
           }
           onConfirm={() => deleteGrocery(confirming.id)}

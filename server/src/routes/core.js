@@ -1,6 +1,12 @@
 const express = require("express");
 
-const { Account, Category, Transaction, Grocery, Settings } = require("../models");
+const {
+  Account,
+  Category,
+  Transaction,
+  Grocery,
+  Settings,
+} = require("../models");
 const { generateId, wrap, badRequest, toNumber } = require("./helpers");
 
 const router = express.Router();
@@ -16,16 +22,16 @@ const router = express.Router();
 router.get(
   "/state",
   wrap(async (req, res) => {
-    const [accounts, categories, transactions, groceries, settings] = await Promise.all([
-      Account.find().sort({ createdAt: 1 }).lean({ virtuals: false }),
-      Category.find().sort({ createdAt: 1 }).lean(),
-      Transaction.find().sort({ date: -1 }).lean(),
-      Grocery.find().sort({ date: -1 }).lean(),
-      Settings.findOne({ key: "settings" }).lean(),
-    ]);
+    const [accounts, categories, transactions, groceries, settings] =
+      await Promise.all([
+        Account.find().sort({ order: 1, createdAt: 1 }).lean(),
+        Category.find().sort({ order: 1, createdAt: 1 }).lean(),
+        Transaction.find().sort({ date: -1 }).lean(),
+        Grocery.find().sort({ date: -1 }).lean(),
+        Settings.findOne({ key: "settings" }).lean(),
+      ]);
 
-    const strip = (docs) =>
-      docs.map(({ _id, __v, updatedAt, ...rest }) => rest);
+    const strip = (docs) => docs.map(({ _id, __v, ...rest }) => rest);
 
     res.json({
       accounts: strip(accounts),
@@ -34,7 +40,7 @@ router.get(
       groceries: strip(groceries),
       settings: settings
         ? { currency: settings.currency, theme: settings.theme }
-        : { currency: "CAD", theme: "light" },
+        : { currency: "CAD", theme: "system" },
     });
   }),
 );
@@ -46,7 +52,15 @@ router.get(
 router.post(
   "/accounts",
   wrap(async (req, res) => {
-    const { name, type, institution, lastFour, startingBalance, creditLimit } = req.body || {};
+    const {
+      name,
+      type,
+      institution,
+      lastFour,
+      startingBalance,
+      creditLimit,
+      includeInTotal,
+    } = req.body || {};
 
     if (!name || !String(name).trim()) {
       return badRequest(res, "Account name is required.");
@@ -63,13 +77,52 @@ router.post(
       institution: institution ? String(institution).trim() : "",
       lastFour: lastFour ? String(lastFour) : "",
       startingBalance: toNumber(startingBalance),
-      ...(type === "credit" ? { creditLimit: Math.max(0, toNumber(creditLimit)) } : {}),
+      ...(type === "credit"
+        ? { creditLimit: Math.max(0, toNumber(creditLimit)) }
+        : {}),
+      includeInTotal: includeInTotal !== false,
+      // New accounts go to the bottom of the list.
+      order: await Account.countDocuments(),
       createdAt: new Date().toISOString(),
     });
 
     res.status(201).json(account.toJSON());
   }),
 );
+
+/* ---------------------------------------------------------
+   Reordering
+
+   Declared before the /:id routes on purpose. Express matches in
+   registration order, so if PUT /accounts/:id came first it would treat
+   "reorder" as an account id and return a 404.
+--------------------------------------------------------- */
+
+function reorderHandler(Model, label) {
+  return wrap(async (req, res) => {
+    const { ids } = req.body || {};
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return badRequest(
+        res,
+        `Send an array of ${label} ids in the order you want them.`,
+      );
+    }
+
+    // bulkWrite sends every update in a single round trip, which matters
+    // on Lambda where each database call adds latency.
+    await Model.bulkWrite(
+      ids.map((id, index) => ({
+        updateOne: { filter: { id }, update: { $set: { order: index } } },
+      })),
+    );
+
+    res.json({ ok: true });
+  });
+}
+
+router.put("/accounts/reorder", reorderHandler(Account, "account"));
+router.put("/categories/reorder", reorderHandler(Category, "category"));
 
 router.put(
   "/accounts/:id",
@@ -78,16 +131,29 @@ router.put(
 
     if (!account) return res.status(404).json({ error: "Account not found." });
 
-    const { name, type, institution, lastFour, startingBalance, creditLimit } = req.body || {};
+    const {
+      name,
+      type,
+      institution,
+      lastFour,
+      startingBalance,
+      creditLimit,
+      includeInTotal,
+    } = req.body || {};
 
+    if (includeInTotal !== undefined)
+      account.includeInTotal = Boolean(includeInTotal);
     if (name !== undefined) account.name = String(name).trim();
     if (type !== undefined) account.type = type;
-    if (institution !== undefined) account.institution = String(institution).trim();
+    if (institution !== undefined)
+      account.institution = String(institution).trim();
     if (lastFour !== undefined) account.lastFour = String(lastFour);
-    if (startingBalance !== undefined) account.startingBalance = toNumber(startingBalance);
+    if (startingBalance !== undefined)
+      account.startingBalance = toNumber(startingBalance);
 
     if (account.type === "credit") {
-      if (creditLimit !== undefined) account.creditLimit = Math.max(0, toNumber(creditLimit));
+      if (creditLimit !== undefined)
+        account.creditLimit = Math.max(0, toNumber(creditLimit));
     } else {
       account.creditLimit = undefined;
     }
@@ -125,7 +191,8 @@ router.delete(
 router.post(
   "/categories",
   wrap(async (req, res) => {
-    const { name, type, monthlyBudget, expectedIncome } = req.body || {};
+    const { name, type, monthlyBudget, hourlyRate, overtimeRate } =
+      req.body || {};
 
     if (!name || !String(name).trim()) {
       return badRequest(res, "Category name is required.");
@@ -139,8 +206,11 @@ router.post(
       id: generateId("cat"),
       name: String(name).trim(),
       type,
-      monthlyBudget: type === "expense" ? Math.max(0, toNumber(monthlyBudget)) : 0,
-      expectedIncome: type === "income" ? Math.max(0, toNumber(expectedIncome)) : 0,
+      monthlyBudget:
+        type === "expense" ? Math.max(0, toNumber(monthlyBudget)) : 0,
+      hourlyRate: type === "income" ? Math.max(0, toNumber(hourlyRate)) : 0,
+      overtimeRate: type === "income" ? Math.max(0, toNumber(overtimeRate)) : 0,
+      order: await Category.countDocuments(),
       createdAt: new Date().toISOString(),
     });
 
@@ -153,18 +223,29 @@ router.put(
   wrap(async (req, res) => {
     const category = await Category.findOne({ id: req.params.id });
 
-    if (!category) return res.status(404).json({ error: "Category not found." });
+    if (!category)
+      return res.status(404).json({ error: "Category not found." });
 
-    const { name, type, monthlyBudget, expectedIncome } = req.body || {};
+    const { name, type, monthlyBudget, hourlyRate, overtimeRate } =
+      req.body || {};
 
     if (name !== undefined) category.name = String(name).trim();
     if (type !== undefined) category.type = type;
 
     category.monthlyBudget =
-      category.type === "expense" ? Math.max(0, toNumber(monthlyBudget ?? category.monthlyBudget)) : 0;
+      category.type === "expense"
+        ? Math.max(0, toNumber(monthlyBudget ?? category.monthlyBudget))
+        : 0;
 
-    category.expectedIncome =
-      category.type === "income" ? Math.max(0, toNumber(expectedIncome ?? category.expectedIncome)) : 0;
+    category.hourlyRate =
+      category.type === "income"
+        ? Math.max(0, toNumber(hourlyRate ?? category.hourlyRate))
+        : 0;
+
+    category.overtimeRate =
+      category.type === "income"
+        ? Math.max(0, toNumber(overtimeRate ?? category.overtimeRate))
+        : 0;
 
     await category.save();
 
@@ -182,7 +263,10 @@ router.delete(
   wrap(async (req, res) => {
     const { id } = req.params;
 
-    await Transaction.updateMany({ categoryId: id }, { $set: { categoryId: "" } });
+    await Transaction.updateMany(
+      { categoryId: id },
+      { $set: { categoryId: "" } },
+    );
 
     await Category.deleteOne({ id });
 
@@ -222,15 +306,18 @@ router.put(
   wrap(async (req, res) => {
     const grocery = await Grocery.findOne({ id: req.params.id });
 
-    if (!grocery) return res.status(404).json({ error: "Price entry not found." });
+    if (!grocery)
+      return res.status(404).json({ error: "Price entry not found." });
 
     const { item, price, store, date, description } = req.body || {};
 
     if (item !== undefined) grocery.item = String(item).trim();
     if (price !== undefined) grocery.price = Math.max(0, toNumber(price));
-    if (store !== undefined) grocery.store = String(store).trim() || "Unknown store";
+    if (store !== undefined)
+      grocery.store = String(store).trim() || "Unknown store";
     if (date !== undefined) grocery.date = date;
-    if (description !== undefined) grocery.description = String(description).trim();
+    if (description !== undefined)
+      grocery.description = String(description).trim();
 
     await grocery.save();
 
@@ -256,6 +343,10 @@ router.put(
   wrap(async (req, res) => {
     const { currency, theme } = req.body || {};
 
+    if (theme && !["light", "dark", "system"].includes(theme)) {
+      return badRequest(res, "Theme must be light, dark or system.");
+    }
+
     const settings = await Settings.findOneAndUpdate(
       { key: "settings" },
       {
@@ -279,17 +370,21 @@ router.put(
 router.get(
   "/export",
   wrap(async (req, res) => {
-    const [accounts, categories, transactions, groceries, settings] = await Promise.all([
-      Account.find().lean(),
-      Category.find().lean(),
-      Transaction.find().lean(),
-      Grocery.find().lean(),
-      Settings.findOne({ key: "settings" }).lean(),
-    ]);
+    const [accounts, categories, transactions, groceries, settings] =
+      await Promise.all([
+        Account.find().sort({ order: 1 }).lean(),
+        Category.find().sort({ order: 1 }).lean(),
+        Transaction.find().lean(),
+        Grocery.find().lean(),
+        Settings.findOne({ key: "settings" }).lean(),
+      ]);
 
-    const strip = (docs) => docs.map(({ _id, __v, updatedAt, ...rest }) => rest);
+    const strip = (docs) => docs.map(({ _id, __v, ...rest }) => rest);
 
-    res.setHeader("Content-Disposition", 'attachment; filename="f-wallet-backup.json"');
+    res.setHeader(
+      "Content-Disposition",
+      'attachment; filename="f-wallet-backup.json"',
+    );
 
     res.json({
       version: 1,
@@ -300,7 +395,7 @@ router.get(
       groceries: strip(groceries),
       settings: settings
         ? { currency: settings.currency, theme: settings.theme }
-        : { currency: "CAD", theme: "light" },
+        : { currency: "CAD", theme: "system" },
     });
   }),
 );

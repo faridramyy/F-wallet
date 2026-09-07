@@ -12,13 +12,15 @@ export default function CategoryModal({ category, onClose }) {
     name: category?.name || "",
     type: category?.type || "expense",
     monthlyBudget: category?.monthlyBudget || "",
-    expectedIncome: category?.expectedIncome || "",
+    hourlyRate: category?.hourlyRate || "",
+    overtimeRate: category?.overtimeRate || "",
   });
 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const set = (key) => (event) =>
+    setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const submit = async () => {
     setError("");
@@ -29,22 +31,34 @@ export default function CategoryModal({ category, onClose }) {
     }
 
     const monthlyBudget = Number(form.monthlyBudget || 0);
-    const expectedIncome = Number(form.expectedIncome || 0);
+    const hourlyRate = Number(form.hourlyRate || 0);
+    const overtimeRate = Number(form.overtimeRate || 0);
 
     if (!Number.isFinite(monthlyBudget) || monthlyBudget < 0) {
       setError("Budget must be a valid non-negative number.");
       return;
     }
 
-    if (!Number.isFinite(expectedIncome) || expectedIncome < 0) {
-      setError("Expected amount must be a valid non-negative number.");
+    if (!Number.isFinite(hourlyRate) || hourlyRate < 0) {
+      setError("Hourly rate must be a valid non-negative number.");
+      return;
+    }
+
+    if (!Number.isFinite(overtimeRate) || overtimeRate < 0) {
+      setError("Overtime rate must be a valid non-negative number.");
       return;
     }
 
     setSaving(true);
 
     try {
-      const payload = { name: form.name.trim(), type: form.type, monthlyBudget, expectedIncome };
+      const payload = {
+        name: form.name.trim(),
+        type: form.type,
+        monthlyBudget,
+        hourlyRate,
+        overtimeRate,
+      };
 
       if (isEditing) {
         await updateCategory(category.id, payload);
@@ -68,7 +82,12 @@ export default function CategoryModal({ category, onClose }) {
             Cancel
           </button>
 
-          <button type="button" className="primary-button" onClick={submit} disabled={saving}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={submit}
+            disabled={saving}
+          >
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add category"}
           </button>
         </>
@@ -76,7 +95,13 @@ export default function CategoryModal({ category, onClose }) {
     >
       <div className="form-grid">
         <Field label="Category name" className="sm:col-span-2">
-          <input className="input" value={form.name} onChange={set("name")} placeholder="Groceries" autoFocus />
+          <input
+            className="input"
+            value={form.name}
+            onChange={set("name")}
+            placeholder="Groceries"
+            autoFocus
+          />
         </Field>
 
         <Field label="Type">
@@ -99,17 +124,36 @@ export default function CategoryModal({ category, onClose }) {
             />
           </Field>
         ) : (
-          <Field label="Expected per month">
-            <input
-              className="input"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.expectedIncome}
-              onChange={set("expectedIncome")}
-              placeholder="0.00"
-            />
-          </Field>
+          <>
+            <Field label="Rate per hour">
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.hourlyRate}
+                onChange={set("hourlyRate")}
+                placeholder="17.20"
+              />
+            </Field>
+
+            <Field label="Rate per overtime hour" className="sm:col-span-2">
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.overtimeRate}
+                onChange={set("overtimeRate")}
+                placeholder="25.80"
+              />
+
+              <p className="mt-1 text-[11px] text-slate-400">
+                Both rates are filled in for you when you log income in this
+                category. Leave them blank if this income is not hourly.
+              </p>
+            </Field>
+          </>
         )}
 
         {error && (

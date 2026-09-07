@@ -25,7 +25,9 @@ async function resolveAccount(value) {
   // because a fuzzy match that silently picks the wrong account is worse
   // than an error.
 
-  return Account.findOne({ name: new RegExp(`^${escapeRegex(value)}$`, "i") }).lean();
+  return Account.findOne({
+    name: new RegExp(`^${escapeRegex(value)}$`, "i"),
+  }).lean();
 }
 
 async function resolveCategory(value, type) {
@@ -106,19 +108,27 @@ router.post(
     }
 
     if (type === "transfer") {
-      const fromAccount = await resolveAccount(body.fromAccount || body.fromAccountId);
-      const toAccount = await resolveAccount(body.toAccount || body.toAccountId);
+      const fromAccount = await resolveAccount(
+        body.fromAccount || body.fromAccountId,
+      );
+      const toAccount = await resolveAccount(
+        body.toAccount || body.toAccountId,
+      );
 
       if (!fromAccount) return badRequest(res, "Source account not found.");
       if (!toAccount) return badRequest(res, "Destination account not found.");
 
       if (fromAccount.id === toAccount.id) {
-        return badRequest(res, "Source and destination must be different accounts.");
+        return badRequest(
+          res,
+          "Source and destination must be different accounts.",
+        );
       }
 
       const amount = toNumber(body.amount);
 
-      if (!(amount > 0)) return badRequest(res, "Amount must be greater than zero.");
+      if (!(amount > 0))
+        return badRequest(res, "Amount must be greater than zero.");
 
       const transfer = await Transaction.create({
         id: generateId("transfer"),
@@ -138,17 +148,29 @@ router.post(
     const account = await resolveAccount(body.account || body.accountId);
 
     if (!account) {
-      return badRequest(res, "Account not found. Send an account id or an exact account name.");
+      return badRequest(
+        res,
+        "Account not found. Send an account id or an exact account name.",
+      );
     }
 
-    const category = await resolveCategory(body.category || body.categoryId, type);
+    const category = await resolveCategory(
+      body.category || body.categoryId,
+      type,
+    );
 
     if (!category) {
-      return badRequest(res, "Category not found. Send a category id or an exact category name.");
+      return badRequest(
+        res,
+        "Category not found. Send a category id or an exact category name.",
+      );
     }
 
     if (category.type !== type) {
-      return badRequest(res, `Category "${category.name}" is an ${category.type} category, not ${type}.`);
+      return badRequest(
+        res,
+        `Category "${category.name}" is an ${category.type} category, not ${type}.`,
+      );
     }
 
     const pay = type === "income" ? normalizePay(body.pay) : null;
@@ -181,14 +203,16 @@ router.put(
   wrap(async (req, res) => {
     const transaction = await Transaction.findOne({ id: req.params.id });
 
-    if (!transaction) return res.status(404).json({ error: "Transaction not found." });
+    if (!transaction)
+      return res.status(404).json({ error: "Transaction not found." });
 
     const body = req.body || {};
 
     if (transaction.type === "transfer") {
       if (body.amount !== undefined) transaction.amount = toNumber(body.amount);
       if (body.date !== undefined) transaction.date = body.date;
-      if (body.notes !== undefined) transaction.notes = String(body.notes).trim();
+      if (body.notes !== undefined)
+        transaction.notes = String(body.notes).trim();
 
       if (body.fromAccountId) transaction.fromAccountId = body.fromAccountId;
       if (body.toAccountId) transaction.toAccountId = body.toAccountId;
@@ -214,7 +238,10 @@ router.put(
       if (!category) return badRequest(res, "Category not found.");
 
       if (category.type !== type) {
-        return badRequest(res, "The selected category does not match the transaction type.");
+        return badRequest(
+          res,
+          "The selected category does not match the transaction type.",
+        );
       }
 
       transaction.categoryId = category.id;
@@ -225,9 +252,12 @@ router.put(
     transaction.type = type;
     transaction.pay = pay || undefined;
 
-    const amount = pay ? calculatePayTotal(pay) : toNumber(body.amount, transaction.amount);
+    const amount = pay
+      ? calculatePayTotal(pay)
+      : toNumber(body.amount, transaction.amount);
 
-    if (!(amount > 0)) return badRequest(res, "Amount must be greater than zero.");
+    if (!(amount > 0))
+      return badRequest(res, "Amount must be greater than zero.");
 
     transaction.amount = amount;
 

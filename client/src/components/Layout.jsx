@@ -5,9 +5,24 @@ import { useApp } from "../store";
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: "fa-chart-pie", short: "Home" },
   { to: "/accounts", label: "Accounts", icon: "fa-wallet", short: "Accounts" },
-  { to: "/categories", label: "Categories", icon: "fa-layer-group", short: "Budget" },
-  { to: "/transactions", label: "Transactions", icon: "fa-arrow-right-arrow-left", short: "Activity" },
-  { to: "/groceries", label: "Groceries", icon: "fa-basket-shopping", short: "Prices" },
+  {
+    to: "/categories",
+    label: "Categories",
+    icon: "fa-layer-group",
+    short: "Budget",
+  },
+  {
+    to: "/transactions",
+    label: "Transactions",
+    icon: "fa-arrow-right-arrow-left",
+    short: "Activity",
+  },
+  {
+    to: "/groceries",
+    label: "Groceries",
+    icon: "fa-basket-shopping",
+    short: "Prices",
+  },
   { to: "/settings", label: "Settings", icon: "fa-gear", short: "Settings" },
 ];
 
@@ -26,7 +41,9 @@ export default function Layout({ children, onQuickAdd }) {
 
   const location = useLocation();
 
-  const current = NAV_ITEMS.find((item) => location.pathname.startsWith(item.to));
+  const current = NAV_ITEMS.find((item) =>
+    location.pathname.startsWith(item.to),
+  );
 
   return (
     <div className="app-shell">
@@ -47,7 +64,9 @@ export default function Layout({ children, onQuickAdd }) {
             <NavLink
               key={item.to}
               to={item.to}
-              className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}
+              className={({ isActive }) =>
+                `nav-item ${isActive ? "active" : ""}`
+              }
             >
               <span className="nav-icon">
                 <i className={`fa-solid ${item.icon}`} />
@@ -91,11 +110,20 @@ export default function Layout({ children, onQuickAdd }) {
               <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`} />
             </button>
 
-            <NavLink to="/settings" className="header-action lg:hidden" aria-label="Settings">
+            <NavLink
+              to="/settings"
+              className="header-action lg:hidden"
+              aria-label="Settings"
+            >
               <i className="fa-solid fa-gear" />
             </NavLink>
 
-            <button type="button" className="header-action lg:hidden" onClick={logout} aria-label="Sign out">
+            <button
+              type="button"
+              className="header-action lg:hidden"
+              onClick={logout}
+              aria-label="Sign out"
+            >
               <i className="fa-solid fa-arrow-right-from-bracket" />
             </button>
           </div>
@@ -104,7 +132,12 @@ export default function Layout({ children, onQuickAdd }) {
         <main className="px-4 pb-32 pt-5 sm:px-6 lg:pb-24">{children}</main>
       </div>
 
-      <button type="button" className="fab" onClick={onQuickAdd} aria-label="Add transaction">
+      <button
+        type="button"
+        className="fab"
+        onClick={onQuickAdd}
+        aria-label="Add transaction"
+      >
         <i className="fa-solid fa-plus" />
       </button>
 
@@ -113,7 +146,9 @@ export default function Layout({ children, onQuickAdd }) {
           <NavLink
             key={item.to}
             to={item.to}
-            className={({ isActive }) => `mobile-nav-item ${isActive ? "active" : ""}`}
+            className={({ isActive }) =>
+              `mobile-nav-item ${isActive ? "active" : ""}`
+            }
           >
             <span>
               <i className={`fa-solid ${item.icon}`} />

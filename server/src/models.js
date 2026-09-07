@@ -37,6 +37,12 @@ const accountSchema = new mongoose.Schema(
     lastFour: { type: String, default: "" },
     startingBalance: { type: Number, default: 0 },
     creditLimit: { type: Number },
+    // Position in the list. Everything reads accounts in this order, so
+    // reordering here also reorders every dropdown in the app.
+    order: { type: Number, default: 0 },
+    // Lets you keep an account visible but out of the headline total,
+    // for savings or investments you would rather not count as spendable.
+    includeInTotal: { type: Boolean, default: true },
   },
   baseOptions,
 );
@@ -47,7 +53,11 @@ const categorySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     type: { type: String, required: true, enum: ["expense", "income"] },
     monthlyBudget: { type: Number, default: 0 },
-    expectedIncome: { type: Number, default: 0 },
+    // Income categories carry the pay rates for that job, so the
+    // transaction form can fill them in for you.
+    hourlyRate: { type: Number, default: 0 },
+    overtimeRate: { type: Number, default: 0 },
+    order: { type: Number, default: 0 },
   },
   baseOptions,
 );
@@ -104,7 +114,11 @@ const settingsSchema = new mongoose.Schema(
   {
     key: { type: String, default: "settings", unique: true },
     currency: { type: String, default: "CAD" },
-    theme: { type: String, default: "light" },
+    theme: {
+      type: String,
+      enum: ["light", "dark", "system"],
+      default: "system",
+    },
   },
   baseOptions,
 );

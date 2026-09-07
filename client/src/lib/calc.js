@@ -22,7 +22,9 @@ export function normalizePay(pay) {
   const overtimeHours = Math.max(0, Number(pay.overtimeHours) || 0);
 
   const overtimeMultiplier =
-    Number(pay.overtimeMultiplier) > 0 ? Number(pay.overtimeMultiplier) : DEFAULT_OVERTIME_MULTIPLIER;
+    Number(pay.overtimeMultiplier) > 0
+      ? Number(pay.overtimeMultiplier)
+      : DEFAULT_OVERTIME_MULTIPLIER;
 
   if (!hours && !overtimeHours) return null;
 
@@ -33,7 +35,13 @@ export function calculatePay(pay) {
   const normalized = normalizePay(pay);
 
   if (!normalized) {
-    return { regularPay: 0, overtimePay: 0, overtimeRate: 0, totalHours: 0, total: 0 };
+    return {
+      regularPay: 0,
+      overtimePay: 0,
+      overtimeRate: 0,
+      totalHours: 0,
+      total: 0,
+    };
   }
 
   const { hours, rate, overtimeHours, overtimeMultiplier } = normalized;
@@ -61,7 +69,9 @@ export function describePay(pay, formatMoney, formatHoursValue) {
   const parts = [`${formatHoursValue(hours)}h @ ${formatMoney(rate)}`];
 
   if (overtimeHours > 0) {
-    parts.push(`${formatHoursValue(overtimeHours)}h OT @ ${overtimeMultiplier}x`);
+    parts.push(
+      `${formatHoursValue(overtimeHours)}h OT @ ${overtimeMultiplier}x`,
+    );
   }
 
   return parts.join(" + ");
@@ -107,16 +117,56 @@ export function accountBalance(account, transactions) {
   return balance;
 }
 
+/*
+  Cash across non-credit accounts.
+
+  Accounts with includeInTotal set to false are skipped. That is how you
+  keep savings or investments visible on the page without having them
+  inflate the headline number you think of as spendable.
+*/
+
 export function normalAccountTotal(accounts, transactions) {
   return accounts
+    .filter(
+      (account) =>
+        account.type !== "credit" && account.includeInTotal !== false,
+    )
+    .reduce(
+      (total, account) => total + accountBalance(account, transactions),
+      0,
+    );
+}
+
+// Everything, including the accounts excluded from the headline total.
+export function allCashTotal(accounts, transactions) {
+  return accounts
     .filter((account) => account.type !== "credit")
-    .reduce((total, account) => total + accountBalance(account, transactions), 0);
+    .reduce(
+      (total, account) => total + accountBalance(account, transactions),
+      0,
+    );
+}
+
+/*
+  What you would actually have left if you paid off every card today.
+  Included cash minus total card debt.
+*/
+
+export function netMoney(accounts, transactions) {
+  return (
+    normalAccountTotal(accounts, transactions) -
+    creditCardDebt(accounts, transactions)
+  );
 }
 
 export function creditCardDebt(accounts, transactions) {
   return accounts
     .filter((account) => account.type === "credit")
-    .reduce((total, account) => total + Math.max(0, accountBalance(account, transactions)), 0);
+    .reduce(
+      (total, account) =>
+        total + Math.max(0, accountBalance(account, transactions)),
+      0,
+    );
 }
 
 export function availableCredit(account, transactions) {
@@ -131,38 +181,59 @@ export function availableCredit(account, transactions) {
 export function totalAvailableCredit(accounts, transactions) {
   return accounts
     .filter((account) => account.type === "credit")
-    .reduce((total, account) => total + availableCredit(account, transactions), 0);
+    .reduce(
+      (total, account) => total + availableCredit(account, transactions),
+      0,
+    );
 }
 
 function sumBy(transactions, predicate) {
   return transactions
     .filter(predicate)
-    .reduce((total, transaction) => total + (Number(transaction.amount) || 0), 0);
+    .reduce(
+      (total, transaction) => total + (Number(transaction.amount) || 0),
+      0,
+    );
 }
 
 export function monthlyIncome(transactions, month) {
-  return sumBy(transactions, (t) => t.type === "income" && isSameMonth(t.date, month));
+  return sumBy(
+    transactions,
+    (t) => t.type === "income" && isSameMonth(t.date, month),
+  );
 }
 
 export function monthlyExpenses(transactions, month) {
-  return sumBy(transactions, (t) => t.type === "expense" && isSameMonth(t.date, month));
+  return sumBy(
+    transactions,
+    (t) => t.type === "expense" && isSameMonth(t.date, month),
+  );
 }
 
 export function monthlyTransfers(transactions, month) {
-  return sumBy(transactions, (t) => t.type === "transfer" && isSameMonth(t.date, month));
+  return sumBy(
+    transactions,
+    (t) => t.type === "transfer" && isSameMonth(t.date, month),
+  );
 }
 
 export function categorySpending(transactions, categoryId, month) {
   return sumBy(
     transactions,
-    (t) => t.type === "expense" && t.categoryId === categoryId && isSameMonth(t.date, month),
+    (t) =>
+      t.type === "expense" &&
+      t.categoryId === categoryId &&
+      isSameMonth(t.date, month),
   );
 }
 
 export function categoryIncomeReceived(transactions, categoryId, month) {
   return sumBy(
     transactions,
-    (t) => t.type === "income" && t.categoryId === categoryId && isSameMonth(t.date, month),
+    (t) =>
+      t.type === "income" &&
+      t.categoryId === categoryId &&
+      isSameMonth(t.date, month),
   );
 }
 
@@ -172,10 +243,21 @@ export function categoryBudget(category) {
   return Math.max(0, Number(category.monthlyBudget) || 0);
 }
 
-export function categoryExpectedIncome(category) {
-  if (!category || category.type !== "income") return 0;
+/*
+  Income categories carry pay rates now rather than a monthly target.
+  The absolute overtime rate is what gets stored, since that is the
+  number people actually know; the transaction form converts it to the
+  multiplier the pay maths uses.
+*/
 
-  return Math.max(0, Number(category.expectedIncome) || 0);
+export function categoryPayRates(category) {
+  if (!category || category.type !== "income")
+    return { hourlyRate: 0, overtimeRate: 0 };
+
+  return {
+    hourlyRate: Math.max(0, Number(category.hourlyRate) || 0),
+    overtimeRate: Math.max(0, Number(category.overtimeRate) || 0),
+  };
 }
 
 export function savingsRate(income, expenses) {

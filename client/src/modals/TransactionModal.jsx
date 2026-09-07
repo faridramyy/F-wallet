@@ -6,7 +6,13 @@ import { calculatePay, DEFAULT_OVERTIME_MULTIPLIER } from "../lib/calc";
 import { money, today, formatHours } from "../lib/format";
 
 export default function TransactionModal({ transaction, onClose }) {
-  const { accounts, categories, currency, createTransaction, updateTransaction } = useApp();
+  const {
+    accounts,
+    categories,
+    currency,
+    createTransaction,
+    updateTransaction,
+  } = useApp();
 
   const isEditing = Boolean(transaction);
 
@@ -25,7 +31,8 @@ export default function TransactionModal({ transaction, onClose }) {
     hours: transaction?.pay?.hours ?? "",
     rate: transaction?.pay?.rate ?? "",
     overtimeHours: transaction?.pay?.overtimeHours ?? "",
-    overtimeMultiplier: transaction?.pay?.overtimeMultiplier ?? DEFAULT_OVERTIME_MULTIPLIER,
+    overtimeMultiplier:
+      transaction?.pay?.overtimeMultiplier ?? DEFAULT_OVERTIME_MULTIPLIER,
   });
 
   const [error, setError] = useState("");
@@ -33,19 +40,57 @@ export default function TransactionModal({ transaction, onClose }) {
 
   const fmt = (value) => money(value, { currency });
 
-  const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
-  const setPayField = (key) => (event) => setPay((current) => ({ ...current, [key]: event.target.value }));
+  const set = (key) => (event) =>
+    setForm((current) => ({ ...current, [key]: event.target.value }));
+  const setPayField = (key) => (event) =>
+    setPay((current) => ({ ...current, [key]: event.target.value }));
 
   const availableCategories = useMemo(
     () => categories.filter((category) => category.type === form.type),
     [categories, form.type],
   );
 
+  /*
+    Picking an income category fills in its saved pay rates.
+
+    Categories store an absolute overtime rate, which is the number people
+    actually know off the top of their head. The transaction stores a
+    multiplier, which is what the maths uses. Converting here keeps both
+    sides in the form they are easiest to think about, and leaves every
+    transaction already saved working unchanged.
+
+    Anything typed manually afterwards wins. This only ever fills blanks.
+  */
+
+  const applyCategoryRates = (categoryId) => {
+    const category = categories.find((item) => item.id === categoryId);
+
+    if (!category || category.type !== "income") return;
+
+    const hourly = Number(category.hourlyRate) || 0;
+    const overtime = Number(category.overtimeRate) || 0;
+
+    if (hourly <= 0) return;
+
+    setPay((current) => ({
+      ...current,
+      rate: current.rate === "" ? hourly : current.rate,
+      overtimeMultiplier:
+        overtime > 0
+          ? Number((overtime / hourly).toFixed(4))
+          : current.overtimeMultiplier,
+    }));
+
+    setPayEnabled(true);
+  };
+
   const usePayCalculator = form.type === "income" && payEnabled;
 
   const payResult = useMemo(() => calculatePay(pay), [pay]);
 
-  const effectiveAmount = usePayCalculator ? payResult.total : Number(form.amount || 0);
+  const effectiveAmount = usePayCalculator
+    ? payResult.total
+    : Number(form.amount || 0);
 
   /*
     Switching type invalidates the selected category, since an expense
@@ -99,7 +144,9 @@ export default function TransactionModal({ transaction, onClose }) {
             hours: Number(pay.hours || 0),
             rate: Number(pay.rate || 0),
             overtimeHours: Number(pay.overtimeHours || 0),
-            overtimeMultiplier: Number(pay.overtimeMultiplier || DEFAULT_OVERTIME_MULTIPLIER),
+            overtimeMultiplier: Number(
+              pay.overtimeMultiplier || DEFAULT_OVERTIME_MULTIPLIER,
+            ),
           }
         : null,
     };
@@ -129,8 +176,17 @@ export default function TransactionModal({ transaction, onClose }) {
             Cancel
           </button>
 
-          <button type="button" className="primary-button" onClick={submit} disabled={saving}>
-            {saving ? "Saving..." : isEditing ? "Save changes" : "Add transaction"}
+          <button
+            type="button"
+            className="primary-button"
+            onClick={submit}
+            disabled={saving}
+          >
+            {saving
+              ? "Saving..."
+              : isEditing
+                ? "Save changes"
+                : "Add transaction"}
           </button>
         </>
       }
@@ -143,7 +199,9 @@ export default function TransactionModal({ transaction, onClose }) {
             className={`type-toggle ${form.type === type ? "active" : ""} ${type}`}
             onClick={() => changeType(type)}
           >
-            <i className={`fa-solid ${type === "income" ? "fa-arrow-down" : "fa-arrow-up"}`} />
+            <i
+              className={`fa-solid ${type === "income" ? "fa-arrow-down" : "fa-arrow-up"}`}
+            />
             {type === "income" ? "Income" : "Expense"}
           </button>
         ))}
@@ -167,11 +225,27 @@ export default function TransactionModal({ transaction, onClose }) {
         {usePayCalculator ? (
           <>
             <Field label="Hours worked">
-              <input className="input" type="number" step="0.25" min="0" value={pay.hours} onChange={setPayField("hours")} placeholder="0" />
+              <input
+                className="input"
+                type="number"
+                step="0.25"
+                min="0"
+                value={pay.hours}
+                onChange={setPayField("hours")}
+                placeholder="0"
+              />
             </Field>
 
             <Field label="Hourly rate">
-              <input className="input" type="number" step="0.01" min="0" value={pay.rate} onChange={setPayField("rate")} placeholder="17.20" />
+              <input
+                className="input"
+                type="number"
+                step="0.01"
+                min="0"
+                value={pay.rate}
+                onChange={setPayField("rate")}
+                placeholder="17.20"
+              />
             </Field>
 
             <Field label="Overtime hours">
@@ -201,15 +275,20 @@ export default function TransactionModal({ transaction, onClose }) {
               <div className="flex items-center justify-between text-xs">
                 <span className="text-slate-500">
                   {formatHours(payResult.totalHours)} hours
-                  {payResult.overtimePay > 0 ? ` · OT at ${fmt(payResult.overtimeRate)}` : ""}
+                  {payResult.overtimePay > 0
+                    ? ` · OT at ${fmt(payResult.overtimeRate)}`
+                    : ""}
                 </span>
 
-                <span className="text-base font-bold">{fmt(payResult.total)}</span>
+                <span className="text-base font-bold">
+                  {fmt(payResult.total)}
+                </span>
               </div>
 
               {payResult.overtimePay > 0 && (
                 <p className="mt-1 text-[11px] text-slate-400">
-                  {fmt(payResult.regularPay)} regular + {fmt(payResult.overtimePay)} overtime
+                  {fmt(payResult.regularPay)} regular +{" "}
+                  {fmt(payResult.overtimePay)} overtime
                 </p>
               )}
             </div>
@@ -230,7 +309,11 @@ export default function TransactionModal({ transaction, onClose }) {
         )}
 
         <Field label="Account">
-          <select className="input" value={form.accountId} onChange={set("accountId")}>
+          <select
+            className="input"
+            value={form.accountId}
+            onChange={set("accountId")}
+          >
             <option value="">Select an account</option>
 
             {accounts.map((account) => (
@@ -242,9 +325,18 @@ export default function TransactionModal({ transaction, onClose }) {
         </Field>
 
         <Field label="Category">
-          <select className="input" value={form.categoryId} onChange={set("categoryId")}>
+          <select
+            className="input"
+            value={form.categoryId}
+            onChange={(event) => {
+              set("categoryId")(event);
+              applyCategoryRates(event.target.value);
+            }}
+          >
             <option value="">
-              {availableCategories.length === 0 ? `No ${form.type} categories yet` : "Select a category"}
+              {availableCategories.length === 0
+                ? `No ${form.type} categories yet`
+                : "Select a category"}
             </option>
 
             {availableCategories.map((category) => (
@@ -256,11 +348,21 @@ export default function TransactionModal({ transaction, onClose }) {
         </Field>
 
         <Field label="Date">
-          <input className="input" type="date" value={form.date} onChange={set("date")} />
+          <input
+            className="input"
+            type="date"
+            value={form.date}
+            onChange={set("date")}
+          />
         </Field>
 
         <Field label="Note">
-          <input className="input" value={form.notes} onChange={set("notes")} placeholder="Optional" />
+          <input
+            className="input"
+            value={form.notes}
+            onChange={set("notes")}
+            placeholder="Optional"
+          />
         </Field>
 
         {error && (

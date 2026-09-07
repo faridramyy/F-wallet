@@ -7,7 +7,16 @@ import { api } from "../lib/api";
 const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "EGP", "AED"];
 
 export default function Settings() {
-  const { settings, accounts, categories, transactions, groceries, updateSettings, showToast, logout } = useApp();
+  const {
+    settings,
+    accounts,
+    categories,
+    transactions,
+    groceries,
+    updateSettings,
+    showToast,
+    logout,
+  } = useApp();
 
   const [exporting, setExporting] = useState(false);
 
@@ -19,7 +28,9 @@ export default function Settings() {
     try {
       const data = await api.exportData();
 
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const blob = new Blob([JSON.stringify(data, null, 2)], {
+        type: "application/json",
+      });
       const url = URL.createObjectURL(blob);
 
       const link = document.createElement("a");
@@ -55,7 +66,9 @@ export default function Settings() {
         <div>
           <p className="eyebrow">Configuration</p>
           <h2 className="page-title">Settings</h2>
-          <p className="page-description">Preferences, backups and API access.</p>
+          <p className="page-description">
+            Preferences, backups and API access.
+          </p>
         </div>
       </div>
 
@@ -65,7 +78,9 @@ export default function Settings() {
             <select
               className="input"
               value={settings.currency}
-              onChange={(event) => updateSettings({ currency: event.target.value })}
+              onChange={(event) =>
+                updateSettings({ currency: event.target.value })
+              }
             >
               {CURRENCIES.map((code) => (
                 <option key={code} value={code}>
@@ -79,16 +94,21 @@ export default function Settings() {
             <select
               className="input"
               value={settings.theme}
-              onChange={(event) => updateSettings({ theme: event.target.value })}
+              onChange={(event) =>
+                updateSettings({ theme: event.target.value })
+              }
             >
+              <option value="system">Match my device</option>
               <option value="light">Light</option>
               <option value="dark">Dark</option>
             </select>
           </Field>
         </div>
 
-        <p className="mt-3 text-[11px] text-slate-400">
-          These are stored with your data, so they follow you to any device you sign in on.
+        <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+          These are stored with your data, so they follow you to any device you
+          sign in on. Matching your device means the app switches with your
+          phone or laptop, including when it changes on its own in the evening.
         </p>
       </Panel>
 
@@ -115,27 +135,37 @@ export default function Settings() {
           </div>
         </div>
 
-        <button type="button" className="secondary-button mt-4" onClick={downloadBackup} disabled={exporting}>
+        <button
+          type="button"
+          className="secondary-button mt-4"
+          onClick={downloadBackup}
+          disabled={exporting}
+        >
           <i className="fa-solid fa-download" />
           {exporting ? "Preparing..." : "Download a backup"}
         </button>
 
         <p className="mt-2 text-[11px] text-slate-400">
-          Downloads the same JSON shape the old version used, so nothing is locked in.
+          Downloads the same JSON shape the old version used, so nothing is
+          locked in.
         </p>
       </Panel>
 
       <Panel title="API access" subtitle="Add transactions from anywhere">
         <p className="text-sm leading-relaxed text-slate-600">
-          Send a POST request with your API key in the <code className="code-inline">x-api-key</code> header. Accounts and
-          categories can be given by name instead of id, so a phone shortcut only needs to know what you call things.
+          Send a POST request with your API key in the{" "}
+          <code className="code-inline">x-api-key</code> header. Accounts and
+          categories can be given by name instead of id, so a phone shortcut
+          only needs to know what you call things.
         </p>
 
         <pre className="code-block">{curlExample}</pre>
 
         <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-          The key only allows creating transactions. It cannot read your balances, edit history or delete anything. Your
-          API key lives in the Lambda environment variables, not in this page, so it is never exposed to the browser.
+          The key only allows creating transactions. It cannot read your
+          balances, edit history or delete anything. Your API key lives in the
+          Lambda environment variables, not in this page, so it is never exposed
+          to the browser.
         </p>
       </Panel>
 

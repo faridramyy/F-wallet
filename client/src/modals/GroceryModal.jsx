@@ -20,7 +20,8 @@ export default function GroceryModal({ grocery, onClose }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const set = (key) => (event) =>
+    setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const submit = async () => {
     setError("");
@@ -70,7 +71,12 @@ export default function GroceryModal({ grocery, onClose }) {
             Cancel
           </button>
 
-          <button type="button" className="primary-button" onClick={submit} disabled={saving}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={submit}
+            disabled={saving}
+          >
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add price"}
           </button>
         </>
@@ -78,23 +84,52 @@ export default function GroceryModal({ grocery, onClose }) {
     >
       <div className="form-grid">
         <Field label="Item" className="sm:col-span-2">
-          <input className="input" value={form.item} onChange={set("item")} placeholder="Milk, 4L" autoFocus />
+          <input
+            className="input"
+            value={form.item}
+            onChange={set("item")}
+            placeholder="Milk, 4L"
+            autoFocus
+          />
         </Field>
 
         <Field label="Price">
-          <input className="input" type="number" step="0.01" min="0" value={form.price} onChange={set("price")} placeholder="0.00" />
+          <input
+            className="input"
+            type="number"
+            step="0.01"
+            min="0"
+            value={form.price}
+            onChange={set("price")}
+            placeholder="0.00"
+          />
         </Field>
 
         <Field label="Store">
-          <input className="input" value={form.store} onChange={set("store")} placeholder="No Frills" />
+          <input
+            className="input"
+            value={form.store}
+            onChange={set("store")}
+            placeholder="No Frills"
+          />
         </Field>
 
         <Field label="Date">
-          <input className="input" type="date" value={form.date} onChange={set("date")} />
+          <input
+            className="input"
+            type="date"
+            value={form.date}
+            onChange={set("date")}
+          />
         </Field>
 
         <Field label="Note" className="sm:col-span-2">
-          <input className="input" value={form.description} onChange={set("description")} placeholder="On sale until Sunday" />
+          <input
+            className="input"
+            value={form.description}
+            onChange={set("description")}
+            placeholder="On sale until Sunday"
+          />
         </Field>
 
         {error && (

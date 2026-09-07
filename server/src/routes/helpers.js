@@ -12,7 +12,8 @@ function generateId(prefix) {
 */
 
 function wrap(handler) {
-  return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
+  return (req, res, next) =>
+    Promise.resolve(handler(req, res, next)).catch(next);
 }
 
 function badRequest(res, message) {
@@ -48,7 +49,10 @@ function normalizePay(pay) {
   const hours = Math.max(0, toNumber(pay.hours));
   const rate = Math.max(0, toNumber(pay.rate));
   const overtimeHours = Math.max(0, toNumber(pay.overtimeHours));
-  const overtimeMultiplier = toNumber(pay.overtimeMultiplier) > 0 ? toNumber(pay.overtimeMultiplier) : 1.5;
+  const overtimeMultiplier =
+    toNumber(pay.overtimeMultiplier) > 0
+      ? toNumber(pay.overtimeMultiplier)
+      : 1.5;
 
   if (!hours && !overtimeHours) return null;
 

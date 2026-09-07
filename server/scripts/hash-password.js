@@ -15,7 +15,9 @@ if (!password) {
 }
 
 if (password.length < 10) {
-  console.error("Use at least 10 characters. This is the only thing between the internet and your finances.");
+  console.error(
+    "Use at least 10 characters. This is the only thing between the internet and your finances.",
+  );
   process.exit(1);
 }
 

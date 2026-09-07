@@ -1153,8 +1153,8 @@ textarea.input {
 /* Dark theme */
 
 .dark-mode body {
-  background: #111827;
-  color: #e5e7eb;
+  background: #121212;
+  color: #e5e5e5;
 }
 
 .dark-mode .bg-white,
@@ -1163,13 +1163,13 @@ textarea.input {
 .dark-mode .modal,
 .dark-mode .modal-header,
 .dark-mode .toast {
-  border-color: #374151;
-  background: #1f2937;
+  border-color: #2b2b2b;
+  background: #161616;
 }
 
 .dark-mode .border-slate-200,
 .dark-mode .border-slate-100 {
-  border-color: #374151;
+  border-color: #2b2b2b;
 }
 
 .dark-mode .bg-slate-50,
@@ -1180,7 +1180,7 @@ textarea.input {
 .dark-mode .account-icon,
 .dark-mode .transaction-icon,
 .dark-mode .empty-state-icon {
-  background: #273449;
+  background: #262626;
 }
 
 .dark-mode .text-slate-900,
@@ -1190,7 +1190,7 @@ textarea.input {
 .dark-mode .stat-value,
 .dark-mode .transaction-description,
 .dark-mode .modal-title {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .dark-mode .text-slate-400,
@@ -1204,21 +1204,21 @@ textarea.input {
 .dark-mode .cash-flow-value,
 .dark-mode .setting-description,
 .dark-mode .confirm-message {
-  color: #9ca3af;
+  color: #9a9a9a;
 }
 
 .dark-mode .nav-item,
 .dark-mode .mobile-nav-item,
 .dark-mode .icon-button,
 .dark-mode .amount-transfer {
-  color: #9ca3af;
+  color: #9a9a9a;
 }
 
 .dark-mode .nav-item:hover,
 .dark-mode .icon-button:hover,
 .dark-mode .modal-close:hover {
-  background: #273449;
-  color: #f3f4f6;
+  background: #262626;
+  color: #f5f5f5;
 }
 
 .dark-mode .primary-button,
@@ -1230,42 +1230,42 @@ textarea.input {
 
 .dark-mode .secondary-button,
 .dark-mode .input {
-  border-color: #4b5563;
-  background: #273449;
-  color: #f3f4f6;
+  border-color: #3a3a3a;
+  background: #262626;
+  color: #f5f5f5;
 }
 
 .dark-mode .secondary-button:hover {
-  background: #34445c;
+  background: #333333;
 }
 
 .dark-mode .account-card,
 .dark-mode .category-card {
-  border-color: #374151;
+  border-color: #2b2b2b;
 }
 
 .dark-mode .transaction-item,
 .dark-mode .setting-row,
 .dark-mode .modal-footer {
-  border-color: #374151;
+  border-color: #2b2b2b;
 }
 
 .dark-mode .modal-overlay {
-  background: rgba(3, 7, 18, 0.72);
+  background: rgba(0, 0, 0, 0.74);
 }
 
 .dark-mode .toast {
-  color: #e5e7eb;
+  color: #e5e5e5;
 }
 
 .dark-mode header,
 .dark-mode #mobile-nav {
-  background-color: rgba(31, 41, 55, 0.95) !important;
-  border-color: #374151 !important;
+  background-color: rgba(10, 10, 10, 0.95) !important;
+  border-color: #2b2b2b !important;
 }
 
 .dark-mode .mobile-nav-item {
-  color: #9ca3af;
+  color: #9a9a9a;
 }
 
 .dark-mode .mobile-nav-item.active {
@@ -1273,35 +1273,35 @@ textarea.input {
 }
 
 .dark-mode #mobile-header-action {
-  background-color: #273449;
-  color: #f3f4f6;
+  background-color: #262626;
+  color: #f5f5f5;
 }
 
 .dark-mode .drag-handle {
-  color: #4b5563;
+  color: #3a3a3a;
 }
 
 .dark-mode .drag-handle:hover {
-  background: #273449;
-  color: #d1d5db;
+  background: #262626;
+  color: #d4d4d4;
 }
 
 .dark-mode .screen-height-list::-webkit-scrollbar-thumb {
-  background: #4b5563;
+  background: #3a3a3a;
 }
 
 .dark-mode .pay-calculator {
-  border-color: #374151;
-  background: #273449;
+  border-color: #2b2b2b;
+  background: #262626;
 }
 
 .dark-mode .pay-toggle,
 .dark-mode .pay-total {
-  color: #f3f4f6;
+  color: #f5f5f5;
 }
 
 .dark-mode .pay-breakdown {
-  color: #9ca3af;
+  color: #9a9a9a;
 }
 
 /* Responsive */
@@ -1389,17 +1389,17 @@ textarea.input {
 }
 
 .dark-mode .login-screen {
-  background: #0b1220;
+  background: #000000;
 }
 
 .dark-mode .login-card {
-  border-color: #1e293b;
-  background: #0f172a;
+  border-color: #1f1f1f;
+  background: #0a0a0a;
 }
 
 .dark-mode .spinner {
-  border-color: #1e293b;
-  border-top-color: #e2e8f0;
+  border-color: #1f1f1f;
+  border-top-color: #e5e5e5;
 }
 
 /* Icon tints per transaction type, and the grocery rows. */
@@ -1433,7 +1433,7 @@ textarea.input {
 }
 
 .dark-mode .grocery-best-item {
-  border-color: #1e293b;
+  border-color: #1f1f1f;
 }
 
 .dark-mode .transaction-icon.income {
@@ -1511,33 +1511,396 @@ textarea.input {
 }
 
 .dark-mode .type-toggle {
-  border-color: #1e293b;
+  border-color: #1f1f1f;
 }
 
 .dark-mode .type-toggle:hover {
-  background: #1e293b;
+  background: #1f1f1f;
 }
 
 .dark-mode .pay-summary {
-  background: #1e293b;
+  background: #1f1f1f;
 }
 
 .dark-mode .code-inline {
-  background: #1e293b;
-  color: #e2e8f0;
+  background: #1f1f1f;
+  color: #e5e5e5;
 }
 
-
 .dark-mode .mobile-nav {
-  border-color: #374151;
-  background: rgba(31, 41, 55, 0.96);
+  border-color: #2b2b2b;
+  background: rgba(10, 10, 10, 0.96);
 }
 
 .dark-mode .fab {
-  background: #e2e8f0;
-  color: #0f172a;
+  background: #e5e5e5;
+  color: #0a0a0a;
 }
 
 .dark-mode .modal-handle span {
-  background: #475569;
+  background: #3a3a3a;
+}
+
+/* ==================================================================
+   Reorder controls and the include-in-total toggle
+================================================================== */
+
+.reorder-controls {
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.reorder-controls .icon-button {
+  width: 26px;
+  height: 22px;
+  font-size: 11px;
+}
+
+.reorder-controls .icon-button:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.include-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 7px;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.include-toggle input {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  accent-color: #10b981;
+}
+
+/* ==================================================================
+   Mobile alignment
+
+   The stat cards were sized by their contents, so a card holding
+   "$1,204.55" ended up taller than one holding "$0.00" and the labels
+   stopped lining up across a row. Fixing the internal layout rather
+   than the grid is what actually solves it: every card is now a column
+   with the label pinned to the top and the value pushed to the bottom.
+================================================================== */
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 96px;
+  gap: 4px;
+}
+
+.stat-card .stat-label {
+  /* Reserve one line so a wrapped two-word label does not shift the
+     value below it out of alignment with its neighbours. */
+  min-height: 15px;
+}
+
+.stat-card .stat-value {
+  margin-top: auto;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stat-card .stat-help {
+  min-height: 14px;
+}
+
+@media (max-width: 420px) {
+  .stat-card {
+    min-height: 88px;
+    padding: 12px 13px;
+  }
+
+  .stat-card .stat-value {
+    font-size: 17px;
+  }
+
+  .account-card {
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .account-balance {
+    font-size: 14px;
+  }
+
+  .category-card {
+    padding: 13px 14px;
+  }
+}
+
+/* Money columns line up when digits share a width. */
+
+.account-balance,
+.category-amount,
+.transaction-amount {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==================================================================
+   Dark mode: true black rather than navy
+
+   These come last so they win over the earlier slate coloured rules
+   without needing !important on each one.
+================================================================== */
+
+.dark-mode,
+.dark-mode body {
+  background: #000;
+  color: #ededed;
+}
+
+.dark-mode .panel,
+.dark-mode .stat-card,
+.dark-mode .account-card,
+.dark-mode .category-card,
+.dark-mode .grocery-best-item,
+.dark-mode .modal,
+.dark-mode .login-card {
+  border-color: #1f1f1f;
+  background: #0a0a0a;
+}
+
+.dark-mode aside,
+.dark-mode header,
+.dark-mode .mobile-nav,
+.dark-mode .modal-header,
+.dark-mode .modal-footer,
+.dark-mode .toast {
+  border-color: #1f1f1f !important;
+  background-color: rgba(0, 0, 0, 0.94) !important;
+}
+
+.dark-mode .input,
+.dark-mode .secondary-button,
+.dark-mode .type-toggle,
+.dark-mode .pay-summary,
+.dark-mode .code-inline {
+  border-color: #262626;
+  background: #121212;
+  color: #ededed;
+}
+
+.dark-mode .input::placeholder {
+  color: #5c5c5c;
+}
+
+.dark-mode .primary-button,
+.dark-mode .fab {
+  background: #ededed;
+  color: #000;
+}
+
+.dark-mode .brand-icon,
+.dark-mode .progress-fill {
+  background: #10b981;
+  color: #04231a;
+}
+
+.dark-mode .progress-track,
+.dark-mode .transaction-icon,
+.dark-mode .badge {
+  background: #161616;
+}
+
+.dark-mode .nav-item.active,
+.dark-mode .mobile-nav-item.active {
+  color: #fff;
+}
+
+.dark-mode .nav-item:hover,
+.dark-mode .icon-button:hover,
+.dark-mode .type-toggle:hover {
+  background: #161616;
+}
+
+.dark-mode .divide-slate-100 > * + * {
+  border-color: #1a1a1a;
+}
+
+.dark-mode .border-slate-200,
+.dark-mode .border-slate-100 {
+  border-color: #1f1f1f !important;
+}
+
+.dark-mode .text-slate-400,
+.dark-mode .stat-label,
+.dark-mode .stat-help,
+.dark-mode .account-meta,
+.dark-mode .include-toggle {
+  color: #7a7a7a;
+}
+
+.dark-mode .text-slate-500,
+.dark-mode .text-slate-600 {
+  color: #9a9a9a;
+}
+
+.dark-mode .modal-overlay {
+  background: rgba(0, 0, 0, 0.78);
+}
+
+.dark-mode .modal-handle span {
+  background: #333;
+}
+
+.dark-mode .spinner {
+  border-color: #1f1f1f;
+  border-top-color: #ededed;
+}
+
+/* ------------------------------------------------------------------
+   Account cards
+
+   A grid rather than a flex column. The old version stacked every child
+   vertically, which put the reorder buttons above the icon above the
+   name and left the balance floating on its own row.
+
+   Mobile: icon and name on the first row with the balance right aligned,
+   anything extra on its own full width row, controls last.
+   Desktop: all of it on one line.
+------------------------------------------------------------------ */
+
+.account-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon main figures"
+    "extra extra extra"
+    "reorder actions actions";
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  padding: 14px;
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.account-card .reorder-controls {
+  grid-area: reorder;
+  display: flex;
+  gap: 4px;
+}
+
+.account-icon {
+  grid-area: icon;
+}
+
+.account-main {
+  grid-area: main;
+  /* Column, not row. The name sits above the meta line. */
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-figures {
+  grid-area: figures;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.account-figures-note {
+  margin-top: 1px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.account-extra {
+  grid-area: extra;
+  min-width: 0;
+}
+
+.account-extra-note {
+  margin-top: 4px;
+  color: #94a3b8;
+  font-size: 11px;
+}
+
+.account-actions {
+  grid-area: actions;
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+}
+
+@media (min-width: 640px) {
+  .account-card {
+    grid-template-columns: auto auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "reorder icon main figures actions"
+      "reorder icon extra extra extra";
+  }
+
+  .account-card .reorder-controls {
+    flex-direction: column;
+  }
+}
+
+.include-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #64748b;
+  font-size: 11.5px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.include-toggle input {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  accent-color: #0f172a;
+}
+
+/* Category cards get the same treatment: reorder controls that do not
+   shove the name out of line. */
+
+.category-title-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.category-title-row .category-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dark-mode .account-card {
+  border-color: #2b2b2b;
+}
+
+.dark-mode .account-card:hover {
+  border-color: #3a3a3a;
+  box-shadow: none;
+}
+
+.dark-mode .account-figures-note,
+.dark-mode .account-extra-note,
+.dark-mode .include-toggle {
+  color: #9a9a9a;
+}
+
+.dark-mode .include-toggle input {
+  accent-color: #10b981;
 }

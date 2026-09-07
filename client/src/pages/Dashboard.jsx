@@ -2,7 +2,13 @@ import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { useApp } from "../store";
-import { Panel, StatCard, EmptyState, MonthPicker, ProgressBar } from "../components/ui";
+import {
+  Panel,
+  StatCard,
+  EmptyState,
+  MonthPicker,
+  ProgressBar,
+} from "../components/ui";
 import {
   accountBalance,
   normalAccountTotal,
@@ -16,10 +22,25 @@ import {
   savingsRate,
   isSameMonth,
 } from "../lib/calc";
-import { money, moneySigned, formatDate, formatMonth, formatMonthLong, currentMonth, lastMonths } from "../lib/format";
+import {
+  money,
+  moneySigned,
+  formatDate,
+  formatMonth,
+  formatMonthLong,
+  currentMonth,
+  lastMonths,
+} from "../lib/format";
 
 export default function Dashboard({ onEditTransaction }) {
-  const { accounts, categories, transactions, currency, getAccountName, getCategoryName } = useApp();
+  const {
+    accounts,
+    categories,
+    transactions,
+    currency,
+    getAccountName,
+    getCategoryName,
+  } = useApp();
 
   const [month, setMonth] = useState(currentMonth());
 
@@ -30,7 +51,9 @@ export default function Dashboard({ onEditTransaction }) {
   const expenses = monthlyExpenses(transactions, month);
   const transfers = monthlyTransfers(transactions, month);
 
-  const netWorth = normalAccountTotal(accounts, transactions) - creditCardDebt(accounts, transactions);
+  const netWorth =
+    normalAccountTotal(accounts, transactions) -
+    creditCardDebt(accounts, transactions);
 
   const savings = income - expenses;
   const rate = savingsRate(income, expenses);
@@ -38,7 +61,11 @@ export default function Dashboard({ onEditTransaction }) {
   const recent = useMemo(
     () =>
       [...transactions]
-        .sort((a, b) => (a.date === b.date ? (b.createdAt || "").localeCompare(a.createdAt || "") : b.date.localeCompare(a.date)))
+        .sort((a, b) =>
+          a.date === b.date
+            ? (b.createdAt || "").localeCompare(a.createdAt || "")
+            : b.date.localeCompare(a.date),
+        )
         .slice(0, 6),
     [transactions],
   );
@@ -56,7 +83,10 @@ export default function Dashboard({ onEditTransaction }) {
   const budgets = useMemo(
     () =>
       categories
-        .filter((category) => category.type === "expense" && Number(category.monthlyBudget) > 0)
+        .filter(
+          (category) =>
+            category.type === "expense" && Number(category.monthlyBudget) > 0,
+        )
         .map((category) => ({
           category,
           spent: categorySpending(transactions, category.id, month),
@@ -70,11 +100,18 @@ export default function Dashboard({ onEditTransaction }) {
     const totals = new Map();
 
     for (const transaction of transactions) {
-      if (transaction.type !== "expense" || !isSameMonth(transaction.date, month)) continue;
+      if (
+        transaction.type !== "expense" ||
+        !isSameMonth(transaction.date, month)
+      )
+        continue;
 
       const key = transaction.categoryId || "uncategorized";
 
-      totals.set(key, (totals.get(key) || 0) + (Number(transaction.amount) || 0));
+      totals.set(
+        key,
+        (totals.get(key) || 0) + (Number(transaction.amount) || 0),
+      );
     }
 
     const rows = [...totals.entries()]
@@ -97,7 +134,11 @@ export default function Dashboard({ onEditTransaction }) {
           <p className="page-description">{formatMonthLong(month)}</p>
         </div>
 
-        <MonthPicker month={month} onChange={setMonth} label={formatMonth(month)} />
+        <MonthPicker
+          month={month}
+          onChange={setMonth}
+          label={formatMonth(month)}
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -108,15 +149,27 @@ export default function Dashboard({ onEditTransaction }) {
           help="Cash minus card debt"
         />
 
-        <StatCard label="Income" value={fmt(income)} tone="positive" help="This month" />
+        <StatCard
+          label="Income"
+          value={fmt(income)}
+          tone="positive"
+          help="This month"
+        />
 
-        <StatCard label="Expenses" value={fmt(expenses)} tone="negative" help="This month" />
+        <StatCard
+          label="Expenses"
+          value={fmt(expenses)}
+          tone="negative"
+          help="This month"
+        />
 
         <StatCard
           label="Saved"
           value={fmtSigned(savings)}
           tone={savings >= 0 ? "positive" : "negative"}
-          help={income > 0 ? `${rate.toFixed(0)}% of income` : "No income logged"}
+          help={
+            income > 0 ? `${rate.toFixed(0)}% of income` : "No income logged"
+          }
         />
       </div>
 
@@ -130,7 +183,9 @@ export default function Dashboard({ onEditTransaction }) {
         </Panel>
 
         <Panel title="Savings" subtitle="Income minus expenses">
-          <p className={`text-2xl font-bold tracking-tight ${savings >= 0 ? "" : "text-red-500"}`}>
+          <p
+            className={`text-2xl font-bold tracking-tight ${savings >= 0 ? "" : "text-red-500"}`}
+          >
             {fmtSigned(savings)}
           </p>
 
@@ -147,7 +202,12 @@ export default function Dashboard({ onEditTransaction }) {
           <div className="mt-4 flex h-14 items-end gap-1.5">
             {trend.map((item) => {
               const net = item.income - item.expenses;
-              const max = Math.max(1, ...trend.map((entry) => Math.abs(entry.income - entry.expenses)));
+              const max = Math.max(
+                1,
+                ...trend.map((entry) =>
+                  Math.abs(entry.income - entry.expenses),
+                ),
+              );
 
               return (
                 <div
@@ -192,13 +252,18 @@ export default function Dashboard({ onEditTransaction }) {
           ) : (
             <div className="space-y-3">
               {breakdown.rows.map((row) => {
-                const share = breakdown.total > 0 ? (row.amount / breakdown.total) * 100 : 0;
+                const share =
+                  breakdown.total > 0
+                    ? (row.amount / breakdown.total) * 100
+                    : 0;
 
                 return (
                   <div key={row.categoryId}>
                     <div className="mb-1.5 flex items-center justify-between text-xs">
                       <span className="font-semibold">
-                        {row.categoryId === "uncategorized" ? "Uncategorized" : getCategoryName(row.categoryId)}
+                        {row.categoryId === "uncategorized"
+                          ? "Uncategorized"
+                          : getCategoryName(row.categoryId)}
                       </span>
 
                       <span className="text-slate-500">
@@ -239,7 +304,13 @@ export default function Dashboard({ onEditTransaction }) {
                     <div className="mb-1.5 flex items-center justify-between text-xs">
                       <span className="font-semibold">{category.name}</span>
 
-                      <span className={remaining < 0 ? "font-semibold text-red-500" : "text-slate-500"}>
+                      <span
+                        className={
+                          remaining < 0
+                            ? "font-semibold text-red-500"
+                            : "text-slate-500"
+                        }
+                      >
                         {fmt(spent)} of {fmt(budget)}
                       </span>
                     </div>
@@ -247,7 +318,9 @@ export default function Dashboard({ onEditTransaction }) {
                     <ProgressBar value={spent} max={budget} />
 
                     <p className="mt-1 text-[11px] text-slate-400">
-                      {remaining >= 0 ? `${fmt(remaining)} left` : `${fmt(Math.abs(remaining))} over budget`}
+                      {remaining >= 0
+                        ? `${fmt(remaining)} left`
+                        : `${fmt(Math.abs(remaining))} over budget`}
                     </p>
                   </div>
                 );
@@ -285,9 +358,14 @@ export default function Dashboard({ onEditTransaction }) {
                 const isCredit = account.type === "credit";
 
                 return (
-                  <div key={account.id} className="flex items-center justify-between">
+                  <div
+                    key={account.id}
+                    className="flex items-center justify-between"
+                  >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">{account.name}</p>
+                      <p className="truncate text-sm font-semibold">
+                        {account.name}
+                      </p>
                       <p className="text-[11px] capitalize text-slate-400">
                         {account.type}
                         {account.lastFour ? ` · ${account.lastFour}` : ""}
@@ -296,7 +374,13 @@ export default function Dashboard({ onEditTransaction }) {
 
                     <p
                       className={`text-sm font-bold ${
-                        isCredit ? (balance > 0 ? "text-red-500" : "text-emerald-600") : balance >= 0 ? "" : "text-red-500"
+                        isCredit
+                          ? balance > 0
+                            ? "text-red-500"
+                            : "text-emerald-600"
+                          : balance >= 0
+                            ? ""
+                            : "text-red-500"
                       }`}
                     >
                       {fmt(balance)}
@@ -323,12 +407,16 @@ export default function Dashboard({ onEditTransaction }) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <p className="stat-label">Total debt</p>
-                  <p className="text-lg font-bold text-red-500">{fmt(creditCardDebt(accounts, transactions))}</p>
+                  <p className="text-lg font-bold text-red-500">
+                    {fmt(creditCardDebt(accounts, transactions))}
+                  </p>
                 </div>
 
                 <div>
                   <p className="stat-label">Available credit</p>
-                  <p className="text-lg font-bold text-emerald-600">{fmt(totalAvailableCredit(accounts, transactions))}</p>
+                  <p className="text-lg font-bold text-emerald-600">
+                    {fmt(totalAvailableCredit(accounts, transactions))}
+                  </p>
                 </div>
               </div>
 
@@ -341,13 +429,28 @@ export default function Dashboard({ onEditTransaction }) {
                   <div key={card.id}>
                     <div className="mb-1.5 flex items-center justify-between text-xs">
                       <span className="font-semibold">{card.name}</span>
-                      <span className="text-slate-500">{limit > 0 ? `${utilization.toFixed(0)}% used` : "No limit set"}</span>
+                      <span className="text-slate-500">
+                        {limit > 0
+                          ? `${utilization.toFixed(0)}% used`
+                          : "No limit set"}
+                      </span>
                     </div>
 
-                    <ProgressBar value={utilization} max={100} tone={utilization >= 70 ? "danger" : utilization >= 30 ? "warning" : ""} />
+                    <ProgressBar
+                      value={utilization}
+                      max={100}
+                      tone={
+                        utilization >= 70
+                          ? "danger"
+                          : utilization >= 30
+                            ? "warning"
+                            : ""
+                      }
+                    />
 
                     <p className="mt-1 text-[11px] text-slate-400">
-                      {fmt(debt)} owing · {fmt(availableCredit(card, transactions))} available
+                      {fmt(debt)} owing ·{" "}
+                      {fmt(availableCredit(card, transactions))} available
                     </p>
                   </div>
                 );
@@ -402,7 +505,9 @@ export default function Dashboard({ onEditTransaction }) {
 
                   <p className="truncate text-[11px] text-slate-400">
                     {formatDate(transaction.date)}
-                    {transaction.type !== "transfer" ? ` · ${getAccountName(transaction.accountId)}` : ""}
+                    {transaction.type !== "transfer"
+                      ? ` · ${getAccountName(transaction.accountId)}`
+                      : ""}
                     {transaction.notes ? ` · ${transaction.notes}` : ""}
                   </p>
                 </div>
@@ -416,7 +521,11 @@ export default function Dashboard({ onEditTransaction }) {
                         : "text-slate-500"
                   }`}
                 >
-                  {transaction.type === "expense" ? "-" : transaction.type === "income" ? "+" : ""}
+                  {transaction.type === "expense"
+                    ? "-"
+                    : transaction.type === "income"
+                      ? "+"
+                      : ""}
                   {fmt(transaction.amount)}
                 </span>
               </button>
@@ -429,13 +538,19 @@ export default function Dashboard({ onEditTransaction }) {
 }
 
 function CashFlowChart({ trend, currency }) {
-  const max = Math.max(1, ...trend.flatMap((item) => [item.income, item.expenses]));
+  const max = Math.max(
+    1,
+    ...trend.flatMap((item) => [item.income, item.expenses]),
+  );
 
   return (
     <div>
       <div className="flex h-40 items-end gap-3">
         {trend.map((item) => (
-          <div key={item.month} className="flex flex-1 flex-col items-center gap-1.5">
+          <div
+            key={item.month}
+            className="flex flex-1 flex-col items-center gap-1.5"
+          >
             <div className="flex h-full w-full items-end justify-center gap-1">
               <div
                 className="w-1/2 rounded-t-md bg-emerald-500/85"
@@ -445,23 +560,29 @@ function CashFlowChart({ trend, currency }) {
 
               <div
                 className="w-1/2 rounded-t-md bg-red-400/85"
-                style={{ height: `${Math.max(2, (item.expenses / max) * 100)}%` }}
+                style={{
+                  height: `${Math.max(2, (item.expenses / max) * 100)}%`,
+                }}
                 title={`Expenses ${money(item.expenses, { currency })}`}
               />
             </div>
 
-            <span className="text-[10px] font-medium text-slate-400">{formatMonth(item.month).split(" ")[0]}</span>
+            <span className="text-[10px] font-medium text-slate-400">
+              {formatMonth(item.month).split(" ")[0]}
+            </span>
           </div>
         ))}
       </div>
 
       <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-500">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Income
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" />{" "}
+          Income
         </span>
 
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-400" /> Expenses
+          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-400" />{" "}
+          Expenses
         </span>
       </div>
     </div>

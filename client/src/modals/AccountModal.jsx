@@ -17,7 +17,9 @@ export default function AccountModal({ account, onClose }) {
 
   const isEditing = Boolean(account);
 
-  const existingBalance = isEditing ? round2(accountBalance(account, transactions)) : 0;
+  const existingBalance = isEditing
+    ? round2(accountBalance(account, transactions))
+    : 0;
 
   const [form, setForm] = useState({
     name: account?.name || "",
@@ -26,13 +28,15 @@ export default function AccountModal({ account, onClose }) {
     lastFour: account?.lastFour || "",
     startingBalance: account?.startingBalance ?? "",
     creditLimit: account?.creditLimit ?? "",
-    currentBalance: isEditing && account.type === "credit" ? String(existingBalance) : "",
+    currentBalance:
+      isEditing && account.type === "credit" ? String(existingBalance) : "",
   });
 
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const set = (key) => (event) => setForm((current) => ({ ...current, [key]: event.target.value }));
+  const set = (key) => (event) =>
+    setForm((current) => ({ ...current, [key]: event.target.value }));
 
   const submit = async () => {
     setError("");
@@ -56,7 +60,10 @@ export default function AccountModal({ account, onClose }) {
 
     const creditLimit = Number(form.creditLimit || 0);
 
-    if (form.type === "credit" && (!Number.isFinite(creditLimit) || creditLimit < 0)) {
+    if (
+      form.type === "credit" &&
+      (!Number.isFinite(creditLimit) || creditLimit < 0)
+    ) {
       setError("Credit limit cannot be negative.");
       return;
     }
@@ -79,7 +86,9 @@ export default function AccountModal({ account, onClose }) {
       }
 
       if (round2(desired) !== existingBalance) {
-        const transactionEffect = accountBalance(account, transactions) - (Number(account.startingBalance) || 0);
+        const transactionEffect =
+          accountBalance(account, transactions) -
+          (Number(account.startingBalance) || 0);
 
         startingBalance = round2(desired - transactionEffect);
       }
@@ -119,7 +128,12 @@ export default function AccountModal({ account, onClose }) {
             Cancel
           </button>
 
-          <button type="button" className="primary-button" onClick={submit} disabled={saving}>
+          <button
+            type="button"
+            className="primary-button"
+            onClick={submit}
+            disabled={saving}
+          >
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add account"}
           </button>
         </>
@@ -127,7 +141,13 @@ export default function AccountModal({ account, onClose }) {
     >
       <div className="form-grid">
         <Field label="Account name" className="sm:col-span-2">
-          <input className="input" value={form.name} onChange={set("name")} placeholder="Everyday chequing" autoFocus />
+          <input
+            className="input"
+            value={form.name}
+            onChange={set("name")}
+            placeholder="Everyday chequing"
+            autoFocus
+          />
         </Field>
 
         <Field label="Type">
@@ -141,14 +161,28 @@ export default function AccountModal({ account, onClose }) {
         </Field>
 
         <Field label="Institution">
-          <input className="input" value={form.institution} onChange={set("institution")} placeholder="RBC" />
+          <input
+            className="input"
+            value={form.institution}
+            onChange={set("institution")}
+            placeholder="RBC"
+          />
         </Field>
 
         <Field label="Last 4 digits">
-          <input className="input" value={form.lastFour} onChange={set("lastFour")} inputMode="numeric" maxLength={4} placeholder="4321" />
+          <input
+            className="input"
+            value={form.lastFour}
+            onChange={set("lastFour")}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="4321"
+          />
         </Field>
 
-        <Field label={form.type === "credit" ? "Starting debt" : "Starting balance"}>
+        <Field
+          label={form.type === "credit" ? "Starting debt" : "Starting balance"}
+        >
           <input
             className="input"
             type="number"
@@ -185,7 +219,8 @@ export default function AccountModal({ account, onClose }) {
                 />
 
                 <p className="mt-1 text-[11px] text-slate-400">
-                  Set this to match your statement. Your transactions are kept and the starting debt is adjusted to fit.
+                  Set this to match your statement. Your transactions are kept
+                  and the starting debt is adjusted to fit.
                 </p>
               </Field>
             )}

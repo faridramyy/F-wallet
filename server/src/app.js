@@ -99,7 +99,8 @@ app.get("/auth/check", requireAuth, (req, res) => {
 --------------------------------------------------------- */
 
 app.use("/api", (req, res, next) => {
-  const isAutomationEndpoint = req.method === "POST" && req.path === "/transactions";
+  const isAutomationEndpoint =
+    req.method === "POST" && req.path === "/transactions";
 
   return isAutomationEndpoint
     ? requireAuthOrApiKey(req, res, next)

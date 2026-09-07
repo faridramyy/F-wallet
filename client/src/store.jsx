@@ -1,4 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 import { api, getToken, setToken, ApiError } from "./lib/api";
 
@@ -9,7 +17,7 @@ const EMPTY_STATE = {
   categories: [],
   transactions: [],
   groceries: [],
-  settings: { currency: "CAD", theme: "light" },
+  settings: { currency: "CAD", theme: "system" },
 };
 
 export function AppProvider({ children }) {
@@ -58,22 +66,42 @@ export function AppProvider({ children }) {
 
   // Theme is a data field, so it applies on whatever device you sign in on.
 
-  useEffect(() => {
-    const isDark = data.settings?.theme === "dark";
+  /*
+    Theme.
 
-    document.documentElement.classList.toggle("dark-mode", isDark);
-    document.body.classList.toggle("dark-mode", isDark);
+    "system" follows whatever the phone or laptop is set to, and keeps
+    following it. The listener matters: if you leave the app open while
+    the device flips to dark at sunset, this switches with it rather than
+    waiting for a reload.
+  */
+
+  useEffect(() => {
+    const theme = data.settings?.theme || "system";
+
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const apply = () => {
+      const isDark = theme === "dark" || (theme === "system" && media.matches);
+
+      document.documentElement.classList.toggle("dark-mode", isDark);
+      document.body.classList.toggle("dark-mode", isDark);
+    };
+
+    apply();
+
+    if (theme !== "system") return undefined;
+
+    media.addEventListener("change", apply);
+
+    return () => media.removeEventListener("change", apply);
   }, [data.settings?.theme]);
 
-  const login = useCallback(
-    async (password) => {
-      const result = await api.login(password);
+  const login = useCallback(async (password) => {
+    const result = await api.login(password);
 
-      setToken(result.token);
-      setAuthenticated(true);
-    },
-    [],
-  );
+    setToken(result.token);
+    setAuthenticated(true);
+  }, []);
 
   const logout = useCallback(() => {
     setToken("");
@@ -109,30 +137,49 @@ export function AppProvider({ children }) {
 
   const actions = useMemo(
     () => ({
-      createAccount: (payload) => run(() => api.createAccount(payload), "Account added."),
-      updateAccount: (id, payload) => run(() => api.updateAccount(id, payload), "Account updated."),
-      deleteAccount: (id) => run(() => api.deleteAccount(id), "Account deleted."),
+      createAccount: (payload) =>
+        run(() => api.createAccount(payload), "Account added."),
+      updateAccount: (id, payload) =>
+        run(() => api.updateAccount(id, payload), "Account updated."),
+      deleteAccount: (id) =>
+        run(() => api.deleteAccount(id), "Account deleted."),
+      reorderAccounts: (ids) => run(() => api.reorderAccounts(ids)),
 
-      createCategory: (payload) => run(() => api.createCategory(payload), "Category added."),
-      updateCategory: (id, payload) => run(() => api.updateCategory(id, payload), "Category updated."),
-      deleteCategory: (id) => run(() => api.deleteCategory(id), "Category deleted."),
+      createCategory: (payload) =>
+        run(() => api.createCategory(payload), "Category added."),
+      updateCategory: (id, payload) =>
+        run(() => api.updateCategory(id, payload), "Category updated."),
+      deleteCategory: (id) =>
+        run(() => api.deleteCategory(id), "Category deleted."),
+      reorderCategories: (ids) => run(() => api.reorderCategories(ids)),
 
-      createTransaction: (payload) => run(() => api.createTransaction(payload), "Transaction added."),
-      updateTransaction: (id, payload) => run(() => api.updateTransaction(id, payload), "Transaction updated."),
-      deleteTransaction: (id) => run(() => api.deleteTransaction(id), "Transaction deleted."),
+      createTransaction: (payload) =>
+        run(() => api.createTransaction(payload), "Transaction added."),
+      updateTransaction: (id, payload) =>
+        run(() => api.updateTransaction(id, payload), "Transaction updated."),
+      deleteTransaction: (id) =>
+        run(() => api.deleteTransaction(id), "Transaction deleted."),
 
-      createGrocery: (payload) => run(() => api.createGrocery(payload), "Price entry added."),
-      updateGrocery: (id, payload) => run(() => api.updateGrocery(id, payload), "Price entry updated."),
-      deleteGrocery: (id) => run(() => api.deleteGrocery(id), "Price entry deleted."),
+      createGrocery: (payload) =>
+        run(() => api.createGrocery(payload), "Price entry added."),
+      updateGrocery: (id, payload) =>
+        run(() => api.updateGrocery(id, payload), "Price entry updated."),
+      deleteGrocery: (id) =>
+        run(() => api.deleteGrocery(id), "Price entry deleted."),
 
-      updateSettings: (payload) => run(() => api.updateSettings(payload), "Settings saved."),
+      updateSettings: (payload) =>
+        run(() => api.updateSettings(payload), "Settings saved."),
     }),
     [run],
   );
 
   const lookups = useMemo(() => {
-    const accountsById = new Map(data.accounts.map((account) => [account.id, account]));
-    const categoriesById = new Map(data.categories.map((category) => [category.id, category]));
+    const accountsById = new Map(
+      data.accounts.map((account) => [account.id, account]),
+    );
+    const categoriesById = new Map(
+      data.categories.map((category) => [category.id, category]),
+    );
 
     return {
       getAccount: (id) => accountsById.get(id) || null,
@@ -157,7 +204,19 @@ export function AppProvider({ children }) {
       ...actions,
       ...lookups,
     }),
-    [data, authenticated, loading, loadError, toasts, showToast, refresh, login, logout, actions, lookups],
+    [
+      data,
+      authenticated,
+      loading,
+      loadError,
+      toasts,
+      showToast,
+      refresh,
+      login,
+      logout,
+      actions,
+      lookups,
+    ],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

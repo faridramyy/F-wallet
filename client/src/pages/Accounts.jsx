@@ -1,8 +1,21 @@
 import { useState } from "react";
 
 import { useApp } from "../store";
-import { Panel, StatCard, EmptyState, ConfirmModal, ProgressBar } from "../components/ui";
-import { accountBalance, normalAccountTotal, creditCardDebt, totalAvailableCredit, availableCredit } from "../lib/calc";
+import {
+  Panel,
+  StatCard,
+  EmptyState,
+  ConfirmModal,
+  ProgressBar,
+} from "../components/ui";
+import { ReorderButtons, moveItem } from "../components/Reorder";
+import {
+  accountBalance,
+  creditCardDebt,
+  totalAvailableCredit,
+  availableCredit,
+  netMoney,
+} from "../lib/calc";
 import { money } from "../lib/format";
 import AccountModal from "../modals/AccountModal";
 import TransferModal from "../modals/TransferModal";
@@ -15,7 +28,14 @@ const TYPE_ICONS = {
 };
 
 export default function Accounts() {
-  const { accounts, transactions, currency, deleteAccount } = useApp();
+  const {
+    accounts,
+    transactions,
+    currency,
+    deleteAccount,
+    updateAccount,
+    reorderAccounts,
+  } = useApp();
 
   const [editing, setEditing] = useState(null);
   const [showModal, setShowModal] = useState(false);
@@ -34,6 +54,14 @@ export default function Accounts() {
     setShowModal(true);
   };
 
+  const move = (from, to) => {
+    const reordered = moveItem(accounts, from, to);
+
+    if (reordered === accounts) return;
+
+    reorderAccounts(reordered.map((account) => account.id));
+  };
+
   const affectedCount = (accountId) =>
     transactions.filter(
       (transaction) =>
@@ -48,11 +76,18 @@ export default function Accounts() {
         <div>
           <p className="eyebrow">Money</p>
           <h2 className="page-title">Accounts</h2>
-          <p className="page-description">Every account you track, and what is in it.</p>
+          <p className="page-description">
+            Every account you track, and what is in it.
+          </p>
         </div>
 
         <div className="flex gap-2">
-          <button type="button" className="secondary-button" onClick={() => setShowTransfer(true)} disabled={accounts.length < 2}>
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => setShowTransfer(true)}
+            disabled={accounts.length < 2}
+          >
             <i className="fa-solid fa-right-left" />
             Transfer
           </button>
@@ -64,10 +99,27 @@ export default function Accounts() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-        <StatCard label="Cash on hand" value={fmt(normalAccountTotal(accounts, transactions))} tone="positive" />
-        <StatCard label="Card debt" value={fmt(creditCardDebt(accounts, transactions))} tone="negative" />
-        <StatCard label="Available credit" value={fmt(totalAvailableCredit(accounts, transactions))} />
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        <StatCard
+          label="Available credit"
+          value={fmt(totalAvailableCredit(accounts, transactions))}
+          help="Left to spend on your cards"
+        />
+
+        <StatCard
+          label="Card debt"
+          value={fmt(creditCardDebt(accounts, transactions))}
+          tone="negative"
+          help="What you currently owe"
+        />
+
+        <StatCard
+          className="col-span-2 sm:col-span-1"
+          label="Net money"
+          value={fmt(netMoney(accounts, transactions))}
+          tone={netMoney(accounts, transactions) >= 0 ? "positive" : "negative"}
+          help="What is left after clearing all debt"
+        />
       </div>
 
       <Panel>
@@ -77,14 +129,18 @@ export default function Accounts() {
             title="No accounts yet"
             message="Add a chequing account, savings account, cash or a credit card to get started."
             action={
-              <button type="button" className="primary-button" onClick={openNew}>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={openNew}
+              >
                 Add your first account
               </button>
             }
           />
         ) : (
           <div className="space-y-3">
-            {accounts.map((account) => {
+            {accounts.map((account, index) => {
               const balance = accountBalance(account, transactions);
               const isCredit = account.type === "credit";
               const limit = Math.max(0, Number(account.creditLimit) || 0);
@@ -93,8 +149,16 @@ export default function Accounts() {
 
               return (
                 <div key={account.id} className="account-card">
+                  <ReorderButtons
+                    index={index}
+                    total={accounts.length}
+                    onMove={move}
+                  />
+
                   <div className="account-icon">
-                    <i className={`fa-solid ${TYPE_ICONS[account.type] || "fa-wallet"}`} />
+                    <i
+                      className={`fa-solid ${TYPE_ICONS[account.type] || "fa-wallet"}`}
+                    />
                   </div>
 
                   <div className="account-main">
@@ -102,52 +166,99 @@ export default function Accounts() {
 
                     <p className="account-meta">
                       <span className="capitalize">{account.type}</span>
-                      {account.institution ? ` · ${account.institution}` : ""}
-                      {account.lastFour ? ` · ends ${account.lastFour}` : ""}
+                      {account.institution
+                        ? ` \u00b7 ${account.institution}`
+                        : ""}
+                      {account.lastFour
+                        ? ` \u00b7 ends ${account.lastFour}`
+                        : ""}
+                    </p>
+                  </div>
+
+                  <div className="account-figures">
+                    <p
+                      className={`account-balance ${
+                        isCredit
+                          ? debt > 0
+                            ? "text-red-500"
+                            : "text-emerald-600"
+                          : balance >= 0
+                            ? ""
+                            : "text-red-500"
+                      }`}
+                    >
+                      {fmt(balance)}
                     </p>
 
-                    {isCredit && limit > 0 && (
-                      <div className="mt-2">
-                        <ProgressBar
-                          value={utilization}
-                          max={100}
-                          tone={utilization >= 70 ? "danger" : utilization >= 30 ? "warning" : ""}
-                        />
-
-                        <p className="mt-1 text-[11px] text-slate-400">
-                          {fmt(availableCredit(account, transactions))} available of {fmt(limit)}
-                        </p>
-                      </div>
+                    {isCredit && (
+                      <p className="account-figures-note">
+                        {debt > 0 ? "owing" : "paid off"}
+                      </p>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p
-                        className={`account-balance ${
-                          isCredit ? (debt > 0 ? "text-red-500" : "text-emerald-600") : balance >= 0 ? "" : "text-red-500"
-                        }`}
-                      >
-                        {fmt(balance)}
-                      </p>
+                  {(!isCredit || (isCredit && limit > 0)) && (
+                    <div className="account-extra">
+                      {!isCredit && (
+                        <label className="include-toggle">
+                          <input
+                            type="checkbox"
+                            checked={account.includeInTotal !== false}
+                            onChange={(event) =>
+                              updateAccount(account.id, {
+                                includeInTotal: event.target.checked,
+                              })
+                            }
+                          />
+                          <span>
+                            {account.includeInTotal === false
+                              ? "Not counted in total"
+                              : "Counted in total"}
+                          </span>
+                        </label>
+                      )}
 
-                      {isCredit && <p className="text-[11px] text-slate-400">{debt > 0 ? "owing" : "paid off"}</p>}
+                      {isCredit && limit > 0 && (
+                        <>
+                          <ProgressBar
+                            value={utilization}
+                            max={100}
+                            tone={
+                              utilization >= 70
+                                ? "danger"
+                                : utilization >= 30
+                                  ? "warning"
+                                  : ""
+                            }
+                          />
+
+                          <p className="account-extra-note">
+                            {fmt(availableCredit(account, transactions))}{" "}
+                            available of {fmt(limit)}
+                          </p>
+                        </>
+                      )}
                     </div>
+                  )}
 
-                    <div className="account-actions">
-                      <button type="button" className="icon-button" onClick={() => openEdit(account)} aria-label="Edit">
-                        <i className="fa-solid fa-pen" />
-                      </button>
+                  <div className="account-actions">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => openEdit(account)}
+                      aria-label="Edit"
+                    >
+                      <i className="fa-solid fa-pen" />
+                    </button>
 
-                      <button
-                        type="button"
-                        className="icon-button danger"
-                        onClick={() => setConfirming(account)}
-                        aria-label="Delete"
-                      >
-                        <i className="fa-solid fa-trash" />
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      className="icon-button danger"
+                      onClick={() => setConfirming(account)}
+                      aria-label="Delete"
+                    >
+                      <i className="fa-solid fa-trash" />
+                    </button>
                   </div>
                 </div>
               );
@@ -156,7 +267,9 @@ export default function Accounts() {
         )}
       </Panel>
 
-      {showModal && <AccountModal account={editing} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <AccountModal account={editing} onClose={() => setShowModal(false)} />
+      )}
 
       {showTransfer && <TransferModal onClose={() => setShowTransfer(false)} />}
 
@@ -170,8 +283,10 @@ export default function Accounts() {
               <br />
               {affectedCount(confirming.id) > 0 ? (
                 <span className="font-semibold text-red-600">
-                  This account has {affectedCount(confirming.id)} associated transaction
-                  {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it will also delete them.
+                  This account has {affectedCount(confirming.id)} associated
+                  transaction
+                  {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it
+                  will also delete them.
                 </span>
               ) : (
                 "This account has no associated transactions."

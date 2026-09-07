@@ -15,7 +15,8 @@ import TransactionModal from "./modals/TransactionModal";
 import TransferModal from "./modals/TransferModal";
 
 function Shell() {
-  const { authenticated, loading, loadError, accounts, transactions, refresh } = useApp();
+  const { authenticated, loading, loadError, accounts, transactions, refresh } =
+    useApp();
 
   // Editing a transaction can start from the dashboard or the transactions
   // page, so the selection lives above both of them.
@@ -25,7 +26,8 @@ function Shell() {
 
   if (!authenticated) return <Login />;
 
-  const firstLoad = loading && accounts.length === 0 && transactions.length === 0;
+  const firstLoad =
+    loading && accounts.length === 0 && transactions.length === 0;
 
   return (
     <>
@@ -47,7 +49,10 @@ function Shell() {
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
 
-            <Route path="/dashboard" element={<Dashboard onEditTransaction={setEditingTransaction} />} />
+            <Route
+              path="/dashboard"
+              element={<Dashboard onEditTransaction={setEditingTransaction} />}
+            />
 
             <Route path="/accounts" element={<Accounts />} />
 
@@ -55,9 +60,7 @@ function Shell() {
 
             <Route
               path="/transactions"
-              element={
-                <TransactionsPage onEdit={setEditingTransaction} />
-              }
+              element={<TransactionsPage onEdit={setEditingTransaction} />}
             />
 
             <Route path="/groceries" element={<Groceries />} />
@@ -73,9 +76,15 @@ function Shell() {
 
       {editingTransaction &&
         (editingTransaction.type === "transfer" ? (
-          <TransferModal transfer={editingTransaction} onClose={() => setEditingTransaction(null)} />
+          <TransferModal
+            transfer={editingTransaction}
+            onClose={() => setEditingTransaction(null)}
+          />
         ) : (
-          <TransactionModal transaction={editingTransaction} onClose={() => setEditingTransaction(null)} />
+          <TransactionModal
+            transaction={editingTransaction}
+            onClose={() => setEditingTransaction(null)}
+          />
         ))}
 
       <Toasts />

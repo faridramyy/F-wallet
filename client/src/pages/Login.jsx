@@ -51,12 +51,17 @@ export default function Login() {
 
         {error && <p className="form-error">{error}</p>}
 
-        <button type="submit" className="primary-button full-button mt-4" disabled={busy || !password}>
+        <button
+          type="submit"
+          className="primary-button full-button mt-4"
+          disabled={busy || !password}
+        >
           {busy ? "Checking..." : "Sign in"}
         </button>
 
         <p className="mt-4 text-[11px] leading-relaxed text-slate-400">
-          The first request after a quiet spell can take a few seconds while the server wakes up.
+          The first request after a quiet spell can take a few seconds while the
+          server wakes up.
         </p>
       </form>
     </div>
