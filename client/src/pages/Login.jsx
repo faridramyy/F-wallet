@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useApp } from "../store";
+import BrandLogo from "../components/BrandLogo";
 
 export default function Login() {
   const { login } = useApp();
@@ -27,7 +28,7 @@ export default function Login() {
     <div className="login-screen">
       <form className="login-card" onSubmit={submit}>
         <div className="mb-6 flex items-center gap-3">
-          <div className="brand-icon">F</div>
+          <BrandLogo />
 
           <div>
             <h1 className="text-lg font-bold tracking-tight">F-Wallet</h1>

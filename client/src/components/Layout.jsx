@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 
 import { useApp } from "../store";
+import BrandLogo from "../components/BrandLogo";
 
 const NAV_ITEMS = [
   { to: "/dashboard", label: "Dashboard", icon: "fa-chart-pie", short: "Home" },
@@ -50,7 +51,7 @@ export default function Layout({ children, onQuickAdd }) {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-slate-200 bg-white lg:flex lg:flex-col">
         <div className="flex h-20 items-center border-b border-slate-100 px-6">
           <div className="flex items-center gap-3">
-            <div className="brand-icon">F</div>
+            <BrandLogo />
 
             <div>
               <h1 className="text-lg font-bold tracking-tight">F-Wallet</h1>
@@ -90,7 +91,7 @@ export default function Layout({ children, onQuickAdd }) {
       <div className="lg:pl-64">
         <header className="app-header sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white/90 px-4 backdrop-blur sm:px-6">
           <div className="flex items-center gap-3 lg:hidden">
-            <div className="brand-icon small">F</div>
+            <BrandLogo small />
             <span className="text-base font-bold tracking-tight">F-Wallet</span>
           </div>
 
