@@ -1946,3 +1946,43 @@ textarea.input {
 .dark-mode .share-link-box {
   border-color: #2b2b2b;
 }
+
+/* ------------------------------------------------------------------
+   Home screen app: the notch
+
+   apple-mobile-web-app-status-bar-style is black-translucent, which
+   makes the web view start at the very top of the screen rather than
+   below the status bar. Without padding, the header sits underneath the
+   notch and its buttons cannot be tapped.
+
+   env(safe-area-inset-top) is 0 in a normal browser tab and roughly 47px
+   on a notched iPhone in standalone mode, so one rule covers both.
+------------------------------------------------------------------ */
+
+.app-header {
+  padding-top: env(safe-area-inset-top);
+  height: calc(4rem + env(safe-area-inset-top));
+}
+
+/* Header icons: dark on light, light on dark. */
+
+.header-action {
+  color: #0f172a;
+}
+
+.header-action:hover {
+  background: #e2e8f0;
+}
+
+.dark-mode .header-action {
+  background: #1f1f1f;
+  color: #ffffff;
+}
+
+.dark-mode .header-action:hover {
+  background: #2b2b2b;
+}
+
+.header-action i {
+  color: inherit;
+}
