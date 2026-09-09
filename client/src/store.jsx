@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 
-import { api, getToken, setToken, ApiError } from "./lib/api";
+import { api, getToken, setToken, getRole, setRole, ApiError } from "./lib/api";
 
 const AppContext = createContext(null);
 
@@ -22,6 +22,7 @@ const EMPTY_STATE = {
 
 export function AppProvider({ children }) {
   const [authenticated, setAuthenticated] = useState(Boolean(getToken()));
+  const [role, setRoleState] = useState(getRole());
   const [data, setData] = useState(EMPTY_STATE);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
@@ -100,13 +101,29 @@ export function AppProvider({ children }) {
     const result = await api.login(password);
 
     setToken(result.token);
+    setRole(result.role || "owner");
+    setRoleState(result.role || "owner");
     setAuthenticated(true);
   }, []);
 
   const logout = useCallback(() => {
     setToken("");
+    setRole("");
+    setRoleState("owner");
     setAuthenticated(false);
     setData(EMPTY_STATE);
+  }, []);
+
+  /*
+    Signing in from a share link. The token is already minted by the
+    server, so there is no password step.
+  */
+
+  const loginWithToken = useCallback((token) => {
+    setToken(token);
+    setRole("viewer");
+    setRoleState("viewer");
+    setAuthenticated(true);
   }, []);
 
   /*
@@ -116,8 +133,23 @@ export function AppProvider({ children }) {
     quietly disagree.
   */
 
+  const READ_ONLY_MESSAGE =
+    "This is a read only user. You do not have permission to make changes.";
+
+  /*
+    Viewers are stopped here as well as on the server. Not for security,
+    which the server handles, but so the error is instant instead of
+    arriving after a round trip to a cold Lambda.
+  */
+
   const run = useCallback(
     async (action, successMessage) => {
+      if (role === "viewer") {
+        showToast(READ_ONLY_MESSAGE, "error");
+
+        throw new ApiError(READ_ONLY_MESSAGE, 403);
+      }
+
       try {
         const result = await action();
 
@@ -132,7 +164,7 @@ export function AppProvider({ children }) {
         throw error;
       }
     },
-    [refresh, showToast],
+    [refresh, showToast, role],
   );
 
   const actions = useMemo(
@@ -194,6 +226,10 @@ export function AppProvider({ children }) {
       ...data,
       currency: data.settings?.currency || "CAD",
       authenticated,
+      role,
+      isViewer: role === "viewer",
+      loginWithToken,
+      createShareLink: api.createShareLink,
       loading,
       loadError,
       toasts,
@@ -207,6 +243,8 @@ export function AppProvider({ children }) {
     [
       data,
       authenticated,
+      role,
+      loginWithToken,
       loading,
       loadError,
       toasts,

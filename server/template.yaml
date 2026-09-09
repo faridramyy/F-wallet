@@ -24,6 +24,14 @@ Parameters:
     NoEcho: true
     Description: Long lived key for automation requests.
 
+  ViewerPasswordHash:
+    Type: String
+    NoEcho: true
+    Default: ""
+    Description: >-
+      Optional. bcrypt hash of a second password that grants read only
+      access. Leave blank to disable password based viewer login.
+
   AllowedOrigins:
     Type: String
     Description: Comma separated list of allowed browser origins.
@@ -51,6 +59,7 @@ Resources:
           JWT_SECRET: !Ref JwtSecret
           PASSWORD_HASH: !Ref PasswordHash
           API_KEY: !Ref ApiKey
+          VIEWER_PASSWORD_HASH: !Ref ViewerPasswordHash
           ALLOWED_ORIGINS: !Ref AllowedOrigins
           NODE_OPTIONS: --enable-source-maps
       Events:

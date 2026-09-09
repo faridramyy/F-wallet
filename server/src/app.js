@@ -3,7 +3,13 @@ const cors = require("cors");
 const bcrypt = require("bcryptjs");
 
 const { connectToDatabase } = require("./db");
-const { signToken, requireAuth, requireAuthOrApiKey } = require("./auth");
+const {
+  signToken,
+  requireAuth,
+  requireAuthOrApiKey,
+  blockViewerWrites,
+  requireOwner,
+} = require("./auth");
 const coreRoutes = require("./routes/core");
 const transactionRoutes = require("./routes/transactions");
 
@@ -71,23 +77,55 @@ app.get("/health", (req, res) => {
 app.post("/auth/login", async (req, res) => {
   const { password } = req.body || {};
 
-  const hash = process.env.PASSWORD_HASH;
+  const ownerHash = process.env.PASSWORD_HASH;
+  const viewerHash = process.env.VIEWER_PASSWORD_HASH;
 
-  if (!hash) {
+  if (!ownerHash) {
     return res.status(500).json({ error: "Server is missing PASSWORD_HASH." });
   }
 
-  if (!password || !(await bcrypt.compare(String(password), hash))) {
-    // Deliberately vague, and deliberately slow because bcrypt already is.
-
+  if (!password) {
     return res.status(401).json({ error: "Incorrect password." });
   }
 
-  res.json({ token: signToken() });
+  const attempt = String(password);
+
+  if (await bcrypt.compare(attempt, ownerHash)) {
+    return res.json({ token: signToken("owner"), role: "owner" });
+  }
+
+  /*
+    The viewer password is optional. Checking it second means the owner
+    password always wins if someone sets both to the same value.
+  */
+
+  if (viewerHash && (await bcrypt.compare(attempt, viewerHash))) {
+    return res.json({ token: signToken("viewer"), role: "viewer" });
+  }
+
+  // Deliberately vague, and deliberately slow because bcrypt already is.
+  return res.status(401).json({ error: "Incorrect password." });
 });
 
 app.get("/auth/check", requireAuth, (req, res) => {
-  res.json({ ok: true });
+  res.json({ ok: true, role: req.authRole });
+});
+
+/*
+  Share links.
+
+  The owner mints a viewer token with a short life and hands out a URL
+  containing it. Anyone with the link gets read only access until it
+  expires, with no password to remember and nothing to revoke by hand.
+*/
+
+app.post("/auth/share-link", requireAuth, requireOwner, (req, res) => {
+  const days = Math.min(Math.max(Number(req.body?.days) || 7, 1), 90);
+
+  res.json({
+    token: signToken("viewer", `${days}d`),
+    expiresInDays: days,
+  });
 });
 
 /* ---------------------------------------------------------
@@ -106,6 +144,10 @@ app.use("/api", (req, res, next) => {
     ? requireAuthOrApiKey(req, res, next)
     : requireAuth(req, res, next);
 });
+
+// Read only enforcement sits after authentication, so the role is known,
+// and before the routes, so every one of them is covered.
+app.use("/api", blockViewerWrites);
 
 app.use("/api", coreRoutes);
 app.use("/api", transactionRoutes);

@@ -14,9 +14,17 @@ const jwt = require("jsonwebtoken");
   key both live in Lambda environment variables.
 */
 
-function signToken() {
-  return jwt.sign({ sub: "owner" }, process.env.JWT_SECRET, {
-    expiresIn: process.env.TOKEN_TTL || "30d",
+/*
+  Tokens carry a role. "owner" can do anything; "viewer" is read only.
+
+  The role lives inside the signed token rather than being looked up per
+  request, so it cannot be tampered with without invalidating the
+  signature.
+*/
+
+function signToken(role = "owner", ttl) {
+  return jwt.sign({ sub: role, role }, process.env.JWT_SECRET, {
+    expiresIn: ttl || process.env.TOKEN_TTL || "30d",
   });
 }
 
@@ -46,9 +54,10 @@ function requireAuth(req, res, next) {
 
   if (token) {
     try {
-      jwt.verify(token, process.env.JWT_SECRET);
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
 
       req.authMethod = "jwt";
+      req.authRole = payload.role;
 
       return next();
     } catch (error) {
@@ -69,6 +78,9 @@ function requireAuthOrApiKey(req, res, next) {
 
   if (key && process.env.API_KEY && timingSafeEqual(key, process.env.API_KEY)) {
     req.authMethod = "apikey";
+    // The automation key is owner level but only reaches the one endpoint
+    // it is mounted on.
+    req.authRole = "owner";
 
     return next();
   }
@@ -76,4 +88,40 @@ function requireAuthOrApiKey(req, res, next) {
   return requireAuth(req, res, next);
 }
 
-module.exports = { signToken, requireAuth, requireAuthOrApiKey };
+/*
+  The actual read only rule.
+
+  Anything that is not a GET is refused for a viewer. Enforcing it here
+  rather than in the frontend is the whole point: hiding buttons stops
+  nobody who can open dev tools and call the API directly.
+*/
+
+function blockViewerWrites(req, res, next) {
+  if (req.authRole === "viewer" && req.method !== "GET") {
+    return res.status(403).json({
+      error:
+        "This is a read only user. You do not have permission to make changes.",
+    });
+  }
+
+  return next();
+}
+
+function requireOwner(req, res, next) {
+  if (req.authRole !== "owner") {
+    return res.status(403).json({
+      error:
+        "This is a read only user. You do not have permission to make changes.",
+    });
+  }
+
+  return next();
+}
+
+module.exports = {
+  signToken,
+  requireAuth,
+  requireAuthOrApiKey,
+  blockViewerWrites,
+  requireOwner,
+};

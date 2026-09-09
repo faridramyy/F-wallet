@@ -1,5 +1,12 @@
-import { useState } from "react";
-import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { useEffect, useState } from "react";
+import {
+  HashRouter,
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import { AppProvider, useApp } from "./store";
 import Layout from "./components/Layout";
@@ -15,14 +22,50 @@ import TransactionModal from "./modals/TransactionModal";
 import TransferModal from "./modals/TransferModal";
 
 function Shell() {
-  const { authenticated, loading, loadError, accounts, transactions, refresh } =
-    useApp();
+  const {
+    authenticated,
+    loading,
+    loadError,
+    accounts,
+    transactions,
+    refresh,
+    loginWithToken,
+  } = useApp();
+
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  /*
+    Share links look like /#/share/<token>. The token is swapped for a
+    session and stripped from the URL straight away, so it does not sit
+    in the address bar or get saved in history as a working credential.
+  */
+
+  const shareToken = location.pathname.startsWith("/share/")
+    ? location.pathname.slice("/share/".length)
+    : null;
+
+  useEffect(() => {
+    if (!shareToken) return;
+
+    loginWithToken(shareToken);
+    navigate("/dashboard", { replace: true });
+  }, [shareToken, loginWithToken, navigate]);
 
   // Editing a transaction can start from the dashboard or the transactions
   // page, so the selection lives above both of them.
 
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [quickAdd, setQuickAdd] = useState(false);
+
+  if (shareToken) {
+    return (
+      <div className="loading-screen">
+        <div className="spinner" />
+        <p>Opening shared view...</p>
+      </div>
+    );
+  }
 
   if (!authenticated) return <Login />;
 

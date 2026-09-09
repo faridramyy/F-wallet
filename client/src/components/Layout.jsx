@@ -37,7 +37,7 @@ const NAV_ITEMS = [
 const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5);
 
 export default function Layout({ children, onQuickAdd }) {
-  const { logout, refresh, loading } = useApp();
+  const { logout, refresh, loading, isViewer } = useApp();
 
   const location = useLocation();
 
@@ -94,9 +94,16 @@ export default function Layout({ children, onQuickAdd }) {
             <span className="text-base font-bold tracking-tight">F-Wallet</span>
           </div>
 
-          <span className="hidden text-sm font-semibold text-slate-500 lg:block">
+          <span className="hidden items-center gap-2 text-sm font-semibold text-slate-500 lg:flex">
             {current?.label || "Dashboard"}
           </span>
+
+          {isViewer && (
+            <span className="viewer-pill">
+              <i className="fa-solid fa-eye" />
+              Read only
+            </span>
+          )}
 
           <div className="flex items-center gap-2">
             <button

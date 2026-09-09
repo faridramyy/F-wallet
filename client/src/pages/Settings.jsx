@@ -16,9 +16,14 @@ export default function Settings() {
     updateSettings,
     showToast,
     logout,
+    isViewer,
+    createShareLink,
   } = useApp();
 
   const [exporting, setExporting] = useState(false);
+  const [shareLink, setShareLink] = useState("");
+  const [shareDays, setShareDays] = useState(7);
+  const [sharing, setSharing] = useState(false);
 
   const apiBase = import.meta.env.VITE_API_URL || "";
 
@@ -46,6 +51,37 @@ export default function Settings() {
       showToast(error.message, "error");
     } finally {
       setExporting(false);
+    }
+  };
+
+  const makeShareLink = async () => {
+    setSharing(true);
+
+    try {
+      const result = await createShareLink(Number(shareDays));
+
+      // Built from the current address so it works on localhost and on
+      // the deployed site without knowing either in advance.
+      const base = `${window.location.origin}${window.location.pathname}`;
+
+      setShareLink(`${base}#/share/${result.token}`);
+    } catch (error) {
+      showToast(error.message, "error");
+    } finally {
+      setSharing(false);
+    }
+  };
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareLink);
+
+      showToast("Link copied.", "success");
+    } catch (error) {
+      showToast(
+        "Could not copy. Select the link and copy it manually.",
+        "error",
+      );
     }
   };
 
@@ -168,6 +204,66 @@ export default function Settings() {
           to the browser.
         </p>
       </Panel>
+
+      {!isViewer && (
+        <Panel
+          title="Read only access"
+          subtitle="Let someone see your finances without changing anything"
+        >
+          <p className="text-sm leading-relaxed text-slate-600">
+            A share link signs someone in as a read only user. They see
+            everything you see, including the add and edit buttons, but any
+            attempt to change something is refused by the server.
+          </p>
+
+          <div className="form-grid mt-4">
+            <Field label="Link valid for">
+              <select
+                className="input"
+                value={shareDays}
+                onChange={(event) => setShareDays(event.target.value)}
+              >
+                <option value="1">1 day</option>
+                <option value="7">7 days</option>
+                <option value="30">30 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </Field>
+          </div>
+
+          <button
+            type="button"
+            className="primary-button mt-3"
+            onClick={makeShareLink}
+            disabled={sharing}
+          >
+            <i className="fa-solid fa-link" />
+            {sharing ? "Creating..." : "Create share link"}
+          </button>
+
+          {shareLink && (
+            <div className="share-link-box">
+              <code>{shareLink}</code>
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={copyShareLink}
+              >
+                <i className="fa-solid fa-copy" />
+                Copy
+              </button>
+            </div>
+          )}
+
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+            Anyone with the link gets access until it expires, so treat it like
+            a password. There is no way to revoke a single link short of
+            changing JWT_SECRET, which signs everyone out. Prefer short
+            expiries.
+          </p>
+        </Panel>
+      )}
 
       <Panel title="Session">
         <button type="button" className="danger-button" onClick={logout}>

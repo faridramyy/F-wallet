@@ -1,6 +1,7 @@
 const BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 const TOKEN_KEY = "fwallet_token";
+const ROLE_KEY = "fwallet_role";
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY) || "";
@@ -11,6 +12,24 @@ export function setToken(token) {
     localStorage.setItem(TOKEN_KEY, token);
   } else {
     localStorage.removeItem(TOKEN_KEY);
+  }
+}
+
+/*
+  The role is cached alongside the token purely so the UI knows what to
+  say before the first request comes back. It is never trusted for
+  access control, which happens on the server.
+*/
+
+export function getRole() {
+  return localStorage.getItem(ROLE_KEY) || "owner";
+}
+
+export function setRole(role) {
+  if (role) {
+    localStorage.setItem(ROLE_KEY, role);
+  } else {
+    localStorage.removeItem(ROLE_KEY);
   }
 }
 
@@ -86,6 +105,8 @@ export const api = {
   login: (password) =>
     request("/auth/login", { method: "POST", body: { password }, auth: false }),
   check: () => request("/auth/check"),
+  createShareLink: (days = 7) =>
+    request("/auth/share-link", { method: "POST", body: { days } }),
 
   getState: () => request("/api/state"),
 
