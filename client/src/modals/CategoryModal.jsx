@@ -14,6 +14,12 @@ export default function CategoryModal({ category, onClose }) {
     monthlyBudget: category?.monthlyBudget || "",
     hourlyRate: category?.hourlyRate || "",
     overtimeRate: category?.overtimeRate || "",
+    defaultAmount: category?.defaultAmount || "",
+    // Categories saved before this existed have no entryMode, so fall
+    // back to whether they carry an hourly rate.
+    entryMode:
+      category?.entryMode ||
+      (Number(category?.hourlyRate) > 0 ? "hourly" : "fixed"),
   });
 
   const [error, setError] = useState("");
@@ -56,8 +62,12 @@ export default function CategoryModal({ category, onClose }) {
         name: form.name.trim(),
         type: form.type,
         monthlyBudget,
-        hourlyRate,
-        overtimeRate,
+        entryMode: form.entryMode,
+        defaultAmount: Number(form.defaultAmount || 0),
+        // Rates are only meaningful in hourly mode, so a category
+        // switched to fixed does not keep stale ones around.
+        hourlyRate: form.entryMode === "hourly" ? hourlyRate : 0,
+        overtimeRate: form.entryMode === "hourly" ? overtimeRate : 0,
       };
 
       if (isEditing) {
@@ -125,34 +135,90 @@ export default function CategoryModal({ category, onClose }) {
           </Field>
         ) : (
           <>
-            <Field label="Rate per hour">
-              <input
-                className="input"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.hourlyRate}
-                onChange={set("hourlyRate")}
-                placeholder="17.20"
-              />
-            </Field>
+            <Field
+              label="How is this income entered?"
+              className="sm:col-span-2"
+            >
+              <div className="entry-mode">
+                <button
+                  type="button"
+                  className={`entry-mode-option ${form.entryMode === "fixed" ? "active" : ""}`}
+                  onClick={() =>
+                    setForm((current) => ({ ...current, entryMode: "fixed" }))
+                  }
+                >
+                  <i className="fa-solid fa-money-bill" />
+                  Fixed amount
+                </button>
 
-            <Field label="Rate per overtime hour" className="sm:col-span-2">
-              <input
-                className="input"
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.overtimeRate}
-                onChange={set("overtimeRate")}
-                placeholder="25.80"
-              />
+                <button
+                  type="button"
+                  className={`entry-mode-option ${form.entryMode === "hourly" ? "active" : ""}`}
+                  onClick={() =>
+                    setForm((current) => ({ ...current, entryMode: "hourly" }))
+                  }
+                >
+                  <i className="fa-solid fa-clock" />
+                  Hourly
+                </button>
+              </div>
 
-              <p className="mt-1 text-[11px] text-slate-400">
-                Both rates are filled in for you when you log income in this
-                category. Leave them blank if this income is not hourly.
+              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+                This sets how the transaction form opens for this category.
+                Fixed suits bonuses, gifts and refunds. You can still switch
+                modes on any individual transaction.
               </p>
             </Field>
+
+            {form.entryMode === "fixed" ? (
+              <Field label="Usual amount" className="sm:col-span-2">
+                <input
+                  className="input"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.defaultAmount}
+                  onChange={set("defaultAmount")}
+                  placeholder="0.00"
+                />
+
+                <p className="mt-1 text-[11px] text-slate-400">
+                  Optional. If this income is usually the same amount, it will
+                  be filled in for you. Leave blank to type it each time.
+                </p>
+              </Field>
+            ) : (
+              <>
+                <Field label="Rate per hour">
+                  <input
+                    className="input"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.hourlyRate}
+                    onChange={set("hourlyRate")}
+                    placeholder="17.20"
+                  />
+                </Field>
+
+                <Field label="Rate per overtime hour">
+                  <input
+                    className="input"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.overtimeRate}
+                    onChange={set("overtimeRate")}
+                    placeholder="25.80"
+                  />
+                </Field>
+
+                <p className="text-[11px] text-slate-400 sm:col-span-2">
+                  Both rates are filled in for you when you log income in this
+                  category.
+                </p>
+              </>
+            )}
           </>
         )}
 

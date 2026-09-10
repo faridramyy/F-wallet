@@ -274,6 +274,14 @@ export default function Categories() {
                   {fmt(received)}
                 </p>
 
+                <p className="mt-0.5 text-[11px] text-slate-400">
+                  {(category.entryMode ||
+                    (Number(category.hourlyRate) > 0 ? "hourly" : "fixed")) ===
+                  "hourly"
+                    ? `Hourly${Number(category.hourlyRate) > 0 ? ` at ${fmt(category.hourlyRate)}/h` : ""}`
+                    : `Fixed amount${Number(category.defaultAmount) > 0 ? `, usually ${fmt(category.defaultAmount)}` : ""}`}
+                </p>
+
                 {Number(category.hourlyRate) > 0 ? (
                   <p className="mt-1 text-[11px] text-slate-400">
                     {fmt(category.hourlyRate)} per hour

@@ -191,8 +191,15 @@ router.delete(
 router.post(
   "/categories",
   wrap(async (req, res) => {
-    const { name, type, monthlyBudget, hourlyRate, overtimeRate } =
-      req.body || {};
+    const {
+      name,
+      type,
+      monthlyBudget,
+      hourlyRate,
+      overtimeRate,
+      entryMode,
+      defaultAmount,
+    } = req.body || {};
 
     if (!name || !String(name).trim()) {
       return badRequest(res, "Category name is required.");
@@ -208,6 +215,10 @@ router.post(
       type,
       monthlyBudget:
         type === "expense" ? Math.max(0, toNumber(monthlyBudget)) : 0,
+      entryMode:
+        type === "income" && entryMode === "hourly" ? "hourly" : "fixed",
+      defaultAmount:
+        type === "income" ? Math.max(0, toNumber(defaultAmount)) : 0,
       hourlyRate: type === "income" ? Math.max(0, toNumber(hourlyRate)) : 0,
       overtimeRate: type === "income" ? Math.max(0, toNumber(overtimeRate)) : 0,
       order: await Category.countDocuments(),
@@ -226,8 +237,15 @@ router.put(
     if (!category)
       return res.status(404).json({ error: "Category not found." });
 
-    const { name, type, monthlyBudget, hourlyRate, overtimeRate } =
-      req.body || {};
+    const {
+      name,
+      type,
+      monthlyBudget,
+      hourlyRate,
+      overtimeRate,
+      entryMode,
+      defaultAmount,
+    } = req.body || {};
 
     if (name !== undefined) category.name = String(name).trim();
     if (type !== undefined) category.type = type;
@@ -236,6 +254,19 @@ router.put(
       category.type === "expense"
         ? Math.max(0, toNumber(monthlyBudget ?? category.monthlyBudget))
         : 0;
+
+    if (category.type === "income") {
+      if (entryMode !== undefined) {
+        category.entryMode = entryMode === "hourly" ? "hourly" : "fixed";
+      }
+
+      if (defaultAmount !== undefined) {
+        category.defaultAmount = Math.max(0, toNumber(defaultAmount));
+      }
+    } else {
+      category.entryMode = "fixed";
+      category.defaultAmount = 0;
+    }
 
     category.hourlyRate =
       category.type === "income"

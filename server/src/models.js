@@ -87,6 +87,17 @@ const transactionSchema = new mongoose.Schema(
     // income and expense
     accountId: { type: String },
     categoryId: { type: String },
+
+    /*
+      How the amount was arrived at. "fixed" means it was typed straight
+      in; "hourly" means it was computed from the pay fields below.
+
+      amount is always the source of truth either way, so anything that
+      reads a transaction can ignore this entirely. It exists so the edit
+      form can reopen in the mode the record was created with.
+    */
+    entryMode: { type: String, enum: ["hourly", "fixed"], default: "fixed" },
+
     pay: { type: paySchema, default: undefined },
 
     // transfer

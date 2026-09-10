@@ -2005,3 +2005,45 @@ textarea.input {
   height: 32px;
   border-radius: 10px;
 }
+
+/* Income entry mode toggle: fixed amount or hourly. */
+
+.entry-mode {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  padding: 4px;
+}
+
+.entry-mode-option {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 11px;
+  padding: 9px 10px;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.entry-mode-option.active {
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+
+.dark-mode .entry-mode {
+  background: #1f1f1f;
+}
+
+.dark-mode .entry-mode-option.active {
+  background: #333333;
+  color: #ffffff;
+  box-shadow: none;
+}

@@ -5,6 +5,8 @@ import { Modal, Field } from "../components/ui";
 import { calculatePay, DEFAULT_OVERTIME_MULTIPLIER } from "../lib/calc";
 import { money, today, formatHours } from "../lib/format";
 
+const LAST_ENTRY_MODE_KEY = "fwallet_last_entry_mode";
+
 export default function TransactionModal({ transaction, onClose }) {
   const {
     accounts,
@@ -25,7 +27,24 @@ export default function TransactionModal({ transaction, onClose }) {
     notes: transaction?.notes || "",
   });
 
-  const [payEnabled, setPayEnabled] = useState(Boolean(transaction?.pay));
+  /*
+    Entry mode for income.
+
+    New transactions open in whichever mode was used last, defaulting to
+    fixed. Editing an existing one opens in the mode it was saved with;
+    records created before entryMode existed are read from whether they
+    have pay data, which is more reliable than assuming.
+  */
+
+  const [entryMode, setEntryMode] = useState(() => {
+    if (transaction) {
+      return transaction.entryMode || (transaction.pay ? "hourly" : "fixed");
+    }
+
+    return localStorage.getItem(LAST_ENTRY_MODE_KEY) === "hourly"
+      ? "hourly"
+      : "fixed";
+  });
 
   const [pay, setPay] = useState({
     hours: transaction?.pay?.hours ?? "",
@@ -62,10 +81,30 @@ export default function TransactionModal({ transaction, onClose }) {
     Anything typed manually afterwards wins. This only ever fills blanks.
   */
 
-  const applyCategoryRates = (categoryId) => {
+  const applyCategoryDefaults = (categoryId) => {
     const category = categories.find((item) => item.id === categoryId);
 
     if (!category || category.type !== "income") return;
+
+    // The category decides how the form opens. Categories saved before
+    // entryMode existed fall back to whether they have an hourly rate.
+    const mode =
+      category.entryMode ||
+      (Number(category.hourlyRate) > 0 ? "hourly" : "fixed");
+
+    setEntryMode(mode);
+
+    if (mode === "fixed") {
+      const usual = Number(category.defaultAmount) || 0;
+
+      if (usual > 0) {
+        setForm((current) =>
+          current.amount === "" ? { ...current, amount: usual } : current,
+        );
+      }
+
+      return;
+    }
 
     const hourly = Number(category.hourlyRate) || 0;
     const overtime = Number(category.overtimeRate) || 0;
@@ -80,11 +119,9 @@ export default function TransactionModal({ transaction, onClose }) {
           ? Number((overtime / hourly).toFixed(4))
           : current.overtimeMultiplier,
     }));
-
-    setPayEnabled(true);
   };
 
-  const usePayCalculator = form.type === "income" && payEnabled;
+  const usePayCalculator = form.type === "income" && entryMode === "hourly";
 
   const payResult = useMemo(() => calculatePay(pay), [pay]);
 
@@ -101,11 +138,21 @@ export default function TransactionModal({ transaction, onClose }) {
   const changeType = (nextType) => {
     setForm((current) => ({ ...current, type: nextType, categoryId: "" }));
 
-    if (nextType !== "income") setPayEnabled(false);
+    // Only income can be hourly, so switching away resets the mode.
+    if (nextType !== "income") setEntryMode("fixed");
   };
 
   const submit = async () => {
     setError("");
+
+    if (
+      !usePayCalculator &&
+      form.amount !== "" &&
+      !/^\d*\.?\d{0,2}$/.test(String(form.amount).trim())
+    ) {
+      setError("Amount can have at most two decimal places.");
+      return;
+    }
 
     if (!(effectiveAmount > 0)) {
       setError(
@@ -139,6 +186,7 @@ export default function TransactionModal({ transaction, onClose }) {
       categoryId: form.categoryId,
       date: form.date,
       notes: form.notes.trim(),
+      entryMode: usePayCalculator ? "hourly" : "fixed",
       pay: usePayCalculator
         ? {
             hours: Number(pay.hours || 0),
@@ -150,6 +198,11 @@ export default function TransactionModal({ transaction, onClose }) {
           }
         : null,
     };
+
+    localStorage.setItem(
+      LAST_ENTRY_MODE_KEY,
+      usePayCalculator ? "hourly" : "fixed",
+    );
 
     setSaving(true);
 
@@ -209,16 +262,24 @@ export default function TransactionModal({ transaction, onClose }) {
 
       <div className="form-grid">
         {form.type === "income" && (
-          <div className="sm:col-span-2">
-            <label className="flex items-center gap-2.5 text-sm font-medium">
-              <input
-                type="checkbox"
-                className="h-4 w-4 rounded border-slate-300"
-                checked={payEnabled}
-                onChange={(event) => setPayEnabled(event.target.checked)}
-              />
-              Work it out from hours and an hourly rate
-            </label>
+          <div className="entry-mode sm:col-span-2">
+            <button
+              type="button"
+              className={`entry-mode-option ${entryMode === "fixed" ? "active" : ""}`}
+              onClick={() => setEntryMode("fixed")}
+            >
+              <i className="fa-solid fa-money-bill" />
+              Fixed amount
+            </button>
+
+            <button
+              type="button"
+              className={`entry-mode-option ${entryMode === "hourly" ? "active" : ""}`}
+              onClick={() => setEntryMode("hourly")}
+            >
+              <i className="fa-solid fa-clock" />
+              Hourly
+            </button>
           </div>
         )}
 
@@ -330,7 +391,7 @@ export default function TransactionModal({ transaction, onClose }) {
             value={form.categoryId}
             onChange={(event) => {
               set("categoryId")(event);
-              applyCategoryRates(event.target.value);
+              applyCategoryDefaults(event.target.value);
             }}
           >
             <option value="">

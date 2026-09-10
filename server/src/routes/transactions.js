@@ -175,10 +175,22 @@ router.post(
 
     const pay = type === "income" ? normalizePay(body.pay) : null;
 
+    // pay winning over a supplied amount keeps one source of truth: if
+    // hours were sent, the total is derived, never trusted from input.
     const amount = pay ? calculatePayTotal(pay) : toNumber(body.amount);
 
     if (!(amount > 0)) {
       return badRequest(res, "Amount must be greater than zero.");
+    }
+
+    if (
+      !pay &&
+      Math.round(amount * 100) !== Number((amount * 100).toFixed(4))
+    ) {
+      return badRequest(
+        res,
+        "Amount cannot have more than two decimal places.",
+      );
     }
 
     const transaction = await Transaction.create({
@@ -190,6 +202,7 @@ router.post(
       date,
       notes: body.notes ? String(body.notes).trim() : "",
       ...(pay ? { pay } : {}),
+      entryMode: pay ? "hourly" : "fixed",
       createdAt: new Date().toISOString(),
       source: req.authMethod === "apikey" ? "api" : "app",
     });
@@ -251,6 +264,7 @@ router.put(
 
     transaction.type = type;
     transaction.pay = pay || undefined;
+    transaction.entryMode = pay ? "hourly" : "fixed";
 
     const amount = pay
       ? calculatePayTotal(pay)
