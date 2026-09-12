@@ -1,13 +1,7 @@
 import { useMemo, useState } from "react";
 
 import { useApp } from "../store";
-import {
-  Panel,
-  StatCard,
-  EmptyState,
-  ConfirmModal,
-  Field,
-} from "../components/ui";
+import { Panel, EmptyState, ConfirmModal, Field } from "../components/ui";
 import { describePay } from "../lib/calc";
 import { money, formatDate, formatHours } from "../lib/format";
 import TransactionModal from "../modals/TransactionModal";
@@ -101,18 +95,32 @@ export default function Transactions({ onEdit }) {
     getCategoryName,
   ]);
 
-  const totals = useMemo(() => {
-    let income = 0;
-    let expense = 0;
+  /*
+    The list is already sorted newest first, so grouping is just a walk:
+    start a new group whenever the date changes. Each group carries its
+    own net total for the day.
+  */
+
+  const days = useMemo(() => {
+    const groups = [];
 
     for (const transaction of filtered) {
-      if (transaction.type === "income")
-        income += Number(transaction.amount) || 0;
-      if (transaction.type === "expense")
-        expense += Number(transaction.amount) || 0;
+      let group = groups[groups.length - 1];
+
+      if (!group || group.date !== transaction.date) {
+        group = { date: transaction.date, items: [], net: 0 };
+        groups.push(group);
+      }
+
+      group.items.push(transaction);
+
+      const amount = Number(transaction.amount) || 0;
+
+      if (transaction.type === "income") group.net += amount;
+      if (transaction.type === "expense") group.net -= amount;
     }
 
-    return { income, expense };
+    return groups;
   }, [filtered]);
 
   const resetFilters = () => {
@@ -278,76 +286,98 @@ export default function Transactions({ onEdit }) {
             }
           />
         ) : (
-          <div className="divide-y divide-slate-100">
-            {filtered.map((transaction) => (
-              <div key={transaction.id} className="transaction-item">
-                <span className={`transaction-icon ${transaction.type}`}>
-                  <i
-                    className={`fa-solid ${
-                      transaction.type === "income"
-                        ? "fa-arrow-down"
-                        : transaction.type === "expense"
-                          ? "fa-arrow-up"
-                          : "fa-right-left"
-                    }`}
-                  />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">
-                    {transaction.type === "transfer"
-                      ? `${getAccountName(transaction.fromAccountId)} to ${getAccountName(transaction.toAccountId)}`
-                      : getCategoryName(transaction.categoryId)}
-                  </p>
-
-                  <p className="truncate text-[11px] text-slate-400">
-                    {formatDate(transaction.date)}
-                    {transaction.type !== "transfer"
-                      ? ` · ${getAccountName(transaction.accountId)}`
-                      : ""}
-                    {transaction.pay
-                      ? ` · ${describePay(transaction.pay, (v) => fmt(v), formatHours)}`
-                      : ""}
-                    {transaction.notes ? ` · ${transaction.notes}` : ""}
-                    {transaction.source === "api" ? " · added by API" : ""}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`text-sm font-bold ${
-                      transaction.type === "income"
-                        ? "text-emerald-600"
-                        : transaction.type === "expense"
-                          ? "text-red-500"
-                          : "text-slate-500"
-                    }`}
-                  >
-                    {transaction.type === "expense"
-                      ? "-"
-                      : transaction.type === "income"
-                        ? "+"
-                        : ""}
-                    {fmt(transaction.amount)}
+          <div>
+            {days.map((day) => (
+              <div key={day.date} className="transaction-day">
+                <div className="transaction-day-header">
+                  <span className="transaction-day-label">
+                    {formatDate(day.date)}
                   </span>
 
-                  <button
-                    type="button"
-                    className="icon-button"
-                    onClick={() => onEdit(transaction)}
-                    aria-label="Edit"
-                  >
-                    <i className="fa-solid fa-pen" />
-                  </button>
+                  {day.net !== 0 && (
+                    <span className="transaction-day-total">
+                      {day.net > 0 ? "+" : "-"}
+                      {fmt(Math.abs(day.net))}
+                    </span>
+                  )}
+                </div>
 
-                  <button
-                    type="button"
-                    className="icon-button danger"
-                    onClick={() => setConfirming(transaction)}
-                    aria-label="Delete"
-                  >
-                    <i className="fa-solid fa-trash" />
-                  </button>
+                <div className="divide-">
+                  {day.items.map((transaction) => (
+                    <div key={transaction.id} className="transaction-item">
+                      <span className={`transaction-icon ${transaction.type}`}>
+                        <i
+                          className={`fa-solid ${
+                            transaction.type === "income"
+                              ? "fa-arrow-down"
+                              : transaction.type === "expense"
+                                ? "fa-arrow-up"
+                                : "fa-right-left"
+                          }`}
+                        />
+                      </span>
+
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-semibold">
+                          {transaction.type === "transfer"
+                            ? `${getAccountName(transaction.fromAccountId)} to ${getAccountName(transaction.toAccountId)}`
+                            : getCategoryName(transaction.categoryId)}
+                        </p>
+
+                        <p className="truncate text-[11px] text-slate-400">
+                          {transaction.type === "transfer"
+                            ? "Transfer"
+                            : getAccountName(transaction.accountId)}
+                          {transaction.pay
+                            ? ` \u00b7 ${describePay(transaction.pay, (v) => fmt(v), formatHours)}`
+                            : ""}
+                          {transaction.notes
+                            ? ` \u00b7 ${transaction.notes}`
+                            : ""}
+                          {transaction.source === "api"
+                            ? " \u00b7 added by API"
+                            : ""}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`text-sm font-bold ${
+                            transaction.type === "income"
+                              ? "text-emerald-600"
+                              : transaction.type === "expense"
+                                ? "text-red-500"
+                                : "text-slate-500"
+                          }`}
+                        >
+                          {transaction.type === "expense"
+                            ? "-"
+                            : transaction.type === "income"
+                              ? "+"
+                              : ""}
+                          {fmt(transaction.amount)}
+                        </span>
+
+                        <button
+                          type="button"
+                          className="icon-button"
+                          onClick={() => onEdit(transaction)}
+                          aria-label="Edit"
+                        >
+                          <i className="fa-solid fa-pen" />
+                        </button>
+
+                        <button
+                          type="button"
+                          className="icon-button danger"
+                          onClick={() => setConfirming(transaction)}
+                          aria-label="Delete"
+                        >
+                          <i className="fa-solid fa-trash" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
