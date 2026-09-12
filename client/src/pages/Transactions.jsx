@@ -28,7 +28,8 @@ export default function Transactions({ onEdit }) {
   const [typeFilter, setTypeFilter] = useState("all");
   const [accountFilter, setAccountFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [monthFilter, setMonthFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [confirming, setConfirming] = useState(null);
@@ -58,8 +59,13 @@ export default function Transactions({ onEdit }) {
         )
           return false;
 
-        if (monthFilter && !String(transaction.date).startsWith(monthFilter))
-          return false;
+        /*
+          Dates are stored as YYYY-MM-DD strings, which sort and compare
+          correctly as plain text. No Date parsing needed, and no timezone
+          to get wrong.
+        */
+        if (fromDate && String(transaction.date) < fromDate) return false;
+        if (toDate && String(transaction.date) > toDate) return false;
 
         if (term) {
           const haystack = [
@@ -89,7 +95,8 @@ export default function Transactions({ onEdit }) {
     typeFilter,
     accountFilter,
     categoryFilter,
-    monthFilter,
+    fromDate,
+    toDate,
     getAccountName,
     getCategoryName,
   ]);
@@ -113,7 +120,8 @@ export default function Transactions({ onEdit }) {
     setTypeFilter("all");
     setAccountFilter("all");
     setCategoryFilter("all");
-    setMonthFilter("");
+    setFromDate("");
+    setToDate("");
   };
 
   const filtersActive =
@@ -121,7 +129,8 @@ export default function Transactions({ onEdit }) {
     typeFilter !== "all" ||
     accountFilter !== "all" ||
     categoryFilter !== "all" ||
-    monthFilter;
+    fromDate ||
+    toDate;
 
   return (
     <div className="page space-y-5">
@@ -154,26 +163,6 @@ export default function Transactions({ onEdit }) {
             Add
           </button>
         </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3">
-        <StatCard
-          label="Income"
-          value={fmt(totals.income)}
-          tone="positive"
-          help="Matching filters"
-        />
-        <StatCard
-          label="Expenses"
-          value={fmt(totals.expense)}
-          tone="negative"
-          help="Matching filters"
-        />
-        <StatCard
-          label="Net"
-          value={fmt(totals.income - totals.expense)}
-          tone={totals.income - totals.expense >= 0 ? "positive" : "negative"}
-        />
       </div>
 
       <Panel>
@@ -231,12 +220,23 @@ export default function Transactions({ onEdit }) {
             </select>
           </Field>
 
-          <Field label="Month">
+          <Field label="From">
             <input
-              type="month"
+              type="date"
               className="input"
-              value={monthFilter}
-              onChange={(event) => setMonthFilter(event.target.value)}
+              value={fromDate}
+              max={toDate || undefined}
+              onChange={(event) => setFromDate(event.target.value)}
+            />
+          </Field>
+
+          <Field label="To">
+            <input
+              type="date"
+              className="input"
+              value={toDate}
+              min={fromDate || undefined}
+              onChange={(event) => setToDate(event.target.value)}
             />
           </Field>
         </div>

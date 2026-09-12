@@ -2047,3 +2047,43 @@ textarea.input {
   color: #ffffff;
   box-shadow: none;
 }
+
+/* Password field with a reveal toggle. The input gets extra right
+   padding so long passwords scroll under the button instead of
+   colliding with it. */
+
+.password-field {
+  position: relative;
+}
+
+.password-field .input {
+  padding-right: 44px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  width: 32px;
+  height: 32px;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  color: #94a3b8;
+  font-size: 14px;
+  transition:
+    color 150ms ease,
+    background-color 150ms ease;
+}
+
+.password-toggle:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.dark-mode .password-toggle:hover {
+  background: #262626;
+  color: #ffffff;
+}

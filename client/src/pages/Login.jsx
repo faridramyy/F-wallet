@@ -9,6 +9,7 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [revealed, setRevealed] = useState(false);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -40,15 +41,33 @@ export default function Login() {
           Password
         </label>
 
-        <input
-          id="password"
-          className="input"
-          type="password"
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-          autoComplete="current-password"
-          autoFocus
-        />
+        <div className="password-field">
+          <input
+            id="password"
+            className="input"
+            type={revealed ? "text" : "password"}
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            autoFocus
+          />
+
+          {/*
+            tabIndex -1 keeps the toggle out of the tab order, so tabbing
+            from the password field lands on Sign in rather than here.
+            aria-label changes with state so a screen reader announces what
+            the button will do, not what it did.
+          */}
+          <button
+            type="button"
+            className="password-toggle"
+            onClick={() => setRevealed((current) => !current)}
+            tabIndex={-1}
+            aria-label={revealed ? "Hide password" : "Show password"}
+          >
+            <i className={`fa-solid ${revealed ? "fa-eye-slash" : "fa-eye"}`} />
+          </button>
+        </div>
 
         {error && <p className="form-error">{error}</p>}
 
