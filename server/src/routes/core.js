@@ -5,6 +5,7 @@ const {
   Category,
   Transaction,
   Grocery,
+  ShoppingItem,
   Settings,
 } = require("../models");
 const { generateId, wrap, badRequest, toNumber } = require("./helpers");
@@ -22,12 +23,13 @@ const router = express.Router();
 router.get(
   "/state",
   wrap(async (req, res) => {
-    const [accounts, categories, transactions, groceries, settings] =
+    const [accounts, categories, transactions, groceries, shopping, settings] =
       await Promise.all([
         Account.find().sort({ order: 1, createdAt: 1 }).lean(),
         Category.find().sort({ order: 1, createdAt: 1 }).lean(),
         Transaction.find().sort({ date: -1 }).lean(),
         Grocery.find().sort({ date: -1 }).lean(),
+        ShoppingItem.find().sort({ done: 1, order: 1, createdAt: 1 }).lean(),
         Settings.findOne({ key: "settings" }).lean(),
       ]);
 
@@ -38,6 +40,7 @@ router.get(
       categories: strip(categories),
       transactions: strip(transactions),
       groceries: strip(groceries),
+      shopping: strip(shopping),
       settings: settings
         ? { currency: settings.currency, theme: settings.theme }
         : { currency: "CAD", theme: "system" },
@@ -343,6 +346,8 @@ router.put(
     if (!grocery)
       return res.status(404).json({ error: "Price entry not found." });
 
+    // priceType has to be destructured here or the assignment below
+    // throws a ReferenceError and the request comes back as a 500.
     const { item, price, store, date, description, priceType } = req.body || {};
 
     if (item !== undefined) grocery.item = String(item).trim();
@@ -368,6 +373,81 @@ router.delete(
   "/groceries/:id",
   wrap(async (req, res) => {
     await Grocery.deleteOne({ id: req.params.id });
+
+    res.json({ ok: true });
+  }),
+);
+
+/* ---------------------------------------------------------
+   Shopping list
+--------------------------------------------------------- */
+
+// Declared before /shopping/:id for the same reason as the reorder
+// routes: Express matches in registration order.
+router.put("/shopping/reorder", reorderHandler(ShoppingItem, "shopping item"));
+
+/*
+  Clearing bought items. A single delete rather than looping from the
+  client, which would fire one request per item.
+*/
+
+router.delete(
+  "/shopping/done",
+  wrap(async (req, res) => {
+    const result = await ShoppingItem.deleteMany({ done: true });
+
+    res.json({ ok: true, removed: result.deletedCount || 0 });
+  }),
+);
+
+router.post(
+  "/shopping",
+  wrap(async (req, res) => {
+    const { name, quantity, note } = req.body || {};
+
+    if (!name || !String(name).trim()) {
+      return badRequest(res, "Item name is required.");
+    }
+
+    const item = await ShoppingItem.create({
+      id: generateId("buy"),
+      name: String(name).trim(),
+      quantity: Math.max(0, toNumber(quantity, 1)) || 1,
+      note: note ? String(note).trim() : "",
+      done: false,
+      order: await ShoppingItem.countDocuments(),
+      createdAt: new Date().toISOString(),
+    });
+
+    res.status(201).json(item.toJSON());
+  }),
+);
+
+router.put(
+  "/shopping/:id",
+  wrap(async (req, res) => {
+    const item = await ShoppingItem.findOne({ id: req.params.id });
+
+    if (!item) return res.status(404).json({ error: "Item not found." });
+
+    const { name, quantity, note, done } = req.body || {};
+
+    if (name !== undefined) item.name = String(name).trim();
+    if (quantity !== undefined)
+      item.quantity = Math.max(0, toNumber(quantity, 1)) || 1;
+    if (note !== undefined) item.note = String(note).trim();
+    if (done !== undefined) item.done = Boolean(done);
+
+    await item.save();
+
+    res.json(item.toJSON());
+  }),
+);
+
+router.delete(
+  "/shopping/:id",
+  wrap(async (req, res) => {
+    await ShoppingItem.deleteOne({ id: req.params.id });
 
     res.json({ ok: true });
   }),
@@ -409,12 +489,13 @@ router.put(
 router.get(
   "/export",
   wrap(async (req, res) => {
-    const [accounts, categories, transactions, groceries, settings] =
+    const [accounts, categories, transactions, groceries, shopping, settings] =
       await Promise.all([
         Account.find().sort({ order: 1 }).lean(),
         Category.find().sort({ order: 1 }).lean(),
         Transaction.find().lean(),
         Grocery.find().lean(),
+        ShoppingItem.find().sort({ order: 1 }).lean(),
         Settings.findOne({ key: "settings" }).lean(),
       ]);
 
@@ -432,6 +513,7 @@ router.get(
       categories: strip(categories),
       transactions: strip(transactions),
       groceries: strip(groceries),
+      shopping: strip(shopping),
       settings: settings
         ? { currency: settings.currency, theme: settings.theme }
         : { currency: "CAD", theme: "system" },

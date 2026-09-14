@@ -30,21 +30,31 @@ Where money goes and where it comes from.
 
 Expense categories hold a monthly budget and show how much of it you have used.
 
-Income categories can be set to **fixed amount** for bonuses, gifts and refunds, or **hourly** with a rate per hour and a rate per overtime hour. That choice decides how the transaction form opens when you pick the category.
+Income categories can be set to **fixed amount** for bonuses, gifts and refunds, or **hourly** with a rate per hour and a rate per overtime hour. That choice decides how the transaction form opens when you pick the category, and the rates are filled in for you.
 
 Categories reorder the same way accounts do.
 
 ### Transactions
 
-Every income, expense and transfer, with search and filters by type, account, category and date range.
+Every income, expense and transfer, grouped by day with each day's net shown beside the date. Search across notes, categories, accounts and amounts, and filter by type, account, category or a date range.
 
-Income can be entered two ways. Type an amount directly, or switch to hourly and enter hours worked, your rate, and any overtime. The total is worked out for you and the hours are kept with the record.
+Income can be entered two ways. Type an amount directly, or switch to hourly and enter hours worked, your rate, and any overtime. The total is worked out for you and the hours are kept with the record, so reopening it later shows how you got there.
 
 Transfers move money between accounts. Paying a credit card is a transfer, not an expense, which keeps it from being counted twice.
 
 ### Groceries
 
-A price log. Record what an item cost and where you bought it, and the app tells you which shop was cheapest and how much you save by going there.
+Two tabs.
+
+**To buy** is your shopping list. Add what you need, tick things off as you go, clear the bought ones when you are done. Item names suggest from what you have priced before, which is what keeps the matching below working.
+
+One button answers the question the whole page exists for: **where should I buy these?** It takes your list, looks up every item in your own price history, and groups the list by the shop that sells each thing cheapest, with a total per shop. Items you have never logged a price for are listed separately rather than quietly dropped.
+
+Two rules keep the answer honest. For each shop it uses the most recent price you logged there, not the cheapest you ever saw, because what a thing costs now is what matters for a trip today. And prices older than two months are flagged with their age instead of being presented as fact.
+
+**Prices** is the log those answers come from. Record what an item cost and where, and mark it as a regular price, an offer, or a markdown. Only regular prices feed the comparison: a clearance price at one shop does not make that shop cheaper, and planning around a sale that ended last week is worse than having no plan.
+
+Search on both tabs ignores case and accents, so "cafe" finds "Café".
 
 ### Settings
 
@@ -151,19 +161,9 @@ npm install
 npm run dev
 ```
 
-### 6. Importing old data
-
-```bash
-cd server
-cp .env.example .env        # set MONGODB_URI
-node scripts/import-data.js /path/to/data.json
-```
-
-Records are matched on id, so running it twice will not duplicate anything.
-
 ---
 
-## Adding transactions from your phone
+## Adding transactions from your iPhone shortcuts app
 
 ```bash
 curl -X POST https://YOUR_API_URL/api/transactions \
@@ -213,9 +213,13 @@ Changes to `template.yaml` need `sam deploy --guided` so any new parameter can b
 
 **Never delete AWS resources from the console.** CloudFormation manages them, and removing one by hand leaves the stack broken in a way that takes special commands to repair. Use `sam delete`.
 
+**Adding a database field means editing two files.** The schema in `server/src/models.js` and the route in `server/src/routes/`. Miss the schema and Mongoose silently discards the value; miss the route and it is never read. The silent one is the harder bug.
+
 **Credit card balances are debt.** Positive means you owe. The logic lives in `accountBalance` in `client/src/lib/calc.js`.
 
 **Editing a card balance keeps your history.** It adjusts the starting figure so the total matches your statement, rather than deleting transactions.
+
+**Grocery item names have to be consistent** for the shopping planner to match them. Matching normalises case, accents and punctuation, so "Milk, 4L" and "milk 4l" are the same item, but "milk" is not. That is why both forms suggest names you have used before.
 
 **Every change reloads the whole dataset.** At this size it costs nothing and removes any chance of the screen disagreeing with the database. Worth revisiting past a few thousand transactions.
 
@@ -228,14 +232,19 @@ Changes to `template.yaml` need `sam deploy --guided` so any new parameter can b
 ```
 client/
   src/
-    lib/          calculations, formatting, API calls
-    components/   layout, shared UI
-    pages/        the six screens
-    modals/       add and edit forms
+    lib/
+      calc.js       balances, budgets, pay
+      shopping.js   price matching and trip planning
+      format.js     money and dates
+      api.js        every call to the backend
+    components/     layout, shared UI
+    pages/          the six screens
+    modals/         add and edit forms
 server/
   src/
-    routes/       API endpoints
-    models.js     database schema
-    auth.js       passwords, tokens, permissions
-  template.yaml   AWS infrastructure as code
+    routes/         API endpoints
+    models.js       database schema
+    auth.js         passwords, tokens, permissions
+  scripts/          password hashing, data import
+  template.yaml     AWS infrastructure as code
 ```

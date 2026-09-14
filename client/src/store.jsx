@@ -17,6 +17,7 @@ const EMPTY_STATE = {
   categories: [],
   transactions: [],
   groceries: [],
+  shopping: [],
   settings: { currency: "CAD", theme: "system" },
 };
 
@@ -201,6 +202,13 @@ export function AppProvider({ children }) {
 
       updateSettings: (payload) =>
         run(() => api.updateSettings(payload), "Settings saved."),
+      createShoppingItem: (payload) =>
+        run(() => api.createShoppingItem(payload)),
+      updateShoppingItem: (id, payload) =>
+        run(() => api.updateShoppingItem(id, payload)),
+      deleteShoppingItem: (id) => run(() => api.deleteShoppingItem(id)),
+      clearBoughtItems: () =>
+        run(() => api.clearBoughtItems(), "List cleared."),
     }),
     [run],
   );

@@ -144,4 +144,18 @@ export const api = {
     request("/api/settings", { method: "PUT", body: data }),
 
   exportData: () => request("/api/export"),
+  // ============================================================
+  // ADD to client/src/lib/api.js
+  // Inside the `export const api = { ... }` object
+  // ============================================================
+
+  createShoppingItem: (data) =>
+    request("/api/shopping", { method: "POST", body: data }),
+  updateShoppingItem: (id, data) =>
+    request(`/api/shopping/${id}`, { method: "PUT", body: data }),
+  deleteShoppingItem: (id) =>
+    request(`/api/shopping/${id}`, { method: "DELETE" }),
+  clearBoughtItems: () => request("/api/shopping/done", { method: "DELETE" }),
+  reorderShopping: (ids) =>
+    request("/api/shopping/reorder", { method: "PUT", body: { ids } }),
 };

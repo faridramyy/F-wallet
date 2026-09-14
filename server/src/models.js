@@ -153,6 +153,28 @@ const grocerySchema = new mongoose.Schema(
   baseOptions,
 );
 
+/*
+  The shopping list. Deliberately separate from groceries: a grocery
+  record is something you observed a price for, a shopping item is
+  something you intend to buy. They happen to share a name field and
+  nothing else.
+*/
+
+const shoppingItemSchema = new mongoose.Schema(
+  {
+    id: { type: String, required: true, unique: true, index: true },
+    name: { type: String, required: true, trim: true },
+
+    // How many units. Used to work out a trip total.
+    quantity: { type: Number, default: 1, min: 0 },
+
+    note: { type: String, default: "" },
+    done: { type: Boolean, default: false },
+    order: { type: Number, default: 0 },
+  },
+  baseOptions,
+);
+
 const settingsSchema = new mongoose.Schema(
   {
     key: { type: String, default: "settings", unique: true },
@@ -175,7 +197,17 @@ const Transaction =
   mongoose.model("Transaction", transactionSchema);
 const Grocery =
   mongoose.models.Grocery || mongoose.model("Grocery", grocerySchema);
+const ShoppingItem =
+  mongoose.models.ShoppingItem ||
+  mongoose.model("ShoppingItem", shoppingItemSchema);
 const Settings =
   mongoose.models.Settings || mongoose.model("Settings", settingsSchema);
 
-module.exports = { Account, Category, Transaction, Grocery, Settings };
+module.exports = {
+  Account,
+  Category,
+  Transaction,
+  Grocery,
+  ShoppingItem,
+  Settings,
+};

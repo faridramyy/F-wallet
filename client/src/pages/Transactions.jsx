@@ -7,6 +7,22 @@ import { money, formatDate, formatHours } from "../lib/format";
 import TransactionModal from "../modals/TransactionModal";
 import TransferModal from "../modals/TransferModal";
 
+/*
+  Search folding.
+
+  toLowerCase alone misses accents: "cafe" would not match "Café",
+  because those are different characters rather than different cases.
+  NFD splits an accented letter into the plain letter plus a combining
+  mark, and the replace strips the marks, so both sides compare equal.
+*/
+
+function fold(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 export default function Transactions({ onEdit }) {
   const {
     accounts,
@@ -31,7 +47,7 @@ export default function Transactions({ onEdit }) {
   const fmt = (value) => money(value, { currency });
 
   const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
+    const term = fold(search.trim());
 
     return transactions
       .filter((transaction) => {
@@ -69,11 +85,9 @@ export default function Transactions({ onEdit }) {
             getAccountName(transaction.fromAccountId),
             getAccountName(transaction.toAccountId),
             String(transaction.amount),
-          ]
-            .join(" ")
-            .toLowerCase();
+          ];
 
-          if (!haystack.includes(term)) return false;
+          if (!fold(haystack.join(" ")).includes(term)) return false;
         }
 
         return true;
@@ -302,7 +316,7 @@ export default function Transactions({ onEdit }) {
                   )}
                 </div>
 
-                <div className="divide-">
+                <div className="divide-y divide-slate-100">
                   {day.items.map((transaction) => (
                     <div key={transaction.id} className="transaction-item">
                       <span className={`transaction-icon ${transaction.type}`}>
