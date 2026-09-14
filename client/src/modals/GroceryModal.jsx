@@ -4,6 +4,18 @@ import { useApp } from "../store";
 import { Modal, Field } from "../components/ui";
 import { today } from "../lib/format";
 
+/*
+  Why this matters beyond a label: a sale or a markdown says nothing about
+  where an item is usually cheapest, so only regular prices are used for
+  the store comparison on the Groceries page.
+*/
+
+const PRICE_TYPES = [
+  { value: "normal", label: "Regular", icon: "fa-tag" },
+  { value: "offer", label: "Offer", icon: "fa-percent" },
+  { value: "reduced", label: "Reduced", icon: "fa-arrow-down" },
+];
+
 export default function GroceryModal({ grocery, onClose }) {
   const { createGrocery, updateGrocery } = useApp();
 
@@ -15,6 +27,9 @@ export default function GroceryModal({ grocery, onClose }) {
     store: grocery?.store === "Unknown store" ? "" : grocery?.store || "",
     date: grocery?.date || today(),
     description: grocery?.description || "",
+    // Entries saved before this existed have no priceType, which is
+    // correct: they were regular prices.
+    priceType: grocery?.priceType || "normal",
   });
 
   const [error, setError] = useState("");
@@ -45,6 +60,7 @@ export default function GroceryModal({ grocery, onClose }) {
         item: form.item.trim(),
         price,
         store: form.store.trim() || "Unknown store",
+        priceType: form.priceType,
         date: form.date || today(),
         description: form.description.trim(),
       };
@@ -103,6 +119,32 @@ export default function GroceryModal({ grocery, onClose }) {
             onChange={set("price")}
             placeholder="0.00"
           />
+        </Field>
+
+        <Field label="Price type" className="sm:col-span-2">
+          <div className="segmented">
+            {PRICE_TYPES.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                className={`segmented-option ${form.priceType === option.value ? "active" : ""}`}
+                onClick={() =>
+                  setForm((current) => ({
+                    ...current,
+                    priceType: option.value,
+                  }))
+                }
+              >
+                <i className={`fa-solid ${option.icon}`} />
+                {option.label}
+              </button>
+            ))}
+          </div>
+
+          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+            Only regular prices are compared across stores. Offers and markdowns
+            are still logged and searchable.
+          </p>
         </Field>
 
         <Field label="Store">

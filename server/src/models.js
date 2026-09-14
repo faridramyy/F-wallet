@@ -53,6 +53,21 @@ const categorySchema = new mongoose.Schema(
     name: { type: String, required: true, trim: true },
     type: { type: String, required: true, enum: ["expense", "income"] },
     monthlyBudget: { type: Number, default: 0 },
+
+    /*
+      How income in this category is usually entered. A fixed category
+      (bonuses, gifts, refunds) opens the transaction form with a single
+      amount field; an hourly one opens the hours calculator.
+
+      This is only a default for the form. Any individual transaction can
+      still be entered the other way.
+    */
+    entryMode: { type: String, enum: ["hourly", "fixed"], default: "fixed" },
+
+    // Optional prefill for fixed categories, when the amount is usually
+    // the same. Zero means no prefill.
+    defaultAmount: { type: Number, default: 0 },
+
     // Income categories carry the pay rates for that job, so the
     // transaction form can fill them in for you.
     hourlyRate: { type: Number, default: 0 },
@@ -114,6 +129,23 @@ const grocerySchema = new mongoose.Schema(
     id: { type: String, required: true, unique: true, index: true },
     item: { type: String, required: true, trim: true },
     price: { type: Number, default: 0, min: 0 },
+
+    /*
+      Whether this was the shelf price or a temporary one.
+
+      "offer"   a promotion or sale
+      "reduced" marked down, usually near its date
+      "normal"  the regular price
+
+      It matters for the store comparison: a clearance price tells you
+      nothing about where an item is usually cheapest.
+    */
+    priceType: {
+      type: String,
+      enum: ["normal", "offer", "reduced"],
+      default: "normal",
+    },
+
     store: { type: String, default: "Unknown store" },
     date: { type: String, required: true },
     description: { type: String, default: "" },

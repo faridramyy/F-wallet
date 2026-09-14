@@ -2166,3 +2166,80 @@ textarea.input {
 .dark-mode .transaction-day-total {
   color: #9a9a9a;
 }
+
+.segmented {
+  display: grid;
+  /* One equal column per option, so adding a fourth later needs no
+     change here. */
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 6px;
+  border-radius: 14px;
+  background: #f1f5f9;
+  padding: 4px;
+}
+
+.segmented-option {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: 11px;
+  padding: 9px 6px;
+  color: #64748b;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.segmented-option.active {
+  background: white;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.1);
+}
+
+.price-tag {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.price-tag.offer {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.price-tag.reduced {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.dark-mode .segmented {
+  background: #1f1f1f;
+}
+
+.dark-mode .segmented-option.active {
+  background: #333333;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.dark-mode .price-tag.offer {
+  background: rgba(4, 120, 87, 0.22);
+  color: #34d399;
+}
+
+.dark-mode .price-tag.reduced {
+  background: rgba(194, 65, 12, 0.22);
+  color: #fb923c;
+}

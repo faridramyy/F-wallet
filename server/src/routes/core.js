@@ -312,7 +312,7 @@ router.delete(
 router.post(
   "/groceries",
   wrap(async (req, res) => {
-    const { item, price, store, date, description } = req.body || {};
+    const { item, price, store, date, description, priceType } = req.body || {};
 
     if (!item || !String(item).trim()) {
       return badRequest(res, "Item name is required.");
@@ -322,6 +322,9 @@ router.post(
       id: generateId("grocery"),
       item: String(item).trim(),
       price: Math.max(0, toNumber(price)),
+      priceType: ["offer", "reduced"].includes(priceType)
+        ? priceType
+        : "normal",
       store: store ? String(store).trim() : "Unknown store",
       date: date || new Date().toISOString().slice(0, 10),
       description: description ? String(description).trim() : "",
@@ -340,7 +343,7 @@ router.put(
     if (!grocery)
       return res.status(404).json({ error: "Price entry not found." });
 
-    const { item, price, store, date, description } = req.body || {};
+    const { item, price, store, date, description, priceType } = req.body || {};
 
     if (item !== undefined) grocery.item = String(item).trim();
     if (price !== undefined) grocery.price = Math.max(0, toNumber(price));
@@ -349,6 +352,11 @@ router.put(
     if (date !== undefined) grocery.date = date;
     if (description !== undefined)
       grocery.description = String(description).trim();
+    if (priceType !== undefined) {
+      grocery.priceType = ["offer", "reduced"].includes(priceType)
+        ? priceType
+        : "normal";
+    }
 
     await grocery.save();
 

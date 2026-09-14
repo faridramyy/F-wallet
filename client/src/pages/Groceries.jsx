@@ -11,6 +11,24 @@ import {
 import { money, formatDate } from "../lib/format";
 import GroceryModal from "../modals/GroceryModal";
 
+/*
+  Regular prices get no badge. Marking the common case would add noise to
+  every row without telling you anything.
+*/
+
+function PriceTag({ type }) {
+  if (type !== "offer" && type !== "reduced") return null;
+
+  return (
+    <span className={`price-tag ${type}`}>
+      <i
+        className={`fa-solid ${type === "offer" ? "fa-percent" : "fa-arrow-down"}`}
+      />
+      {type === "offer" ? "Offer" : "Reduced"}
+    </span>
+  );
+}
+
 export default function Groceries() {
   const { groceries, currency, deleteGrocery } = useApp();
 
@@ -62,12 +80,18 @@ export default function Groceries() {
     Groups every price entry by item name so you can see which store was
     cheapest. Only items logged at more than one store are worth showing,
     since a single entry has nothing to compare against.
+
+    Offers and markdowns are left out. A clearance price at one shop does
+    not mean that shop is cheaper, and including it would send you to the
+    wrong place next week.
   */
 
   const bestPrices = useMemo(() => {
     const groups = new Map();
 
     for (const entry of groceries) {
+      if ((entry.priceType || "normal") !== "normal") continue;
+
       const key = entry.item.trim().toLowerCase();
 
       if (!groups.has(key)) groups.set(key, []);
@@ -130,7 +154,7 @@ export default function Groceries() {
       {bestPrices.length > 0 && (
         <Panel
           title="Where to buy"
-          subtitle="Items you have priced at more than one store"
+          subtitle="Regular prices, for items you have priced at more than one store"
         >
           <div className="grid gap-3 sm:grid-cols-2">
             {bestPrices.map((group) => (
@@ -201,7 +225,10 @@ export default function Groceries() {
             {filtered.map((entry) => (
               <div key={entry.id} className="grocery-item">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">{entry.item}</p>
+                  <p className="flex items-center gap-2 truncate text-sm font-semibold">
+                    <span className="truncate">{entry.item}</span>
+                    <PriceTag type={entry.priceType} />
+                  </p>
 
                   <p className="truncate text-[11px] text-slate-400">
                     {entry.store} · {formatDate(entry.date)}
