@@ -10,6 +10,7 @@ import {
 
 import { AppProvider, useApp } from "./store";
 import Layout from "./components/Layout";
+import ErrorBoundary from "./components/ErrorBoundary";
 import { Toasts } from "./components/ui";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -137,10 +138,12 @@ function Shell() {
 
 export default function App() {
   return (
-    <AppProvider>
-      <HashRouter>
-        <Shell />
-      </HashRouter>
-    </AppProvider>
+    <ErrorBoundary>
+      <AppProvider>
+        <HashRouter>
+          <Shell />
+        </HashRouter>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }

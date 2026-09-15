@@ -3,25 +3,9 @@ import { useMemo, useState } from "react";
 import { useApp } from "../store";
 import { Panel, EmptyState, ConfirmModal, Field } from "../components/ui";
 import { describePay } from "../lib/calc";
-import { money, formatDate, formatHours } from "../lib/format";
+import { money, formatDate, formatHours, fold } from "../lib/format";
 import TransactionModal from "../modals/TransactionModal";
 import TransferModal from "../modals/TransferModal";
-
-/*
-  Search folding.
-
-  toLowerCase alone misses accents: "cafe" would not match "Café",
-  because those are different characters rather than different cases.
-  NFD splits an accented letter into the plain letter plus a combining
-  mark, and the replace strips the marks, so both sides compare equal.
-*/
-
-function fold(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
 
 export default function Transactions({ onEdit }) {
   const {
@@ -316,7 +300,7 @@ export default function Transactions({ onEdit }) {
                   )}
                 </div>
 
-                <div className="divide-y divide-slate-100">
+                <div>
                   {day.items.map((transaction) => (
                     <div key={transaction.id} className="transaction-item">
                       <span className={`transaction-icon ${transaction.type}`}>

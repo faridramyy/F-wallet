@@ -1,46 +1,27 @@
 import { useMemo, useState } from "react";
 
 import { useApp } from "../store";
-import {
-  Panel,
-  StatCard,
-  EmptyState,
-  ConfirmModal,
-  Field,
-} from "../components/ui";
-import { money, formatDate } from "../lib/format";
+import { Panel, EmptyState, ConfirmModal, Field } from "../components/ui";
+import { money, formatDate, fold } from "../lib/format";
 import { planTrip, knownItemSummaries, daysSince } from "../lib/shopping";
+import { SuggestInput } from "../components/SuggestInput";
 import GroceryModal from "../modals/GroceryModal";
 
-/*
-  Search folding.
-
-  toLowerCase alone misses accents: "cafe" would not match "Café",
-  because those are different characters rather than different cases.
-  NFD splits an accented letter into the plain letter plus a combining
-  mark, and the replace strips the marks, so both sides compare equal.
-*/
-
-function fold(value) {
-  return String(value || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-}
-
 const PRICE_TAGS = {
-  normal: { label: "Regular", icon: "fa-tag" },
   offer: { label: "Offer", icon: "fa-percent" },
   reduced: { label: "Reduced", icon: "fa-arrow-down" },
 };
 
 function PriceTag({ type }) {
-  // Entries saved before price types existed have no value, and a
-  // missing type means it was a regular price.
-  const tag = PRICE_TAGS[type] || PRICE_TAGS.normal;
+  // Regular prices get no tag. Marking the common case adds noise to
+  // every row without telling you anything. A missing type means the
+  // entry predates price types, which means it was a regular price.
+  const tag = PRICE_TAGS[type];
+
+  if (!tag) return null;
 
   return (
-    <span className={`price-tag ${type || "normal"}`}>
+    <span className={`price-tag ${type}`}>
       <i className={`fa-solid ${tag.icon}`} />
       {tag.label}
     </span>
@@ -131,43 +112,27 @@ function ToBuyTab({
 }) {
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState("1");
-  const [nameFocused, setNameFocused] = useState(false);
   const [plan, setPlan] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
 
   /*
-    Suggesting names you have already used is not a convenience, it is
-    what makes the matching work. "Milk 4L" and "milk" are different
-    items as far as the price history is concerned.
+    Suggesting names already used is what makes the trip planner work.
+    "Milk 4L" and "milk" are different items as far as matching goes, so
+    keeping spelling consistent matters more than it looks.
+
+    The cheapest known price rides along as meta, so picking a name also
+    tells you roughly what it costs and where.
   */
 
-  const knownItems = useMemo(() => knownItemSummaries(groceries), [groceries]);
-
-  const suggestions = useMemo(() => {
-    const term = fold(name.trim());
-
-    /*
-      Nothing until two characters. Dropping a list over the page the
-      instant the field is focused hides the list you are adding to, and
-      a single letter matches too much to be worth reading.
-    */
-
-    if (term.length < 2) return [];
-
-    const starts = [];
-    const contains = [];
-
-    for (const candidate of knownItems) {
-      const lower = fold(candidate.name);
-
-      if (lower === term) continue;
-
-      if (lower.startsWith(term)) starts.push(candidate);
-      else if (lower.includes(term)) contains.push(candidate);
-    }
-
-    return [...starts, ...contains].slice(0, 5);
-  }, [knownItems, name]);
+  const itemOptions = useMemo(
+    () =>
+      knownItemSummaries(groceries).map((entry) => ({
+        name: entry.name,
+        meta:
+          entry.price !== null ? `${fmt(entry.price)} at ${entry.store}` : null,
+      })),
+    [groceries, fmt],
+  );
 
   const pending = shopping.filter((item) => !item.done);
   const bought = shopping.filter((item) => item.done);
@@ -188,44 +153,14 @@ function ToBuyTab({
     <>
       <Panel title="Shopping list" subtitle={`${pending.length} to buy`}>
         <div className="buy-add-row">
-          <div className="suggest-field flex-1">
-            <input
-              className="input"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              onFocus={() => setNameFocused(true)}
-              onBlur={() => setNameFocused(false)}
-              onKeyDown={(event) => event.key === "Enter" && add()}
-              placeholder="Add an item"
-              autoComplete="off"
-            />
-
-            {nameFocused && suggestions.length > 0 && (
-              <ul className="suggest-list">
-                {suggestions.map((candidate) => (
-                  <li key={candidate.name}>
-                    <button
-                      type="button"
-                      onMouseDown={(event) => {
-                        event.preventDefault();
-
-                        setName(candidate.name);
-                        setNameFocused(false);
-                      }}
-                    >
-                      <span className="suggest-name">{candidate.name}</span>
-
-                      {candidate.price !== null && (
-                        <span className="suggest-meta">
-                          {fmt(candidate.price)} at {candidate.store}
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <SuggestInput
+            className="input flex-1"
+            value={name}
+            onChange={setName}
+            options={itemOptions}
+            onEnter={add}
+            placeholder="Add an item"
+          />
 
           <input
             className="input buy-qty"

@@ -152,7 +152,19 @@ Set Pages to build from GitHub Actions, under Settings, Pages.
 
 Push to `main`. The workflow builds and publishes automatically.
 
-### 5. Local development
+### 5. Tests
+
+```bash
+cd client
+npm install
+npm test
+```
+
+Covers the balance rules, the pay calculator and the shopping planner.
+Those are pure functions with awkward rules, credit card sign inversion
+and most-recent-not-cheapest among them, so they are worth pinning down.
+
+### 6. Local development
 
 ```bash
 cd client
@@ -210,6 +222,11 @@ Changes to `template.yaml` need `sam deploy --guided` so any new parameter can b
 ---
 
 ## Worth knowing
+
+**Login is rate limited.** Ten failed attempts from one address locks
+that address out for fifteen minutes. The counter lives in MongoDB
+rather than in memory, because Lambda discards memory between cold
+starts and an in-process counter would reset every few minutes.
 
 **Never delete AWS resources from the console.** CloudFormation manages them, and removing one by hand leaves the stack broken in a way that takes special commands to repair. Use `sam delete`.
 

@@ -100,3 +100,19 @@ export function clamp(value, min, max) {
 export function round2(value) {
   return Math.round((Number(value) || 0) * 100) / 100;
 }
+
+/*
+  Search folding, shared by every search box and autosuggest in the app.
+
+  toLowerCase alone misses accents: "cafe" would not match "Café",
+  because those are different characters rather than different cases.
+  NFD splits an accented letter into the plain letter plus a combining
+  mark, and the replace strips the marks, so both sides compare equal.
+*/
+
+export function fold(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}

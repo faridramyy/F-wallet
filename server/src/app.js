@@ -10,6 +10,11 @@ const {
   blockViewerWrites,
   requireOwner,
 } = require("./auth");
+const {
+  checkLoginAllowed,
+  recordFailedLogin,
+  clearLoginAttempts,
+} = require("./rateLimit");
 const coreRoutes = require("./routes/core");
 const transactionRoutes = require("./routes/transactions");
 
@@ -49,9 +54,21 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 
 /*
-  Every route needs the database. Connecting here rather than at module
-  load keeps a cold Lambda from crashing before it can return a useful
-  error message.
+  Health check.
+
+  Declared before the database middleware on purpose. A health endpoint
+  that fails when Mongo is unreachable cannot tell you which half of the
+  system is broken, which is the one moment you need it to.
+*/
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true, time: new Date().toISOString() });
+});
+
+/*
+  Every other route needs the database. Connecting here rather than at
+  module load keeps a cold Lambda from crashing before it can return a
+  useful error message.
 */
 
 app.use(async (req, res, next) => {
@@ -64,10 +81,6 @@ app.use(async (req, res, next) => {
 
     res.status(503).json({ error: "Database unavailable." });
   }
-});
-
-app.get("/health", (req, res) => {
-  res.json({ ok: true, time: new Date().toISOString() });
 });
 
 /* ---------------------------------------------------------
@@ -84,13 +97,27 @@ app.post("/auth/login", async (req, res) => {
     return res.status(500).json({ error: "Server is missing PASSWORD_HASH." });
   }
 
+  const limit = await checkLoginAllowed(req);
+
+  if (!limit.allowed) {
+    return res.status(429).json({
+      error: `Too many failed attempts. Try again in ${limit.minutesLeft} minute${
+        limit.minutesLeft === 1 ? "" : "s"
+      }.`,
+    });
+  }
+
   if (!password) {
+    await recordFailedLogin(req);
+
     return res.status(401).json({ error: "Incorrect password." });
   }
 
   const attempt = String(password);
 
   if (await bcrypt.compare(attempt, ownerHash)) {
+    await clearLoginAttempts(req);
+
     return res.json({ token: signToken("owner"), role: "owner" });
   }
 
@@ -100,8 +127,12 @@ app.post("/auth/login", async (req, res) => {
   */
 
   if (viewerHash && (await bcrypt.compare(attempt, viewerHash))) {
+    await clearLoginAttempts(req);
+
     return res.json({ token: signToken("viewer"), role: "viewer" });
   }
+
+  await recordFailedLogin(req);
 
   // Deliberately vague, and deliberately slow because bcrypt already is.
   return res.status(401).json({ error: "Incorrect password." });

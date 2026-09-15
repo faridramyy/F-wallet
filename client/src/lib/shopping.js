@@ -91,10 +91,6 @@ function optionsFor(index, name) {
 
   "stops" answers "where do I go for what", grouping each item under the
   shop that sells it cheapest.
-
-  "singleStore" answers the more useful question in practice: if I only
-  make one trip, which shop costs least? A plan spread over four shops
-  saves pennies and costs an afternoon.
 */
 
 export function planTrip(shopping, groceries) {
@@ -140,49 +136,10 @@ export function planTrip(shopping, groceries) {
     stop.total += row.best.price * row.quantity;
   }
 
-  const allStores = new Set();
-
-  for (const row of matched) {
-    for (const option of row.options) allStores.add(option.store);
-  }
-
-  const singleStore = [...allStores]
-    .map((store) => {
-      let total = 0;
-      let covered = 0;
-      let anyStale = false;
-
-      for (const row of matched) {
-        const option = row.options.find((candidate) => candidate.store === store);
-
-        if (!option) continue;
-
-        covered += 1;
-        total += option.price * row.quantity;
-
-        if (option.stale) anyStale = true;
-      }
-
-      return { store, total, covered, anyStale };
-    })
-    // Covering more of your list matters more than a small price edge,
-    // since a second trip costs more than the difference.
-    .sort((a, b) => (b.covered - a.covered) || (a.total - b.total));
-
-  const splitTotal = [...stops.values()].reduce((sum, stop) => sum + stop.total, 0);
-
-  const bestSingle = singleStore[0] || null;
-
   return {
     matched,
     unknown,
     stops: [...stops.values()].sort((a, b) => b.items.length - a.items.length),
-    singleStore: singleStore.slice(0, 4),
-    splitTotal,
-    // What splitting the trip actually buys you, compared with going to
-    // the one shop that covers the most of your list.
-    splitSaving:
-      bestSingle && bestSingle.covered === matched.length ? bestSingle.total - splitTotal : 0,
   };
 }
 

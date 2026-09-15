@@ -10,7 +10,10 @@ const mongoose = require("mongoose");
 */
 
 const baseOptions = {
-  timestamps: true,
+  // updatedAt only. createdAt is set by the routes as an ISO string and
+  // declared on each schema, so letting Mongoose also manage it would
+  // mean two systems writing one field.
+  timestamps: { createdAt: false, updatedAt: true },
   toJSON: {
     virtuals: false,
     versionKey: false,
@@ -25,7 +28,7 @@ const baseOptions = {
 
 const accountSchema = new mongoose.Schema(
   {
-    id: { type: String, required: true, unique: true, index: true },
+    id: { type: String, required: true, unique: true },
     name: { type: String, required: true, trim: true },
     type: {
       type: String,
@@ -43,13 +46,14 @@ const accountSchema = new mongoose.Schema(
     // Lets you keep an account visible but out of the headline total,
     // for savings or investments you would rather not count as spendable.
     includeInTotal: { type: Boolean, default: true },
+    createdAt: { type: String },
   },
   baseOptions,
 );
 
 const categorySchema = new mongoose.Schema(
   {
-    id: { type: String, required: true, unique: true, index: true },
+    id: { type: String, required: true, unique: true },
     name: { type: String, required: true, trim: true },
     type: { type: String, required: true, enum: ["expense", "income"] },
     monthlyBudget: { type: Number, default: 0 },
@@ -73,6 +77,7 @@ const categorySchema = new mongoose.Schema(
     hourlyRate: { type: Number, default: 0 },
     overtimeRate: { type: Number, default: 0 },
     order: { type: Number, default: 0 },
+    createdAt: { type: String },
   },
   baseOptions,
 );
@@ -89,7 +94,7 @@ const paySchema = new mongoose.Schema(
 
 const transactionSchema = new mongoose.Schema(
   {
-    id: { type: String, required: true, unique: true, index: true },
+    id: { type: String, required: true, unique: true },
     type: {
       type: String,
       required: true,
@@ -120,13 +125,14 @@ const transactionSchema = new mongoose.Schema(
     toAccountId: { type: String },
 
     source: { type: String, default: "app" },
+    createdAt: { type: String },
   },
   baseOptions,
 );
 
 const grocerySchema = new mongoose.Schema(
   {
-    id: { type: String, required: true, unique: true, index: true },
+    id: { type: String, required: true, unique: true },
     item: { type: String, required: true, trim: true },
     price: { type: Number, default: 0, min: 0 },
 
@@ -149,6 +155,7 @@ const grocerySchema = new mongoose.Schema(
     store: { type: String, default: "Unknown store" },
     date: { type: String, required: true },
     description: { type: String, default: "" },
+    createdAt: { type: String },
   },
   baseOptions,
 );
@@ -162,7 +169,7 @@ const grocerySchema = new mongoose.Schema(
 
 const shoppingItemSchema = new mongoose.Schema(
   {
-    id: { type: String, required: true, unique: true, index: true },
+    id: { type: String, required: true, unique: true },
     name: { type: String, required: true, trim: true },
 
     // How many units. Used to work out a trip total.
@@ -171,6 +178,7 @@ const shoppingItemSchema = new mongoose.Schema(
     note: { type: String, default: "" },
     done: { type: Boolean, default: false },
     order: { type: Number, default: 0 },
+    createdAt: { type: String },
   },
   baseOptions,
 );

@@ -4,6 +4,9 @@
   "private": true,
   "type": "commonjs",
   "main": "src/lambda.js",
+  "files": [
+    "src/"
+  ],
   "scripts": {
     "dev": "node src/local.js",
     "import": "node scripts/import-data.js",
