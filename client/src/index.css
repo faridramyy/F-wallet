@@ -931,8 +931,12 @@ textarea.input {
 }
 
 .dark-mode .primary-button,
-.dark-mode .progress-fill,
 .dark-mode .brand-icon {
+  background: #10b981;
+  color: #06281e;
+}
+
+.dark-mode .progress-fill:not(.warning):not(.danger) {
   background: #10b981;
   color: #06281e;
 }
@@ -1406,8 +1410,12 @@ textarea.input {
   color: #000;
 }
 
-.dark-mode .brand-icon,
-.dark-mode .progress-fill {
+.dark-mode .brand-icon {
+  background: #10b981;
+  color: #04231a;
+}
+
+.dark-mode .progress-fill:not(.warning):not(.danger) {
   background: #10b981;
   color: #04231a;
 }

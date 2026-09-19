@@ -9,7 +9,6 @@
   ],
   "scripts": {
     "dev": "node src/local.js",
-    "import": "node scripts/import-data.js",
     "hash-password": "node scripts/hash-password.js"
   },
   "dependencies": {

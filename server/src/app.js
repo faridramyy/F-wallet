@@ -78,7 +78,6 @@ app.use(async (req, res, next) => {
     next();
   } catch (error) {
     console.error("Database connection failed:", error.message);
-
     res.status(503).json({ error: "Database unavailable." });
   }
 });
@@ -109,7 +108,6 @@ app.post("/auth/login", async (req, res) => {
 
   if (!password) {
     await recordFailedLogin(req);
-
     return res.status(401).json({ error: "Incorrect password." });
   }
 
@@ -117,24 +115,15 @@ app.post("/auth/login", async (req, res) => {
 
   if (await bcrypt.compare(attempt, ownerHash)) {
     await clearLoginAttempts(req);
-
     return res.json({ token: signToken("owner"), role: "owner" });
   }
 
-  /*
-    The viewer password is optional. Checking it second means the owner
-    password always wins if someone sets both to the same value.
-  */
-
   if (viewerHash && (await bcrypt.compare(attempt, viewerHash))) {
     await clearLoginAttempts(req);
-
     return res.json({ token: signToken("viewer"), role: "viewer" });
   }
 
   await recordFailedLogin(req);
-
-  // Deliberately vague, and deliberately slow because bcrypt already is.
   return res.status(401).json({ error: "Incorrect password." });
 });
 
@@ -179,7 +168,6 @@ app.use("/api", (req, res, next) => {
 // Read only enforcement sits after authentication, so the role is known,
 // and before the routes, so every one of them is covered.
 app.use("/api", blockViewerWrites);
-
 app.use("/api", coreRoutes);
 app.use("/api", transactionRoutes);
 
