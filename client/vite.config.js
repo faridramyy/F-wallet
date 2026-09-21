@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import path from "path";
 
 /*
   GitHub Pages serves a project site from /<repo-name>/, so every asset URL
@@ -9,7 +10,15 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
+
   base: process.env.VITE_BASE || "/",
+
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+
   build: {
     outDir: "dist",
     sourcemap: false,
