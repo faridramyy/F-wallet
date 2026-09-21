@@ -1,8 +1,24 @@
 import { useState } from "react";
 
 import { useApp } from "../store";
-import { Panel, Field } from "../components/ui";
 import { api } from "../lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 const CURRENCIES = ["CAD", "USD", "EUR", "GBP", "EGP", "AED"];
 
@@ -22,7 +38,7 @@ export default function Settings() {
 
   const [exporting, setExporting] = useState(false);
   const [shareLink, setShareLink] = useState("");
-  const [shareDays, setShareDays] = useState(7);
+  const [shareDays, setShareDays] = useState("7");
   const [sharing, setSharing] = useState(false);
 
   const apiBase = import.meta.env.VITE_API_URL || "";
@@ -98,179 +114,206 @@ export default function Settings() {
 
   return (
     <div className="page space-y-5">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Configuration</p>
-          <h2 className="page-title">Settings</h2>
-          <p className="page-description">
-            Preferences, backups and API access.
-          </p>
-        </div>
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Configuration
+        </p>
+        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Preferences, backups and API access.
+        </p>
       </div>
 
-      <Panel title="Preferences">
-        <div className="form-grid">
-          <Field label="Currency">
-            <select
-              className="input"
-              value={settings.currency}
-              onChange={(event) =>
-                updateSettings({ currency: event.target.value })
-              }
-            >
-              {CURRENCIES.map((code) => (
-                <option key={code} value={code}>
-                  {code}
-                </option>
-              ))}
-            </select>
-          </Field>
+      <Card>
+        <CardHeader>
+          <CardTitle>Preferences</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select
+                value={settings.currency}
+                onValueChange={(value) => updateSettings({ currency: value })}
+              >
+                <SelectTrigger id="currency">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((code) => (
+                    <SelectItem key={code} value={code}>
+                      {code}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Field label="Theme">
-            <select
-              className="input"
-              value={settings.theme}
-              onChange={(event) =>
-                updateSettings({ theme: event.target.value })
-              }
-            >
-              <option value="system">Match my device</option>
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-            </select>
-          </Field>
-        </div>
-
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-          These are stored with your data, so they follow you to any device you
-          sign in on. Matching your device means the app switches with your
-          phone or laptop, including when it changes on its own in the evening.
-        </p>
-      </Panel>
-
-      <Panel title="Your data" subtitle="What is currently stored">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="stat-card">
-            <div className="stat-label">Accounts</div>
-            <div className="stat-value">{accounts.length}</div>
+            <div className="space-y-2">
+              <Label htmlFor="theme">Theme</Label>
+              <Select
+                value={settings.theme}
+                onValueChange={(value) => updateSettings({ theme: value })}
+              >
+                <SelectTrigger id="theme">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="system">Match my device</SelectItem>
+                  <SelectItem value="light">Light</SelectItem>
+                  <SelectItem value="dark">Dark</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          <div className="stat-card">
-            <div className="stat-label">Categories</div>
-            <div className="stat-value">{categories.length}</div>
+          <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+            These are stored with your data, so they follow you to any device
+            you sign in on. Matching your device means the app switches with
+            your phone or laptop, including when it changes on its own in the
+            evening.
+          </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Your data</CardTitle>
+          <CardDescription>What is currently stored</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ["Accounts", accounts.length],
+              ["Categories", categories.length],
+              ["Transactions", transactions.length],
+              ["Price entries", groceries.length],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="rounded-xl border bg-card p-4 shadow-sm"
+              >
+                <div className="text-xs font-medium text-muted-foreground">
+                  {label}
+                </div>
+                <div className="mt-1 text-xl font-bold tracking-tight">
+                  {value}
+                </div>
+              </div>
+            ))}
           </div>
 
-          <div className="stat-card">
-            <div className="stat-label">Transactions</div>
-            <div className="stat-value">{transactions.length}</div>
-          </div>
+          <Button
+            variant="secondary"
+            className="mt-4"
+            onClick={downloadBackup}
+            disabled={exporting}
+          >
+            <i className="fa-solid fa-download" />
+            {exporting ? "Preparing..." : "Download a backup"}
+          </Button>
 
-          <div className="stat-card">
-            <div className="stat-label">Price entries</div>
-            <div className="stat-value">{groceries.length}</div>
-          </div>
-        </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Downloads the same JSON shape the old version used, so nothing is
+            locked in.
+          </p>
+        </CardContent>
+      </Card>
 
-        <button
-          type="button"
-          className="secondary-button mt-4"
-          onClick={downloadBackup}
-          disabled={exporting}
-        >
-          <i className="fa-solid fa-download" />
-          {exporting ? "Preparing..." : "Download a backup"}
-        </button>
+      <Card>
+        <CardHeader>
+          <CardTitle>API access</CardTitle>
+          <CardDescription>Add transactions from anywhere</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Send a POST request with your API key in the{" "}
+            <code className="rounded bg-muted px-1 py-0.5 text-xs">
+              x-api-key
+            </code>{" "}
+            header. Accounts and categories can be given by name instead of id,
+            so a phone shortcut only needs to know what you call things.
+          </p>
 
-        <p className="mt-2 text-[11px] text-slate-400">
-          Downloads the same JSON shape the old version used, so nothing is
-          locked in.
-        </p>
-      </Panel>
+          <pre className="mt-3 overflow-x-auto rounded-lg bg-muted p-3 text-xs">
+            {curlExample}
+          </pre>
 
-      <Panel title="API access" subtitle="Add transactions from anywhere">
-        <p className="text-sm leading-relaxed text-slate-600">
-          Send a POST request with your API key in the{" "}
-          <code className="code-inline">x-api-key</code> header. Accounts and
-          categories can be given by name instead of id, so a phone shortcut
-          only needs to know what you call things.
-        </p>
-
-        <pre className="code-block">{curlExample}</pre>
-
-        <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-          The key only allows creating transactions. It cannot read your
-          balances, edit history or delete anything. Your API key lives in the
-          Lambda environment variables, not in this page, so it is never exposed
-          to the browser.
-        </p>
-      </Panel>
+          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            The key only allows creating transactions. It cannot read your
+            balances, edit history or delete anything. Your API key lives in the
+            Lambda environment variables, not in this page, so it is never
+            exposed to the browser.
+          </p>
+        </CardContent>
+      </Card>
 
       {!isViewer && (
-        <Panel
-          title="Read only access"
-          subtitle="Let someone see your finances without changing anything"
-        >
-          <p className="text-sm leading-relaxed text-slate-600">
-            A share link signs someone in as a read only user. They see
-            everything you see, including the add and edit buttons, but any
-            attempt to change something is refused by the server.
-          </p>
+        <Card>
+          <CardHeader>
+            <CardTitle>Read only access</CardTitle>
+            <CardDescription>
+              Let someone see your finances without changing anything
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              A share link signs someone in as a read only user. They see
+              everything you see, including the add and edit buttons, but any
+              attempt to change something is refused by the server.
+            </p>
 
-          <div className="form-grid mt-4">
-            <Field label="Link valid for">
-              <select
-                className="input"
-                value={shareDays}
-                onChange={(event) => setShareDays(event.target.value)}
-              >
-                <option value="1">1 day</option>
-                <option value="7">7 days</option>
-                <option value="30">30 days</option>
-                <option value="90">90 days</option>
-              </select>
-            </Field>
-          </div>
-
-          <button
-            type="button"
-            className="primary-button mt-3"
-            onClick={makeShareLink}
-            disabled={sharing}
-          >
-            <i className="fa-solid fa-link" />
-            {sharing ? "Creating..." : "Create share link"}
-          </button>
-
-          {shareLink && (
-            <div className="share-link-box">
-              <code>{shareLink}</code>
-
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={copyShareLink}
-              >
-                <i className="fa-solid fa-copy" />
-                Copy
-              </button>
+            <div className="mt-4 max-w-xs space-y-2">
+              <Label htmlFor="share-days">Link valid for</Label>
+              <Select value={shareDays} onValueChange={setShareDays}>
+                <SelectTrigger id="share-days">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 day</SelectItem>
+                  <SelectItem value="7">7 days</SelectItem>
+                  <SelectItem value="30">30 days</SelectItem>
+                  <SelectItem value="90">90 days</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
 
-          <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
-            Anyone with the link gets access until it expires, so treat it like
-            a password. There is no way to revoke a single link short of
-            changing JWT_SECRET, which signs everyone out. Prefer short
-            expiries.
-          </p>
-        </Panel>
+            <Button className="mt-3" onClick={makeShareLink} disabled={sharing}>
+              <i className="fa-solid fa-link" />
+              {sharing ? "Creating..." : "Create share link"}
+            </Button>
+
+            {shareLink && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg border bg-muted p-2">
+                <Input readOnly value={shareLink} className="text-xs" />
+                <Button variant="secondary" size="sm" onClick={copyShareLink}>
+                  <i className="fa-solid fa-copy" />
+                  Copy
+                </Button>
+              </div>
+            )}
+
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Anyone with the link gets access until it expires, so treat it
+              like a password. There is no way to revoke a single link short of
+              changing JWT_SECRET, which signs everyone out. Prefer short
+              expiries.
+            </p>
+          </CardContent>
+        </Card>
       )}
 
-      <Panel title="Session">
-        <button type="button" className="danger-button" onClick={logout}>
-          <i className="fa-solid fa-arrow-right-from-bracket" />
-          Sign out
-        </button>
-      </Panel>
+      <Card>
+        <CardHeader>
+          <CardTitle>Session</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Button variant="destructive" onClick={logout}>
+            <i className="fa-solid fa-arrow-right-from-bracket" />
+            Sign out
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
