@@ -1,15 +1,11 @@
 import { Component } from "react";
 
+import { Button } from "@/components/ui/button";
+
 /*
   Catches render errors so one broken component does not take the whole
-  app down to a blank white screen.
-
-  This has to be a class. Error boundaries are the one thing React still
-  has no hook for, because componentDidCatch runs during a phase hooks
-  cannot participate in.
-
-  It deliberately does not try to recover automatically. If a component
-  throws on every render, retrying just loops.
+  app down to a blank white screen. Has to be a class: componentDidCatch
+  runs during a phase hooks cannot participate in.
 */
 
 export default class ErrorBoundary extends Component {
@@ -24,8 +20,6 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    // Goes to the browser console rather than anywhere clever. With one
-    // user, the console is the error reporting system.
     console.error("Render error:", error, info.componentStack);
   }
 
@@ -33,22 +27,18 @@ export default class ErrorBoundary extends Component {
     if (!this.state.error) return this.props.children;
 
     return (
-      <div className="loading-screen">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
         <i className="fa-solid fa-triangle-exclamation text-2xl text-amber-500" />
 
         <p className="text-sm font-semibold">Something went wrong</p>
 
-        <p className="max-w-xs text-center text-xs text-slate-400">
+        <p className="max-w-xs text-xs text-muted-foreground">
           {this.state.error.message || "An unexpected error occurred."}
         </p>
 
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => window.location.reload()}
-        >
+        <Button type="button" onClick={() => window.location.reload()}>
           Reload
-        </button>
+        </Button>
       </div>
     );
   }

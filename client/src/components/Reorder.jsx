@@ -1,44 +1,38 @@
-/*
-  Up and down buttons rather than drag and drop.
+import { Button } from "@/components/ui/button";
 
-  Dragging is nicer on a desktop and genuinely awkward on a phone, where
-  a long press to start a drag fights with the browser's own scroll and
-  text selection. Two buttons work identically on every device, are
-  reachable with a keyboard, and cannot half-fail the way a dropped drag
-  can.
+/*
+  Up and down buttons rather than drag and drop. See the original note:
+  dragging fights the browser's own scroll/selection on a phone, and two
+  buttons work identically on every device and are keyboard reachable.
 */
 
 export function ReorderButtons({ index, total, onMove }) {
   return (
-    <span className="reorder-controls">
-      <button
+    <span className="flex shrink-0 flex-col gap-0.5">
+      <Button
         type="button"
-        className="icon-button"
+        variant="ghost"
+        size="icon-xs"
         onClick={() => onMove(index, index - 1)}
         disabled={index === 0}
         aria-label="Move up"
       >
         <i className="fa-solid fa-chevron-up" />
-      </button>
+      </Button>
 
-      <button
+      <Button
         type="button"
-        className="icon-button"
+        variant="ghost"
+        size="icon-xs"
         onClick={() => onMove(index, index + 1)}
         disabled={index === total - 1}
         aria-label="Move down"
       >
         <i className="fa-solid fa-chevron-down" />
-      </button>
+      </Button>
     </span>
   );
 }
-
-/*
-  Returns a new array with the item at `from` moved to `to`. Used by both
-  the accounts and categories pages, which then send the resulting id
-  order to the server.
-*/
 
 export function moveItem(items, from, to) {
   if (to < 0 || to >= items.length) return items;

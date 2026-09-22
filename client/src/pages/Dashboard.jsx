@@ -34,6 +34,12 @@ import {
   lastMonths,
 } from "../lib/format";
 
+// A small "outline" style link, matching the Button component's own
+// outline variant, for places a <Link> needs button-like chrome without
+// depending on whether Button supports rendering as another element.
+const linkButtonClass =
+  "inline-flex h-8 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground transition-colors hover:bg-muted";
+
 export default function Dashboard({ onEditTransaction }) {
   const {
     accounts,
@@ -128,12 +134,16 @@ export default function Dashboard({ onEditTransaction }) {
   const creditCards = accounts.filter((account) => account.type === "credit");
 
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow">Overview</p>
-          <h2 className="page-title">Dashboard</h2>
-          <p className="page-description">{formatMonthLong(month)}</p>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Overview
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatMonthLong(month)}
+          </p>
         </div>
 
         <MonthPicker
@@ -186,12 +196,12 @@ export default function Dashboard({ onEditTransaction }) {
 
         <Panel title="Savings" subtitle="Income minus expenses">
           <p
-            className={`text-2xl font-bold tracking-tight ${savings >= 0 ? "" : "text-red-500"}`}
+            className={`text-2xl font-bold tracking-tight ${savings >= 0 ? "" : "text-destructive"}`}
           >
             {fmtSigned(savings)}
           </p>
 
-          <p className="mt-1 text-[11px] font-semibold text-slate-400">
+          <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
             {income <= 0
               ? "No income logged"
               : rate >= 20
@@ -217,7 +227,7 @@ export default function Dashboard({ onEditTransaction }) {
                   className="flex-1 rounded-t-sm"
                   style={{
                     height: `${Math.max(4, (Math.abs(net) / max) * 100)}%`,
-                    background: net >= 0 ? "#10b981" : "#f87171",
+                    background: net >= 0 ? "var(--primary)" : "var(--destructive)",
                   }}
                   title={`${formatMonth(item.month)}: ${fmtSigned(net)}`}
                 />
@@ -225,10 +235,10 @@ export default function Dashboard({ onEditTransaction }) {
             })}
           </div>
 
-          <p className="mt-2 text-[10px] text-slate-400">Last 6 months</p>
+          <p className="mt-2 text-[10px] text-muted-foreground">Last 6 months</p>
 
           {transfers > 0 && (
-            <p className="mt-3 text-[11px] text-slate-400">
+            <p className="mt-3 text-[11px] text-muted-foreground">
               {fmt(transfers)} moved between accounts this month
             </p>
           )}
@@ -240,7 +250,7 @@ export default function Dashboard({ onEditTransaction }) {
           title="Spending by category"
           subtitle={formatMonth(month)}
           action={
-            <Link to="/categories" className="secondary-button">
+            <Link to="/categories" className={linkButtonClass}>
               Manage
             </Link>
           }
@@ -290,7 +300,7 @@ export default function Dashboard({ onEditTransaction }) {
                         </span>
                       </span>
 
-                      <span className="shrink-0 text-slate-500">
+                      <span className="shrink-0 text-muted-foreground">
                         {fmt(row.amount)} · {share.toFixed(0)}%
                       </span>
                     </div>
@@ -305,7 +315,7 @@ export default function Dashboard({ onEditTransaction }) {
           title="Budgets"
           subtitle="Your monthly spending plan"
           action={
-            <Link to="/categories" className="secondary-button">
+            <Link to="/categories" className={linkButtonClass}>
               Edit
             </Link>
           }
@@ -329,8 +339,8 @@ export default function Dashboard({ onEditTransaction }) {
                       <span
                         className={
                           remaining < 0
-                            ? "font-semibold text-red-500"
-                            : "text-slate-500"
+                            ? "font-semibold text-destructive"
+                            : "text-muted-foreground"
                         }
                       >
                         {fmt(spent)} of {fmt(budget)}
@@ -339,7 +349,7 @@ export default function Dashboard({ onEditTransaction }) {
 
                     <ProgressBar value={spent} max={budget} />
 
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p className="mt-1 text-[11px] text-muted-foreground">
                       {remaining >= 0
                         ? `${fmt(remaining)} left`
                         : `${fmt(Math.abs(remaining))} over budget`}
@@ -357,7 +367,7 @@ export default function Dashboard({ onEditTransaction }) {
           title="Accounts"
           subtitle={`${accounts.length} tracked`}
           action={
-            <Link to="/accounts" className="secondary-button">
+            <Link to="/accounts" className={linkButtonClass}>
               View all
             </Link>
           }
@@ -368,7 +378,10 @@ export default function Dashboard({ onEditTransaction }) {
               title="No accounts yet"
               message="Add an account to start tracking your balance."
               action={
-                <Link to="/accounts" className="primary-button">
+                <Link
+                  to="/accounts"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-full bg-primary px-3.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80"
+                >
                   Add account
                 </Link>
               }
@@ -388,7 +401,7 @@ export default function Dashboard({ onEditTransaction }) {
                       <p className="truncate text-sm font-semibold">
                         {account.name}
                       </p>
-                      <p className="text-[11px] capitalize text-slate-400">
+                      <p className="text-[11px] capitalize text-muted-foreground">
                         {account.type}
                         {account.lastFour ? ` · ${account.lastFour}` : ""}
                       </p>
@@ -398,11 +411,11 @@ export default function Dashboard({ onEditTransaction }) {
                       className={`text-sm font-bold ${
                         isCredit
                           ? balance > 0
-                            ? "text-red-500"
-                            : "text-emerald-600"
+                            ? "text-destructive"
+                            : "text-primary"
                           : balance >= 0
                             ? ""
-                            : "text-red-500"
+                            : "text-destructive"
                       }`}
                     >
                       {fmt(balance)}
@@ -428,15 +441,19 @@ export default function Dashboard({ onEditTransaction }) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="stat-label">Total debt</p>
-                  <p className="text-lg font-bold text-red-500">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Total debt
+                  </p>
+                  <p className="text-lg font-bold text-destructive">
                     {fmt(creditCardDebt(accounts, transactions))}
                   </p>
                 </div>
 
                 <div>
-                  <p className="stat-label">Available credit</p>
-                  <p className="text-lg font-bold text-emerald-600">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Available credit
+                  </p>
+                  <p className="text-lg font-bold text-primary">
                     {fmt(totalAvailableCredit(accounts, transactions))}
                   </p>
                 </div>
@@ -451,7 +468,7 @@ export default function Dashboard({ onEditTransaction }) {
                   <div key={card.id}>
                     <div className="mb-1.5 flex items-center justify-between text-xs">
                       <span className="font-semibold">{card.name}</span>
-                      <span className="text-slate-500">
+                      <span className="text-muted-foreground">
                         {limit > 0
                           ? `${utilization.toFixed(0)}% used`
                           : "No limit set"}
@@ -470,7 +487,7 @@ export default function Dashboard({ onEditTransaction }) {
                       }
                     />
 
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p className="mt-1 text-[11px] text-muted-foreground">
                       {fmt(debt)} owing ·{" "}
                       {fmt(availableCredit(card, transactions))} available
                     </p>
@@ -486,7 +503,7 @@ export default function Dashboard({ onEditTransaction }) {
         title="Recent activity"
         subtitle="Your latest transactions"
         action={
-          <Link to="/transactions" className="secondary-button">
+          <Link to="/transactions" className={linkButtonClass}>
             View all
           </Link>
         }
@@ -498,15 +515,23 @@ export default function Dashboard({ onEditTransaction }) {
             message="Add your first transaction to see it here."
           />
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {recent.map((transaction) => (
               <button
                 key={transaction.id}
                 type="button"
-                className="transaction-item w-full text-left"
+                className="flex w-full items-center gap-2.5 py-3 text-left"
                 onClick={() => onEditTransaction(transaction)}
               >
-                <span className={`transaction-icon ${transaction.type}`}>
+                <span
+                  className={`flex size-[39px] shrink-0 items-center justify-center rounded-xl text-base ${
+                    transaction.type === "income"
+                      ? "bg-primary/10 text-primary"
+                      : transaction.type === "expense"
+                        ? "bg-destructive/10 text-destructive"
+                        : "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                  }`}
+                >
                   <i
                     className={`fa-solid ${
                       transaction.type === "income"
@@ -525,7 +550,7 @@ export default function Dashboard({ onEditTransaction }) {
                       : getCategoryName(transaction.categoryId)}
                   </p>
 
-                  <p className="truncate text-[11px] text-slate-400">
+                  <p className="truncate text-[11px] text-muted-foreground">
                     {formatDate(transaction.date)}
                     {transaction.type !== "transfer"
                       ? ` · ${getAccountName(transaction.accountId)}`
@@ -537,10 +562,10 @@ export default function Dashboard({ onEditTransaction }) {
                 <span
                   className={`text-sm font-bold ${
                     transaction.type === "income"
-                      ? "text-emerald-600"
+                      ? "text-primary"
                       : transaction.type === "expense"
-                        ? "text-red-500"
-                        : "text-slate-500"
+                        ? "text-destructive"
+                        : "text-muted-foreground"
                   }`}
                 >
                   {transaction.type === "expense"
@@ -575,13 +600,13 @@ function CashFlowChart({ trend, currency }) {
           >
             <div className="flex h-full w-full items-end justify-center gap-1">
               <div
-                className="w-1/2 rounded-t-md bg-emerald-500/85"
+                className="w-1/2 rounded-t-md bg-primary/85"
                 style={{ height: `${Math.max(2, (item.income / max) * 100)}%` }}
                 title={`Income ${money(item.income, { currency })}`}
               />
 
               <div
-                className="w-1/2 rounded-t-md bg-red-400/85"
+                className="w-1/2 rounded-t-md bg-destructive/85"
                 style={{
                   height: `${Math.max(2, (item.expenses / max) * 100)}%`,
                 }}
@@ -589,21 +614,20 @@ function CashFlowChart({ trend, currency }) {
               />
             </div>
 
-            <span className="text-[10px] font-medium text-slate-400">
+            <span className="text-[10px] font-medium text-muted-foreground">
               {formatMonth(item.month).split(" ")[0]}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-500">
+      <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" />{" "}
-          Income
+          <span className="inline-block size-2.5 rounded-sm bg-primary" /> Income
         </span>
 
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-400" />{" "}
+          <span className="inline-block size-2.5 rounded-sm bg-destructive" />{" "}
           Expenses
         </span>
       </div>

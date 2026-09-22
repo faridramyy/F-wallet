@@ -1,63 +1,88 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useApp } from "../store";
+import { cn } from "cn";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 
 export function Panel({ title, subtitle, action, children, className = "" }) {
   return (
-    <div className={`panel ${className}`}>
+    <Card className={className}>
       {(title || action) && (
-        <div className="panel-header">
+        <CardHeader className={action ? "flex-row items-start justify-between gap-3" : undefined}>
           <div>
-            {title && <h3 className="panel-title">{title}</h3>}
-            {subtitle && <p className="panel-subtitle">{subtitle}</p>}
+            {title && <CardTitle>{title}</CardTitle>}
+            {subtitle && <CardDescription>{subtitle}</CardDescription>}
           </div>
 
           {action}
-        </div>
+        </CardHeader>
       )}
 
-      {children}
-    </div>
+      <CardContent>{children}</CardContent>
+    </Card>
   );
 }
 
 export function StatCard({ label, value, help, tone = "", className = "" }) {
+  // The new theme's --primary is a green hue and --destructive is red,
+  // so "positive"/"negative" tones map directly onto tokens that already
+  // exist rather than needing their own emerald-600/red-500 overrides.
+  const toneClass =
+    tone === "positive" ? "text-primary" : tone === "negative" ? "text-destructive" : "";
+
   return (
-    <div className={`stat-card ${className}`}>
-      <div className="stat-label">{label}</div>
-      <div className={`stat-value ${tone}`}>{value}</div>
-      {help && <div className="stat-help">{help}</div>}
-    </div>
+    <Card size="sm" className={className}>
+      <CardContent>
+        <div className="text-xs font-medium text-muted-foreground">{label}</div>
+
+        <div className={cn("mt-1.5 truncate text-lg font-semibold tracking-tight sm:text-xl", toneClass)}>
+          {value}
+        </div>
+
+        {help && <div className="mt-1 text-[10px] text-muted-foreground/70">{help}</div>}
+      </CardContent>
+    </Card>
   );
 }
 
 export function Field({ label, error, children, className = "" }) {
   return (
-    <div className={className}>
-      {label && <label className="input-label">{label}</label>}
+    <div className={cn("space-y-2", className)}>
+      {label && <Label>{label}</Label>}
       {children}
-      {error && <p className="form-error">{error}</p>}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
 
 export function EmptyState({ icon = "fa-inbox", title, message, action }) {
   return (
-    <div className="empty-state">
-      <div className="empty-state-icon">
+    <div className="px-4 py-10 text-center">
+      <div className="mx-auto mb-3 flex size-11 items-center justify-center rounded-2xl bg-muted text-muted-foreground">
         <i className={`fa-solid ${icon}`} />
       </div>
 
-      <p className="empty-state-title">{title}</p>
-      {message && <p className="empty-state-text">{message}</p>}
-      {action}
+      <p className="text-sm font-semibold">{title}</p>
+
+      {message && (
+        <p className="mx-auto mt-1 max-w-[330px] text-xs leading-relaxed text-muted-foreground">
+          {message}
+        </p>
+      )}
+
+      {action && <div className="mt-3.5">{action}</div>}
     </div>
   );
 }
 
 /*
-  Replaces openModal from the original, which built markup as a string and
-  attached listeners by hand after injecting it.
+  The swipe-to-dismiss bottom sheet behaviour (touch drag, Escape key,
+  body scroll lock) is plain JS, not tied to the old CSS classes, so it
+  is carried over unchanged. Only the classNames were converted to the
+  new tokens — introducing a Base UI Dialog here would mean
+  reimplementing the swipe gesture on top of it for no real benefit.
 */
 
 export function Modal({ title, onClose, children, footer, wide = false }) {
@@ -85,13 +110,16 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
 
   return (
     <div
-      className="modal-overlay"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-foreground/50 animate-in fade-in duration-200 sm:items-center sm:p-5"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
       <div
-        className={`modal ${wide ? "wide" : ""}`}
+        className={cn(
+          "max-h-[92vh] w-full overflow-y-auto rounded-t-4xl bg-card pb-[env(safe-area-inset-bottom)] shadow-2xl animate-in slide-in-from-bottom duration-300 sm:max-w-lg sm:rounded-4xl sm:zoom-in-95 sm:slide-in-from-bottom-0",
+          wide && "sm:max-w-2xl",
+        )}
         role="dialog"
         aria-modal="true"
         style={
@@ -105,19 +133,14 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
         }
       >
         <div
-          className="modal-handle"
+          className="flex justify-center pb-1 pt-2.5 sm:hidden"
           onTouchStart={(event) => {
             startY.current = event.touches[0].clientY;
           }}
           onTouchMove={(event) => {
             if (startY.current === null) return;
 
-            // Only downward drags count. Anything upward is ignored so the
-            // sheet cannot be pulled above its resting position.
-            const distance = Math.max(
-              0,
-              event.touches[0].clientY - startY.current,
-            );
+            const distance = Math.max(0, event.touches[0].clientY - startY.current);
 
             setDragOffset(distance);
           }}
@@ -132,25 +155,28 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
           }}
           style={dragOffset ? { touchAction: "none" } : undefined}
         >
-          <span />
+          <span className="h-1 w-9 rounded-full bg-border" />
         </div>
 
-        <div className="modal-header">
-          <h3 className="modal-title">{title}</h3>
+        <div className="sticky top-0 z-[2] flex items-center justify-between border-b bg-card px-4.5 py-4">
+          <h3 className="text-base font-semibold">{title}</h3>
 
-          <button
+          <Button
             type="button"
-            className="modal-close"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label="Close"
           >
             <i className="fa-solid fa-xmark" />
-          </button>
+          </Button>
         </div>
 
-        <div className="modal-body">{children}</div>
+        <div className="p-4.5">{children}</div>
 
-        {footer && <div className="modal-footer">{footer}</div>}
+        {footer && (
+          <div className="flex gap-2 border-t px-4.5 py-3.5 [&>*]:flex-1">{footer}</div>
+        )}
       </div>
     </div>
   );
@@ -169,24 +195,24 @@ export function ConfirmModal({
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
 
-          <button
+          <Button
             type="button"
-            className="danger-button"
+            variant="destructive"
             onClick={() => {
               onConfirm();
               onClose();
             }}
           >
             {confirmLabel}
-          </button>
+          </Button>
         </>
       }
     >
-      <div className="text-sm leading-relaxed text-slate-600">{message}</div>
+      <div className="text-sm leading-relaxed text-muted-foreground">{message}</div>
     </Modal>
   );
 }
@@ -197,12 +223,19 @@ export function Toasts() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toast-container">
+    <div className="pointer-events-none fixed inset-x-3.5 bottom-20 z-[200] flex flex-col gap-2 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[340px]">
       {toasts.map((toast) => (
-        <div key={toast.id} className={`toast ${toast.tone}`}>
+        <div
+          key={toast.id}
+          className={cn(
+            "pointer-events-auto animate-in slide-in-from-bottom-2 fade-in rounded-2xl border bg-card px-3.5 py-3 text-xs text-foreground shadow-lg duration-150",
+            toast.tone === "success" && "border-l-4 border-l-primary",
+            toast.tone === "error" && "border-l-4 border-l-destructive",
+          )}
+        >
           <i
             className={`fa-solid ${toast.tone === "error" ? "fa-circle-exclamation" : "fa-circle-check"}`}
-          />
+          />{" "}
           <span>{toast.message}</span>
         </div>
       ))}
@@ -222,26 +255,28 @@ export function MonthPicker({ month, onChange, label }) {
   };
 
   return (
-    <div className="month-picker">
-      <button
+    <div className="flex items-center gap-1 rounded-full bg-muted p-1">
+      <Button
         type="button"
-        className="icon-button"
+        variant="ghost"
+        size="icon-sm"
         onClick={() => shift(-1)}
         aria-label="Previous month"
       >
         <i className="fa-solid fa-chevron-left" />
-      </button>
+      </Button>
 
-      <span className="month-label">{label}</span>
+      <span className="min-w-[92px] text-center text-sm font-semibold">{label}</span>
 
-      <button
+      <Button
         type="button"
-        className="icon-button"
+        variant="ghost"
+        size="icon-sm"
         onClick={() => shift(1)}
         aria-label="Next month"
       >
         <i className="fa-solid fa-chevron-right" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -253,10 +288,17 @@ export function ProgressBar({ value, max, tone, color }) {
     ? ""
     : tone || (percent >= 100 ? "danger" : percent >= 80 ? "warning" : "");
 
+  const toneClass =
+    resolvedTone === "danger"
+      ? "bg-destructive"
+      : resolvedTone === "warning"
+        ? "bg-amber-500"
+        : "bg-foreground";
+
   return (
-    <div className="progress-track">
+    <div className="h-2 overflow-hidden rounded-full bg-muted">
       <div
-        className={`progress-fill ${resolvedTone}`}
+        className={cn("h-full rounded-full transition-[width] duration-250", !color && toneClass)}
         style={{
           width: `${percent}%`,
           ...(color ? { background: color } : null),
@@ -266,6 +308,9 @@ export function ProgressBar({ value, max, tone, color }) {
   );
 }
 
+// A fixed palette for category colour-coding, independent of the
+// light/dark theme tokens — it needs many distinguishable hues, which
+// the semantic token set intentionally doesn't provide. Left unchanged.
 export const DONUT_COLORS = [
   "#6366f1",
   "#f97316",
@@ -283,11 +328,6 @@ export function donutColor(index) {
   return DONUT_COLORS[index % DONUT_COLORS.length];
 }
 
-/*
-  data: [{ id, label, value, color? }]
-  Slices are drawn as dashed strokes on a single circle, rotated so the
-  first slice starts at 12 o'clock.
-*/
 export function DonutChart({
   data,
   size = 176,
@@ -303,7 +343,6 @@ export function DonutChart({
   const radius = (size - thickness) / 2;
   const circumference = 2 * Math.PI * radius;
 
-  // Small visual gap between slices, skipped when there is only one.
   const gap = slices.length > 1 ? 2 : 0;
 
   let offset = 0;
@@ -335,16 +374,13 @@ export function DonutChart({
             cy={center}
             r={radius}
             fill="none"
-            stroke="#e2e8f0"
+            className="stroke-[var(--border)]"
             strokeWidth={thickness}
           />
 
           {slices.map((slice, index) => {
             const length = (slice.value / total) * circumference;
 
-            // Overlap into the next slice by a hair. The next arc is painted on
-            // top of it, so the only visible effect is no seam. The last slice
-            // is left alone so it doesn't paint over the first one's edge.
             const dash =
               index === slices.length - 1
                 ? length
@@ -374,7 +410,7 @@ export function DonutChart({
       {(label || value) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           {value && <div className="text-lg font-semibold">{value}</div>}
-          {label && <div className="text-xs text-slate-500">{label}</div>}
+          {label && <div className="text-xs text-muted-foreground">{label}</div>}
         </div>
       )}
     </div>

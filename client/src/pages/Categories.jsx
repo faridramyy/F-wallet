@@ -13,6 +13,10 @@ import { ReorderButtons, moveItem } from "../components/Reorder";
 import { categorySpending, categoryIncomeReceived } from "../lib/calc";
 import { money, formatMonth, currentMonth } from "../lib/format";
 import CategoryModal from "../modals/CategoryModal";
+import { Button } from "@/components/ui/button";
+
+const dangerIconButton =
+  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
 
 export default function Categories() {
   const {
@@ -86,12 +90,14 @@ export default function Categories() {
       .length;
 
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow">Planning</p>
-          <h2 className="page-title">Categories</h2>
-          <p className="page-description">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Planning
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Categories</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Budgets for what goes out, expectations for what comes in.
           </p>
         </div>
@@ -103,10 +109,10 @@ export default function Categories() {
             label={formatMonth(month)}
           />
 
-          <button type="button" className="primary-button" onClick={openNew}>
+          <Button type="button" onClick={openNew}>
             <i className="fa-solid fa-plus" />
             Add category
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -143,13 +149,9 @@ export default function Categories() {
             title="No expense categories"
             message="Create categories like Groceries or Rent so your spending has somewhere to go."
             action={
-              <button
-                type="button"
-                className="primary-button"
-                onClick={openNew}
-              >
+              <Button type="button" onClick={openNew}>
                 Add a category
-              </button>
+              </Button>
             }
           />
         ) : (
@@ -158,8 +160,11 @@ export default function Categories() {
               const remaining = budget - spent;
 
               return (
-                <div key={category.id} className="category-card">
-                  <div className="category-title-row">
+                <div
+                  key={category.id}
+                  className="rounded-2xl border border-border p-3.5"
+                >
+                  <div className="flex min-w-0 items-center gap-2">
                     <ReorderButtons
                       index={positionOf(category)}
                       total={categories.length}
@@ -167,16 +172,19 @@ export default function Categories() {
                     />
 
                     <span
-                      className="category-dot"
+                      className="size-2.5 shrink-0 rounded-full"
                       style={{ background: "#f87171" }}
                     />
 
-                    <span className="category-name">{category.name}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                      {category.name}
+                    </span>
 
                     <span className="ml-auto flex gap-1">
-                      <button
+                      <Button
                         type="button"
-                        className="icon-button"
+                        variant="ghost"
+                        size="icon-sm"
                         onClick={() => {
                           setEditing(category);
                           setShowModal(true);
@@ -184,33 +192,39 @@ export default function Categories() {
                         aria-label="Edit"
                       >
                         <i className="fa-solid fa-pen" />
-                      </button>
+                      </Button>
 
-                      <button
+                      <Button
                         type="button"
-                        className="icon-button danger"
+                        variant="ghost"
+                        size="icon-sm"
+                        className={dangerIconButton}
                         onClick={() => setConfirming(category)}
                         aria-label="Delete"
                       >
                         <i className="fa-solid fa-trash" />
-                      </button>
+                      </Button>
                     </span>
                   </div>
 
-                  <p className="category-amount">{fmt(spent)}</p>
+                  <p className="mt-2.5 text-lg font-bold tabular-nums tracking-tight">
+                    {fmt(spent)}
+                  </p>
 
                   {budget > 0 ? (
                     <>
-                      <ProgressBar value={spent} max={budget} />
+                      <div className="mt-1.5">
+                        <ProgressBar value={spent} max={budget} />
+                      </div>
 
-                      <p className="mt-1 text-[11px] text-slate-400">
+                      <p className="mt-1 text-[11px] text-muted-foreground">
                         {remaining >= 0
                           ? `${fmt(remaining)} left of ${fmt(budget)}`
                           : `${fmt(Math.abs(remaining))} over ${fmt(budget)}`}
                       </p>
                     </>
                   ) : (
-                    <p className="mt-1 text-[11px] text-slate-400">
+                    <p className="mt-1 text-[11px] text-muted-foreground">
                       No budget set
                     </p>
                   )}
@@ -231,8 +245,11 @@ export default function Categories() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {incomes.map(({ category, received }) => (
-              <div key={category.id} className="category-card">
-                <div className="category-title-row">
+              <div
+                key={category.id}
+                className="rounded-2xl border border-border p-3.5"
+              >
+                <div className="flex min-w-0 items-center gap-2">
                   <ReorderButtons
                     index={positionOf(category)}
                     total={categories.length}
@@ -240,16 +257,19 @@ export default function Categories() {
                   />
 
                   <span
-                    className="category-dot"
+                    className="size-2.5 shrink-0 rounded-full"
                     style={{ background: "#34d399" }}
                   />
 
-                  <span className="category-name">{category.name}</span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                    {category.name}
+                  </span>
 
                   <span className="ml-auto flex gap-1">
-                    <button
+                    <Button
                       type="button"
-                      className="icon-button"
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => {
                         setEditing(category);
                         setShowModal(true);
@@ -257,24 +277,26 @@ export default function Categories() {
                       aria-label="Edit"
                     >
                       <i className="fa-solid fa-pen" />
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
-                      className="icon-button danger"
+                      variant="ghost"
+                      size="icon-sm"
+                      className={dangerIconButton}
                       onClick={() => setConfirming(category)}
                       aria-label="Delete"
                     >
                       <i className="fa-solid fa-trash" />
-                    </button>
+                    </Button>
                   </span>
                 </div>
 
-                <p className="category-amount text-emerald-600">
+                <p className="mt-2.5 text-lg font-bold tabular-nums tracking-tight text-primary">
                   {fmt(received)}
                 </p>
 
-                <p className="mt-0.5 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   {(category.entryMode ||
                     (Number(category.hourlyRate) > 0 ? "hourly" : "fixed")) ===
                   "hourly"
@@ -283,14 +305,14 @@ export default function Categories() {
                 </p>
 
                 {Number(category.hourlyRate) > 0 ? (
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     {fmt(category.hourlyRate)} per hour
                     {Number(category.overtimeRate) > 0
                       ? ` · ${fmt(category.overtimeRate)} overtime`
                       : ""}
                   </p>
                 ) : (
-                  <p className="mt-1 text-[11px] text-slate-400">
+                  <p className="mt-1 text-[11px] text-muted-foreground">
                     No pay rate set
                   </p>
                 )}

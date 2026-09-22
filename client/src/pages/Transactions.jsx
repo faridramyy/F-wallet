@@ -6,6 +6,18 @@ import { describePay } from "../lib/calc";
 import { money, formatDate, formatHours, fold } from "../lib/format";
 import TransactionModal from "../modals/TransactionModal";
 import TransferModal from "../modals/TransferModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const dangerIconButton =
+  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
 
 export default function Transactions({ onEdit }) {
   const {
@@ -139,44 +151,41 @@ export default function Transactions({ onEdit }) {
     toDate;
 
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow">Activity</p>
-          <h2 className="page-title">Transactions</h2>
-          <p className="page-description">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Activity
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             {filtered.length} of {transactions.length} shown
           </p>
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
-            className="secondary-button"
+            variant="outline"
             onClick={() => setShowTransfer(true)}
             disabled={accounts.length < 2}
           >
             <i className="fa-solid fa-right-left" />
             Transfer
-          </button>
+          </Button>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={() => setShowModal(true)}
-          >
+          <Button type="button" onClick={() => setShowModal(true)}>
             <i className="fa-solid fa-plus" />
             Add
-          </button>
+          </Button>
         </div>
       </div>
 
       <Panel>
-        <div className="form-grid mb-4">
+        <div className="mb-4 grid gap-3.5 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Search" className="sm:col-span-2">
-            <input
+            <Input
               type="search"
-              className="input"
               placeholder="Notes, category, account or amount"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -184,52 +193,54 @@ export default function Transactions({ onEdit }) {
           </Field>
 
           <Field label="Type">
-            <select
-              className="input"
-              value={typeFilter}
-              onChange={(event) => setTypeFilter(event.target.value)}
-            >
-              <option value="all">All types</option>
-              <option value="income">Income</option>
-              <option value="expense">Expense</option>
-              <option value="transfer">Transfer</option>
-            </select>
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All types</SelectItem>
+                <SelectItem value="income">Income</SelectItem>
+                <SelectItem value="expense">Expense</SelectItem>
+                <SelectItem value="transfer">Transfer</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field label="Account">
-            <select
-              className="input"
-              value={accountFilter}
-              onChange={(event) => setAccountFilter(event.target.value)}
-            >
-              <option value="all">All accounts</option>
-              {accounts.map((account) => (
-                <option key={account.id} value={account.id}>
-                  {account.name}
-                </option>
-              ))}
-            </select>
+            <Select value={accountFilter} onValueChange={setAccountFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All accounts</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field label="Category">
-            <select
-              className="input"
-              value={categoryFilter}
-              onChange={(event) => setCategoryFilter(event.target.value)}
-            >
-              <option value="all">All categories</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All categories</SelectItem>
+                {categories.map((category) => (
+                  <SelectItem key={category.id} value={category.id}>
+                    {category.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
 
           <Field label="From">
-            <input
+            <Input
               type="date"
-              className="input"
               value={fromDate}
               max={toDate || undefined}
               onChange={(event) => setFromDate(event.target.value)}
@@ -237,9 +248,8 @@ export default function Transactions({ onEdit }) {
           </Field>
 
           <Field label="To">
-            <input
+            <Input
               type="date"
-              className="input"
               value={toDate}
               min={fromDate || undefined}
               onChange={(event) => setToDate(event.target.value)}
@@ -248,14 +258,15 @@ export default function Transactions({ onEdit }) {
         </div>
 
         {filtersActive && (
-          <button
+          <Button
             type="button"
-            className="secondary-button mb-4"
+            variant="outline"
+            className="mb-4"
             onClick={resetFilters}
           >
             <i className="fa-solid fa-filter-circle-xmark" />
             Clear filters
-          </button>
+          </Button>
         )}
 
         {filtered.length === 0 ? (
@@ -273,37 +284,44 @@ export default function Transactions({ onEdit }) {
             }
             action={
               transactions.length === 0 ? (
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => setShowModal(true)}
-                >
+                <Button type="button" onClick={() => setShowModal(true)}>
                   Add a transaction
-                </button>
+                </Button>
               ) : null
             }
           />
         ) : (
           <div>
             {days.map((day) => (
-              <div key={day.date} className="transaction-day">
-                <div className="transaction-day-header">
-                  <span className="transaction-day-label">
+              <div key={day.date} className="mb-1 mt-5 first:mt-0">
+                <div className="flex items-baseline justify-between gap-3 border-b border-border px-0.5 pb-1.5">
+                  <span className="text-[11.5px] font-bold uppercase tracking-wide text-muted-foreground">
                     {formatDate(day.date)}
                   </span>
 
                   {day.net !== 0 && (
-                    <span className="transaction-day-total">
+                    <span className="text-[11.5px] font-semibold tabular-nums text-muted-foreground/70">
                       {day.net > 0 ? "+" : "-"}
                       {fmt(Math.abs(day.net))}
                     </span>
                   )}
                 </div>
 
-                <div>
+                <div className="divide-y divide-border">
                   {day.items.map((transaction) => (
-                    <div key={transaction.id} className="transaction-item">
-                      <span className={`transaction-icon ${transaction.type}`}>
+                    <div
+                      key={transaction.id}
+                      className="flex items-center gap-2.5 py-3"
+                    >
+                      <span
+                        className={`flex size-[39px] shrink-0 items-center justify-center rounded-xl text-base ${
+                          transaction.type === "income"
+                            ? "bg-primary/10 text-primary"
+                            : transaction.type === "expense"
+                              ? "bg-destructive/10 text-destructive"
+                              : "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                        }`}
+                      >
                         <i
                           className={`fa-solid ${
                             transaction.type === "income"
@@ -322,7 +340,7 @@ export default function Transactions({ onEdit }) {
                             : getCategoryName(transaction.categoryId)}
                         </p>
 
-                        <p className="truncate text-[11px] text-slate-400">
+                        <p className="truncate text-[11px] text-muted-foreground">
                           {transaction.type === "transfer"
                             ? "Transfer"
                             : getAccountName(transaction.accountId)}
@@ -342,10 +360,10 @@ export default function Transactions({ onEdit }) {
                         <span
                           className={`text-sm font-bold ${
                             transaction.type === "income"
-                              ? "text-emerald-600"
+                              ? "text-primary"
                               : transaction.type === "expense"
-                                ? "text-red-500"
-                                : "text-slate-500"
+                                ? "text-destructive"
+                                : "text-muted-foreground"
                           }`}
                         >
                           {transaction.type === "expense"
@@ -356,23 +374,26 @@ export default function Transactions({ onEdit }) {
                           {fmt(transaction.amount)}
                         </span>
 
-                        <button
+                        <Button
                           type="button"
-                          className="icon-button"
+                          variant="ghost"
+                          size="icon-sm"
                           onClick={() => onEdit(transaction)}
                           aria-label="Edit"
                         >
                           <i className="fa-solid fa-pen" />
-                        </button>
+                        </Button>
 
-                        <button
+                        <Button
                           type="button"
-                          className="icon-button danger"
+                          variant="ghost"
+                          size="icon-sm"
+                          className={dangerIconButton}
                           onClick={() => setConfirming(transaction)}
                           aria-label="Delete"
                         >
                           <i className="fa-solid fa-trash" />
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   ))}

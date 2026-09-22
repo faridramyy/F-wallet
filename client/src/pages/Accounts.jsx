@@ -19,6 +19,7 @@ import {
 import { money } from "../lib/format";
 import AccountModal from "../modals/AccountModal";
 import TransferModal from "../modals/TransferModal";
+import { Button } from "@/components/ui/button";
 
 const TYPE_ICONS = {
   chequing: "fa-building-columns",
@@ -26,6 +27,9 @@ const TYPE_ICONS = {
   cash: "fa-money-bill-wave",
   credit: "fa-credit-card",
 };
+
+const dangerIconButton =
+  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
 
 export default function Accounts() {
   const {
@@ -71,31 +75,33 @@ export default function Accounts() {
     ).length;
 
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="eyebrow">Money</p>
-          <h2 className="page-title">Accounts</h2>
-          <p className="page-description">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Money
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Accounts</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Every account you track, and what is in it.
           </p>
         </div>
 
         <div className="flex gap-2">
-          <button
+          <Button
             type="button"
-            className="secondary-button"
+            variant="outline"
             onClick={() => setShowTransfer(true)}
             disabled={accounts.length < 2}
           >
             <i className="fa-solid fa-right-left" />
             Transfer
-          </button>
+          </Button>
 
-          <button type="button" className="primary-button" onClick={openNew}>
+          <Button type="button" onClick={openNew}>
             <i className="fa-solid fa-plus" />
             Add account
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -110,7 +116,7 @@ export default function Accounts() {
         <StatCard
           label="Card debt"
           value={
-            <span className="text-red-500">
+            <span className="text-destructive">
               {fmt(creditCardDebt(accounts, transactions))}
             </span>
           }
@@ -131,13 +137,9 @@ export default function Accounts() {
             title="No accounts yet"
             message="Add a chequing account, savings account, cash or a credit card to get started."
             action={
-              <button
-                type="button"
-                className="primary-button"
-                onClick={openNew}
-              >
+              <Button type="button" onClick={openNew}>
                 Add your first account
-              </button>
+              </Button>
             }
           />
         ) : (
@@ -150,23 +152,41 @@ export default function Accounts() {
               const utilization = limit > 0 ? (debt / limit) * 100 : 0;
 
               return (
-                <div key={account.id} className="account-card">
-                  <ReorderButtons
-                    index={index}
-                    total={accounts.length}
-                    onMove={move}
-                  />
+                <div
+                  key={account.id}
+                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 rounded-2xl border border-border p-3.5 transition-colors hover:border-foreground/15 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_auto]"
+                  style={{
+                    gridTemplateAreas:
+                      '"icon main figures" "extra extra extra" "reorder actions actions"',
+                  }}
+                >
+                  <div
+                    className="hidden sm:flex"
+                    style={{ gridArea: "reorder" }}
+                  >
+                    <ReorderButtons
+                      index={index}
+                      total={accounts.length}
+                      onMove={move}
+                    />
+                  </div>
 
-                  <div className="account-icon">
+                  <div
+                    className="flex size-11 items-center justify-center rounded-2xl bg-muted text-lg text-foreground"
+                    style={{ gridArea: "icon" }}
+                  >
                     <i
                       className={`fa-solid ${TYPE_ICONS[account.type] || "fa-wallet"}`}
                     />
                   </div>
 
-                  <div className="account-main">
-                    <p className="account-name">{account.name}</p>
+                  <div
+                    className="flex min-w-0 flex-col gap-0.5"
+                    style={{ gridArea: "main" }}
+                  >
+                    <p className="truncate text-sm font-bold">{account.name}</p>
 
-                    <p className="account-meta">
+                    <p className="truncate text-[11px] text-muted-foreground">
                       <span className="capitalize">{account.type}</span>
                       {account.institution
                         ? ` \u00b7 ${account.institution}`
@@ -177,34 +197,38 @@ export default function Accounts() {
                     </p>
                   </div>
 
-                  <div className="account-figures">
+                  <div
+                    className="whitespace-nowrap text-right"
+                    style={{ gridArea: "figures" }}
+                  >
                     <p
-                      className={`account-balance ${
+                      className={`text-[17px] font-bold tabular-nums ${
                         isCredit
                           ? debt > 0
-                            ? "text-red-500"
-                            : "text-emerald-600"
+                            ? "text-destructive"
+                            : "text-primary"
                           : balance >= 0
                             ? ""
-                            : "text-red-500"
+                            : "text-destructive"
                       }`}
                     >
                       {fmt(balance)}
                     </p>
 
                     {isCredit && (
-                      <p className="account-figures-note">
+                      <p className="mt-px text-[11px] text-muted-foreground">
                         {debt > 0 ? "owing" : "paid off"}
                       </p>
                     )}
                   </div>
 
                   {(!isCredit || (isCredit && limit > 0)) && (
-                    <div className="account-extra">
+                    <div className="min-w-0" style={{ gridArea: "extra" }}>
                       {!isCredit && (
-                        <label className="include-toggle">
+                        <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
                           <input
                             type="checkbox"
+                            className="size-3.5 rounded accent-primary"
                             checked={account.includeInTotal !== false}
                             onChange={(event) =>
                               updateAccount(account.id, {
@@ -234,7 +258,7 @@ export default function Accounts() {
                             }
                           />
 
-                          <p className="account-extra-note">
+                          <p className="mt-1 text-[11px] text-muted-foreground">
                             {fmt(availableCredit(account, transactions))}{" "}
                             available of {fmt(limit)}
                           </p>
@@ -243,24 +267,41 @@ export default function Accounts() {
                     </div>
                   )}
 
-                  <div className="account-actions">
-                    <button
+                  <div
+                    className="flex items-center gap-1 sm:hidden"
+                    style={{ gridArea: "reorder" }}
+                  >
+                    <ReorderButtons
+                      index={index}
+                      total={accounts.length}
+                      onMove={move}
+                    />
+                  </div>
+
+                  <div
+                    className="flex justify-end gap-1"
+                    style={{ gridArea: "actions" }}
+                  >
+                    <Button
                       type="button"
-                      className="icon-button"
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => openEdit(account)}
                       aria-label="Edit"
                     >
                       <i className="fa-solid fa-pen" />
-                    </button>
+                    </Button>
 
-                    <button
+                    <Button
                       type="button"
-                      className="icon-button danger"
+                      variant="ghost"
+                      size="icon-sm"
+                      className={dangerIconButton}
                       onClick={() => setConfirming(account)}
                       aria-label="Delete"
                     >
                       <i className="fa-solid fa-trash" />
-                    </button>
+                    </Button>
                   </div>
                 </div>
               );
@@ -284,7 +325,7 @@ export default function Accounts() {
               <br />
               <br />
               {affectedCount(confirming.id) > 0 ? (
-                <span className="font-semibold text-red-600">
+                <span className="font-semibold text-destructive">
                   This account has {affectedCount(confirming.id)} associated
                   transaction
                   {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it

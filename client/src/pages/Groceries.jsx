@@ -6,10 +6,31 @@ import { money, formatDate, fold } from "../lib/format";
 import { planTrip, knownItemSummaries, daysSince } from "../lib/shopping";
 import { SuggestInput } from "../components/SuggestInput";
 import GroceryModal from "../modals/GroceryModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "cn";
+
+const dangerIconButton =
+  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
 
 const PRICE_TAGS = {
-  offer: { label: "Offer", icon: "fa-percent" },
-  reduced: { label: "Reduced", icon: "fa-arrow-down" },
+  offer: {
+    label: "Offer",
+    icon: "fa-percent",
+    className: "bg-primary/10 text-primary",
+  },
+  reduced: {
+    label: "Reduced",
+    icon: "fa-arrow-down",
+    className: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  },
 };
 
 function PriceTag({ type }) {
@@ -21,7 +42,12 @@ function PriceTag({ type }) {
   if (!tag) return null;
 
   return (
-    <span className={`price-tag ${type}`}>
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide",
+        tag.className,
+      )}
+    >
       <i className={`fa-solid ${tag.icon}`} />
       {tag.label}
     </span>
@@ -45,21 +71,24 @@ export default function Groceries() {
   const fmt = (value) => money(value, { currency });
 
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Shopping</p>
-          <h2 className="page-title">Groceries</h2>
-          <p className="page-description">
-            What you need to buy, and what it costs where.
-          </p>
-        </div>
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <div>
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Shopping
+        </p>
+        <h2 className="text-2xl font-bold tracking-tight">Groceries</h2>
+        <p className="mt-1 text-sm text-muted-foreground">
+          What you need to buy, and what it costs where.
+        </p>
       </div>
 
-      <div className="segmented">
+      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted p-1">
         <button
           type="button"
-          className={`segmented-option ${tab === "buy" ? "active" : ""}`}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold text-muted-foreground transition-colors",
+            tab === "buy" && "bg-card text-foreground shadow-sm",
+          )}
           onClick={() => setTab("buy")}
         >
           <i className="fa-solid fa-list-check" />
@@ -68,7 +97,10 @@ export default function Groceries() {
 
         <button
           type="button"
-          className={`segmented-option ${tab === "prices" ? "active" : ""}`}
+          className={cn(
+            "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold text-muted-foreground transition-colors",
+            tab === "prices" && "bg-card text-foreground shadow-sm",
+          )}
           onClick={() => setTab("prices")}
         >
           <i className="fa-solid fa-tags" />
@@ -152,9 +184,9 @@ function ToBuyTab({
   return (
     <>
       <Panel title="Shopping list" subtitle={`${pending.length} to buy`}>
-        <div className="buy-add-row">
+        <div className="mb-3.5 flex items-start gap-2">
           <SuggestInput
-            className="input flex-1"
+            className="flex-1"
             value={name}
             onChange={setName}
             options={itemOptions}
@@ -162,23 +194,18 @@ function ToBuyTab({
             placeholder="Add an item"
           />
 
-          <input
-            className="input buy-qty"
+          <Input
             type="number"
             min="1"
+            className="w-[68px] shrink-0 text-center"
             value={quantity}
             onChange={(event) => setQuantity(event.target.value)}
             aria-label="Quantity"
           />
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={add}
-            disabled={!name.trim()}
-          >
+          <Button type="button" size="icon" onClick={add} disabled={!name.trim()}>
             <i className="fa-solid fa-plus" />
-          </button>
+          </Button>
         </div>
 
         {shopping.length === 0 ? (
@@ -189,7 +216,7 @@ function ToBuyTab({
           />
         ) : (
           <>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-border">
               {pending.map((item) => (
                 <BuyRow
                   key={item.id}
@@ -202,19 +229,20 @@ function ToBuyTab({
 
             {bought.length > 0 && (
               <>
-                <div className="buy-done-header">
+                <div className="mt-4.5 flex items-center justify-between border-t border-border pt-3 text-[11.5px] font-bold uppercase tracking-wide text-muted-foreground">
                   <span>Bought ({bought.length})</span>
 
-                  <button
+                  <Button
                     type="button"
-                    className="secondary-button"
+                    variant="outline"
+                    size="sm"
                     onClick={() => setConfirmClear(true)}
                   >
                     Clear
-                  </button>
+                  </Button>
                 </div>
 
-                <div className="divide-y divide-slate-100 opacity-60">
+                <div className="divide-y divide-border opacity-60">
                   {bought.map((item) => (
                     <BuyRow
                       key={item.id}
@@ -230,14 +258,14 @@ function ToBuyTab({
         )}
 
         {pending.length > 0 && (
-          <button
+          <Button
             type="button"
-            className="primary-button full-button mt-4"
+            className="mt-4 w-full"
             onClick={() => setPlan(planTrip(shopping, groceries))}
           >
             <i className="fa-solid fa-store" />
             Where should I buy these?
-          </button>
+          </Button>
         )}
       </Panel>
 
@@ -258,14 +286,15 @@ function ToBuyTab({
 
 function BuyRow({ item, onUpdate, onDelete }) {
   return (
-    <div className="buy-item">
-      <label className="buy-check">
+    <div className="flex items-center gap-3 py-2.75">
+      <label className="-m-2.5 flex cursor-pointer p-2.5">
         <input
           type="checkbox"
           checked={Boolean(item.done)}
           onChange={(event) =>
             onUpdate(item.id, { done: event.target.checked })
           }
+          className="relative size-6 shrink-0 appearance-none rounded-full border-2 border-input bg-transparent transition-colors after:absolute after:left-[7px] after:top-1 after:h-2.5 after:w-[5px] after:origin-center after:rotate-45 after:scale-0 after:border-2 after:border-b-white after:border-r-white after:border-l-0 after:border-t-0 after:transition-transform after:duration-150 after:content-[''] checked:border-primary checked:bg-primary checked:after:scale-100 hover:border-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-90"
         />
       </label>
 
@@ -275,23 +304,29 @@ function BuyRow({ item, onUpdate, onDelete }) {
         >
           {item.name}
           {Number(item.quantity) > 1 && (
-            <span className="buy-qty-tag">x{item.quantity}</span>
+            <span className="ml-1.5 inline-flex rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-bold text-muted-foreground">
+              x{item.quantity}
+            </span>
           )}
         </p>
 
         {item.note && (
-          <p className="truncate text-[11px] text-slate-400">{item.note}</p>
+          <p className="truncate text-[11px] text-muted-foreground">
+            {item.note}
+          </p>
         )}
       </div>
 
-      <button
+      <Button
         type="button"
-        className="icon-button danger"
+        variant="ghost"
+        size="icon-sm"
+        className={dangerIconButton}
         onClick={() => onDelete(item.id)}
         aria-label="Remove"
       >
         <i className="fa-solid fa-xmark" />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -302,10 +337,10 @@ function TripPlan({ plan, fmt, onClose }) {
       title="Where to buy"
       subtitle="Based on the regular prices you have logged"
       action={
-        <button type="button" className="secondary-button" onClick={onClose}>
+        <Button type="button" variant="outline" size="sm" onClick={onClose}>
           <i className="fa-solid fa-xmark" />
           Close
-        </button>
+        </Button>
       }
     >
       {plan.matched.length === 0 ? (
@@ -319,13 +354,16 @@ function TripPlan({ plan, fmt, onClose }) {
           <div className="space-y-4">
             {plan.stops.map((stop) => (
               <div key={stop.store}>
-                <div className="plan-stop-header">
+                <div className="flex items-center justify-between border-b border-border pb-1 text-xs font-bold">
                   <span>{stop.store}</span>
                   <span>{fmt(stop.total)}</span>
                 </div>
 
                 {stop.items.map((row) => (
-                  <div key={row.item.id} className="plan-item">
+                  <div
+                    key={row.item.id}
+                    className="flex items-center justify-between gap-3 py-1.75 text-[12.5px]"
+                  >
                     <span className="min-w-0 flex-1 truncate">
                       {row.item.name}
                       {row.quantity > 1 ? ` x${row.quantity}` : ""}
@@ -333,7 +371,9 @@ function TripPlan({ plan, fmt, onClose }) {
 
                     <span
                       className={
-                        row.best.stale ? "text-amber-600" : "text-slate-500"
+                        row.best.stale
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-muted-foreground"
                       }
                     >
                       {fmt(row.best.price)}
@@ -350,12 +390,12 @@ function TripPlan({ plan, fmt, onClose }) {
           </div>
 
           {plan.unknown.length > 0 && (
-            <div className="plan-unknown">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+            <div className="mt-4.5 border-t border-border pt-3.5">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                 No price logged
               </p>
 
-              <p className="mt-1.5 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-muted-foreground">
                 {plan.unknown.map((item) => item.name).join(", ")}
               </p>
             </div>
@@ -376,20 +416,6 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
   const [editing, setEditing] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [confirming, setConfirming] = useState(null);
-
-  const stores = useMemo(
-    () => new Set(groceries.map((entry) => entry.store)).size,
-    [groceries],
-  );
-
-  const average = useMemo(() => {
-    if (groceries.length === 0) return 0;
-
-    return (
-      groceries.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0) /
-      groceries.length
-    );
-  }, [groceries]);
 
   const filtered = useMemo(() => {
     const term = fold(search.trim());
@@ -419,9 +445,8 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
   return (
     <>
       <div className="flex justify-end">
-        <button
+        <Button
           type="button"
-          className="primary-button"
           onClick={() => {
             setEditing(null);
             setShowModal(true);
@@ -429,15 +454,14 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
         >
           <i className="fa-solid fa-plus" />
           Log a price
-        </button>
+        </Button>
       </div>
 
       <Panel>
-        <div className="form-grid mb-4">
+        <div className="mb-4 grid gap-3.5 sm:grid-cols-2">
           <Field label="Search" className="sm:col-span-2">
-            <input
+            <Input
               type="search"
-              className="input"
               placeholder="Item, store or note"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
@@ -445,17 +469,18 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
           </Field>
 
           <Field label="Sort by">
-            <select
-              className="input"
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-            >
-              <option value="recent">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="cheapest">Cheapest first</option>
-              <option value="priciest">Most expensive first</option>
-              <option value="name">Item name</option>
-            </select>
+            <Select value={sort} onValueChange={setSort}>
+              <SelectTrigger className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="recent">Newest first</SelectItem>
+                <SelectItem value="oldest">Oldest first</SelectItem>
+                <SelectItem value="cheapest">Cheapest first</SelectItem>
+                <SelectItem value="priciest">Most expensive first</SelectItem>
+                <SelectItem value="name">Item name</SelectItem>
+              </SelectContent>
+            </Select>
           </Field>
         </div>
 
@@ -474,16 +499,16 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
             }
           />
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-border">
             {filtered.map((entry) => (
-              <div key={entry.id} className="grocery-item">
+              <div key={entry.id} className="flex items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="flex items-center gap-2 truncate text-sm font-semibold">
                     <span className="truncate">{entry.item}</span>
                     <PriceTag type={entry.priceType} />
                   </p>
 
-                  <p className="truncate text-[11px] text-slate-400">
+                  <p className="truncate text-[11px] text-muted-foreground">
                     {entry.store} · {formatDate(entry.date)}
                     {entry.description ? ` · ${entry.description}` : ""}
                   </p>
@@ -492,9 +517,10 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold">{fmt(entry.price)}</span>
 
-                  <button
+                  <Button
                     type="button"
-                    className="icon-button"
+                    variant="ghost"
+                    size="icon-sm"
                     onClick={() => {
                       setEditing(entry);
                       setShowModal(true);
@@ -502,16 +528,18 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
                     aria-label="Edit"
                   >
                     <i className="fa-solid fa-pen" />
-                  </button>
+                  </Button>
 
-                  <button
+                  <Button
                     type="button"
-                    className="icon-button danger"
+                    variant="ghost"
+                    size="icon-sm"
+                    className={dangerIconButton}
                     onClick={() => setConfirming(entry)}
                     aria-label="Delete"
                   >
                     <i className="fa-solid fa-trash" />
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}

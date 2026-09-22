@@ -1,31 +1,15 @@
 import { useMemo, useState } from "react";
 
 import { fold } from "../lib/format";
-
-/*
-  One autosuggest for the whole app.
-
-  This existed twice before, once on the shopping list and once on the
-  price form, with the same matching rules written out separately. Item
-  and store names have to stay consistent for the trip planner to match
-  them, so this is less of a convenience than it looks: it is what keeps
-  the data tidy enough to be useful.
-*/
+import { Input } from "@/components/ui/input";
+import { cn } from "cn";
 
 const MIN_CHARACTERS = 2;
 const MAX_SUGGESTIONS = 5;
 
-/*
-  Names that start with what was typed come before names that merely
-  contain it. Typing "no" should offer No Frills before Sobeys Northgate.
-*/
-
 export function matchSuggestions(options, term) {
   const needle = fold(String(term || "").trim());
 
-  // Nothing until two characters. Dropping a panel over the form the
-  // instant a field is focused hides what the user is working on, and a
-  // single letter matches too much to be worth reading.
   if (needle.length < MIN_CHARACTERS) return [];
 
   const starts = [];
@@ -43,13 +27,6 @@ export function matchSuggestions(options, term) {
 
   return [...starts, ...contains].slice(0, MAX_SUGGESTIONS);
 }
-
-/*
-  Distinct values for a field, most frequently used first.
-
-  Grouped case and accent insensitively so one shop does not appear
-  twice, but the spelling suggested back is the one originally typed.
-*/
 
 export function distinctValues(entries, key, ignore = []) {
   const counts = new Map();
@@ -74,11 +51,10 @@ export function distinctValues(entries, key, ignore = []) {
 }
 
 /*
-  A text input with a suggestion list under it.
-
-  `options` accepts plain strings, or objects of { name, meta } when
-  there is something worth showing alongside the name, such as the
-  cheapest price seen for an item.
+  A shadcn Input with a suggestion list under it. `className` used to
+  default to the old "input" class; the shadcn Input already carries its
+  own base styling, so callers just pass extra classes (e.g. "flex-1")
+  when they need them.
 */
 
 export function SuggestInput({
@@ -86,7 +62,7 @@ export function SuggestInput({
   onChange,
   options,
   placeholder,
-  className = "input",
+  className,
   autoFocus = false,
   onEnter,
   ...rest
@@ -104,8 +80,8 @@ export function SuggestInput({
   };
 
   return (
-    <div className="suggest-field">
-      <input
+    <div className="relative">
+      <Input
         className={className}
         value={value}
         onChange={(event) => onChange(event.target.value)}
@@ -122,13 +98,16 @@ export function SuggestInput({
       />
 
       {focused && suggestions.length > 0 && (
-        <ul className="suggest-list">
+        <ul className="absolute inset-x-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-3xl bg-popover shadow-lg ring-1 ring-foreground/5 dark:ring-foreground/10">
           {suggestions.map((option) => {
             const label = typeof option === "string" ? option : option.name;
             const meta = typeof option === "string" ? null : option.meta;
 
             return (
-              <li key={label}>
+              <li
+                key={label}
+                className="border-t border-border first:border-t-0"
+              >
                 {/*
                   onMouseDown rather than onClick: blur fires first on a
                   click, which would unmount the list before the
@@ -136,13 +115,23 @@ export function SuggestInput({
                 */}
                 <button
                   type="button"
+                  className={cn(
+                    "flex w-full items-baseline justify-between gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-accent",
+                  )}
                   onMouseDown={(event) => {
                     event.preventDefault();
                     pick(option);
                   }}
                 >
-                  <span className="suggest-name">{label}</span>
-                  {meta && <span className="suggest-meta">{meta}</span>}
+                  <span className="min-w-0 truncate text-sm font-medium text-popover-foreground">
+                    {label}
+                  </span>
+
+                  {meta && (
+                    <span className="shrink-0 whitespace-nowrap text-xs text-muted-foreground">
+                      {meta}
+                    </span>
+                  )}
                 </button>
               </li>
             );
