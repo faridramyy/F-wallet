@@ -2,6 +2,15 @@ import { useMemo, useState } from "react";
 
 import { useApp } from "../store";
 import { Modal, Field } from "../components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { calculatePay, DEFAULT_OVERTIME_MULTIPLIER } from "../lib/calc";
 import { money, today, formatHours } from "../lib/format";
 
@@ -61,6 +70,8 @@ export default function TransactionModal({ transaction, onClose }) {
 
   const set = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  const setValue = (key) => (value) =>
+    setForm((current) => ({ ...current, [key]: value }));
   const setPayField = (key) => (event) =>
     setPay((current) => ({ ...current, [key]: event.target.value }));
 
@@ -225,69 +236,69 @@ export default function TransactionModal({ transaction, onClose }) {
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={submit}
-            disabled={saving}
-          >
+          <Button type="button" onClick={submit} disabled={saving}>
             {saving
               ? "Saving..."
               : isEditing
                 ? "Save changes"
                 : "Add transaction"}
-          </button>
+          </Button>
         </>
       }
     >
       <div className="mb-4 grid grid-cols-2 gap-2">
-        {["expense", "income"].map((type) => (
-          <button
-            key={type}
-            type="button"
-            className={`type-toggle ${form.type === type ? "active" : ""} ${type}`}
-            onClick={() => changeType(type)}
-          >
-            <i
-              className={`fa-solid ${type === "income" ? "fa-arrow-down" : "fa-arrow-up"}`}
-            />
-            {type === "income" ? "Income" : "Expense"}
-          </button>
-        ))}
+        <Button
+          type="button"
+          variant={form.type === "expense" ? "destructive" : "outline"}
+          onClick={() => changeType("expense")}
+        >
+          <i className="fa-solid fa-arrow-up" />
+          Expense
+        </Button>
+
+        <Button
+          type="button"
+          variant={form.type === "income" ? "default" : "outline"}
+          onClick={() => changeType("income")}
+        >
+          <i className="fa-solid fa-arrow-down" />
+          Income
+        </Button>
       </div>
 
-      <div className="form-grid">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         {form.type === "income" && (
-          <div className="entry-mode sm:col-span-2">
-            <button
+          <div className="flex gap-2 sm:col-span-2">
+            <Button
               type="button"
-              className={`entry-mode-option ${entryMode === "fixed" ? "active" : ""}`}
+              variant={entryMode === "fixed" ? "default" : "outline"}
+              className="flex-1"
               onClick={() => setEntryMode("fixed")}
             >
               <i className="fa-solid fa-money-bill" />
               Fixed amount
-            </button>
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className={`entry-mode-option ${entryMode === "hourly" ? "active" : ""}`}
+              variant={entryMode === "hourly" ? "default" : "outline"}
+              className="flex-1"
               onClick={() => setEntryMode("hourly")}
             >
               <i className="fa-solid fa-clock" />
               Hourly
-            </button>
+            </Button>
           </div>
         )}
 
         {usePayCalculator ? (
           <>
             <Field label="Hours worked">
-              <input
-                className="input"
+              <Input
                 type="number"
                 step="0.25"
                 min="0"
@@ -298,8 +309,7 @@ export default function TransactionModal({ transaction, onClose }) {
             </Field>
 
             <Field label="Hourly rate">
-              <input
-                className="input"
+              <Input
                 type="number"
                 step="0.01"
                 min="0"
@@ -310,8 +320,7 @@ export default function TransactionModal({ transaction, onClose }) {
             </Field>
 
             <Field label="Overtime hours">
-              <input
-                className="input"
+              <Input
                 type="number"
                 step="0.25"
                 min="0"
@@ -322,8 +331,7 @@ export default function TransactionModal({ transaction, onClose }) {
             </Field>
 
             <Field label="Overtime multiplier">
-              <input
-                className="input"
+              <Input
                 type="number"
                 step="0.1"
                 min="1"
@@ -332,9 +340,9 @@ export default function TransactionModal({ transaction, onClose }) {
               />
             </Field>
 
-            <div className="pay-summary sm:col-span-2">
+            <div className="rounded-2xl bg-muted p-3 sm:col-span-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">
+                <span className="text-muted-foreground">
                   {formatHours(payResult.totalHours)} hours
                   {payResult.overtimePay > 0
                     ? ` · OT at ${fmt(payResult.overtimeRate)}`
@@ -347,7 +355,7 @@ export default function TransactionModal({ transaction, onClose }) {
               </div>
 
               {payResult.overtimePay > 0 && (
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   {fmt(payResult.regularPay)} regular +{" "}
                   {fmt(payResult.overtimePay)} overtime
                 </p>
@@ -356,8 +364,7 @@ export default function TransactionModal({ transaction, onClose }) {
           </>
         ) : (
           <Field label="Amount" className="sm:col-span-2">
-            <input
-              className="input"
+            <Input
               type="number"
               step="0.01"
               min="0"
@@ -370,56 +377,53 @@ export default function TransactionModal({ transaction, onClose }) {
         )}
 
         <Field label="Account">
-          <select
-            className="input"
-            value={form.accountId}
-            onChange={set("accountId")}
-          >
-            <option value="">Select an account</option>
-
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
+          <Select value={form.accountId} onValueChange={setValue("accountId")}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select an account" />
+            </SelectTrigger>
+            <SelectContent>
+              {accounts.map((account) => (
+                <SelectItem key={account.id} value={account.id}>
+                  {account.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
 
         <Field label="Category">
-          <select
-            className="input"
+          <Select
             value={form.categoryId}
-            onChange={(event) => {
-              set("categoryId")(event);
-              applyCategoryDefaults(event.target.value);
+            onValueChange={(value) => {
+              setValue("categoryId")(value);
+              applyCategoryDefaults(value);
             }}
           >
-            <option value="">
-              {availableCategories.length === 0
-                ? `No ${form.type} categories yet`
-                : "Select a category"}
-            </option>
-
-            {availableCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={
+                  availableCategories.length === 0
+                    ? `No ${form.type} categories yet`
+                    : "Select a category"
+                }
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {availableCategories.map((category) => (
+                <SelectItem key={category.id} value={category.id}>
+                  {category.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
 
         <Field label="Date">
-          <input
-            className="input"
-            type="date"
-            value={form.date}
-            onChange={set("date")}
-          />
+          <Input type="date" value={form.date} onChange={set("date")} />
         </Field>
 
         <Field label="Note">
-          <input
-            className="input"
+          <Input
             value={form.notes}
             onChange={set("notes")}
             placeholder="Optional"
@@ -428,7 +432,7 @@ export default function TransactionModal({ transaction, onClose }) {
 
         {error && (
           <div className="sm:col-span-2">
-            <p className="form-error">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
       </div>

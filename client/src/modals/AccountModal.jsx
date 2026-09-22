@@ -2,6 +2,15 @@ import { useState } from "react";
 
 import { useApp } from "../store";
 import { Modal, Field } from "../components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 import { accountBalance } from "../lib/calc";
 import { round2 } from "../lib/format";
 
@@ -35,8 +44,14 @@ export default function AccountModal({ account, onClose }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // For native inputs: reads event.target.value, same as before.
   const set = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+
+  // For the Select: Base UI hands back the value directly, not an event,
+  // so this is a separate helper rather than reusing `set`.
+  const setValue = (key) => (value) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
   const submit = async () => {
     setError("");
@@ -124,25 +139,19 @@ export default function AccountModal({ account, onClose }) {
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={submit}
-            disabled={saving}
-          >
+          <Button type="button" onClick={submit} disabled={saving}>
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add account"}
-          </button>
+          </Button>
         </>
       }
     >
-      <div className="form-grid">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         <Field label="Account name" className="sm:col-span-2">
-          <input
-            className="input"
+          <Input
             value={form.name}
             onChange={set("name")}
             placeholder="Everyday chequing"
@@ -151,18 +160,22 @@ export default function AccountModal({ account, onClose }) {
         </Field>
 
         <Field label="Type">
-          <select className="input" value={form.type} onChange={set("type")}>
-            {TYPES.map((type) => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
-          </select>
+          <Select value={form.type} onValueChange={setValue("type")}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TYPES.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </Field>
 
         <Field label="Institution">
-          <input
-            className="input"
+          <Input
             value={form.institution}
             onChange={set("institution")}
             placeholder="RBC"
@@ -170,8 +183,7 @@ export default function AccountModal({ account, onClose }) {
         </Field>
 
         <Field label="Last 4 digits">
-          <input
-            className="input"
+          <Input
             value={form.lastFour}
             onChange={set("lastFour")}
             inputMode="numeric"
@@ -183,8 +195,7 @@ export default function AccountModal({ account, onClose }) {
         <Field
           label={form.type === "credit" ? "Starting debt" : "Starting balance"}
         >
-          <input
-            className="input"
+          <Input
             type="number"
             step="0.01"
             min="0"
@@ -197,8 +208,7 @@ export default function AccountModal({ account, onClose }) {
         {form.type === "credit" && (
           <>
             <Field label="Credit limit">
-              <input
-                className="input"
+              <Input
                 type="number"
                 step="0.01"
                 min="0"
@@ -210,15 +220,14 @@ export default function AccountModal({ account, onClose }) {
 
             {isEditing && (
               <Field label="Current balance owing" className="sm:col-span-2">
-                <input
-                  className="input"
+                <Input
                   type="number"
                   step="0.01"
                   value={form.currentBalance}
                   onChange={set("currentBalance")}
                 />
 
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   Set this to match your statement. Your transactions are kept
                   and the starting debt is adjusted to fit.
                 </p>
@@ -229,7 +238,7 @@ export default function AccountModal({ account, onClose }) {
 
         {error && (
           <div className="sm:col-span-2">
-            <p className="form-error">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
       </div>

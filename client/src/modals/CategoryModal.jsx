@@ -2,6 +2,15 @@ import { useState } from "react";
 
 import { useApp } from "../store";
 import { Modal, Field } from "../components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+} from "@/components/ui/select";
 
 export default function CategoryModal({ category, onClose }) {
   const { createCategory, updateCategory } = useApp();
@@ -27,6 +36,8 @@ export default function CategoryModal({ category, onClose }) {
 
   const set = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  const setValue = (key) => (value) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
   const submit = async () => {
     setError("");
@@ -88,25 +99,19 @@ export default function CategoryModal({ category, onClose }) {
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={submit}
-            disabled={saving}
-          >
+          <Button type="button" onClick={submit} disabled={saving}>
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add category"}
-          </button>
+          </Button>
         </>
       }
     >
-      <div className="form-grid">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         <Field label="Category name" className="sm:col-span-2">
-          <input
-            className="input"
+          <Input
             value={form.name}
             onChange={set("name")}
             placeholder="Groceries"
@@ -115,16 +120,20 @@ export default function CategoryModal({ category, onClose }) {
         </Field>
 
         <Field label="Type">
-          <select className="input" value={form.type} onChange={set("type")}>
-            <option value="expense">Expense</option>
-            <option value="income">Income</option>
-          </select>
+          <Select value={form.type} onValueChange={setValue("type")}>
+            <SelectTrigger className="w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="expense">Expense</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+            </SelectContent>
+          </Select>
         </Field>
 
         {form.type === "expense" ? (
           <Field label="Monthly budget">
-            <input
-              className="input"
+            <Input
               type="number"
               step="0.01"
               min="0"
@@ -139,31 +148,33 @@ export default function CategoryModal({ category, onClose }) {
               label="How is this income entered?"
               className="sm:col-span-2"
             >
-              <div className="entry-mode">
-                <button
+              <div className="flex gap-2">
+                <Button
                   type="button"
-                  className={`entry-mode-option ${form.entryMode === "fixed" ? "active" : ""}`}
+                  variant={form.entryMode === "fixed" ? "default" : "outline"}
+                  className="flex-1"
                   onClick={() =>
                     setForm((current) => ({ ...current, entryMode: "fixed" }))
                   }
                 >
                   <i className="fa-solid fa-money-bill" />
                   Fixed amount
-                </button>
+                </Button>
 
-                <button
+                <Button
                   type="button"
-                  className={`entry-mode-option ${form.entryMode === "hourly" ? "active" : ""}`}
+                  variant={form.entryMode === "hourly" ? "default" : "outline"}
+                  className="flex-1"
                   onClick={() =>
                     setForm((current) => ({ ...current, entryMode: "hourly" }))
                   }
                 >
                   <i className="fa-solid fa-clock" />
                   Hourly
-                </button>
+                </Button>
               </div>
 
-              <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
                 This sets how the transaction form opens for this category.
                 Fixed suits bonuses, gifts and refunds. You can still switch
                 modes on any individual transaction.
@@ -172,8 +183,7 @@ export default function CategoryModal({ category, onClose }) {
 
             {form.entryMode === "fixed" ? (
               <Field label="Usual amount" className="sm:col-span-2">
-                <input
-                  className="input"
+                <Input
                   type="number"
                   step="0.01"
                   min="0"
@@ -182,7 +192,7 @@ export default function CategoryModal({ category, onClose }) {
                   placeholder="0.00"
                 />
 
-                <p className="mt-1 text-[11px] text-slate-400">
+                <p className="mt-1 text-[11px] text-muted-foreground">
                   Optional. If this income is usually the same amount, it will
                   be filled in for you. Leave blank to type it each time.
                 </p>
@@ -190,8 +200,7 @@ export default function CategoryModal({ category, onClose }) {
             ) : (
               <>
                 <Field label="Rate per hour">
-                  <input
-                    className="input"
+                  <Input
                     type="number"
                     step="0.01"
                     min="0"
@@ -202,8 +211,7 @@ export default function CategoryModal({ category, onClose }) {
                 </Field>
 
                 <Field label="Rate per overtime hour">
-                  <input
-                    className="input"
+                  <Input
                     type="number"
                     step="0.01"
                     min="0"
@@ -213,7 +221,7 @@ export default function CategoryModal({ category, onClose }) {
                   />
                 </Field>
 
-                <p className="text-[11px] text-slate-400 sm:col-span-2">
+                <p className="text-[11px] text-muted-foreground sm:col-span-2">
                   Both rates are filled in for you when you log income in this
                   category.
                 </p>
@@ -224,7 +232,7 @@ export default function CategoryModal({ category, onClose }) {
 
         {error && (
           <div className="sm:col-span-2">
-            <p className="form-error">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
       </div>

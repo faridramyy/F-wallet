@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 
 import { useApp } from "../store";
 import { Modal, Field } from "../components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { SuggestInput, distinctValues } from "../components/SuggestInput";
 import { today } from "../lib/format";
 
@@ -87,22 +89,17 @@ export default function GroceryModal({ grocery, onClose }) {
       onClose={onClose}
       footer={
         <>
-          <button type="button" className="secondary-button" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose}>
             Cancel
-          </button>
+          </Button>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={submit}
-            disabled={saving}
-          >
+          <Button type="button" onClick={submit} disabled={saving}>
             {saving ? "Saving..." : isEditing ? "Save changes" : "Add price"}
-          </button>
+          </Button>
         </>
       }
     >
-      <div className="form-grid">
+      <div className="grid gap-3.5 sm:grid-cols-2">
         <Field label="Item" className="sm:col-span-2">
           <SuggestInput
             value={form.item}
@@ -116,8 +113,7 @@ export default function GroceryModal({ grocery, onClose }) {
         </Field>
 
         <Field label="Price">
-          <input
-            className="input"
+          <Input
             type="number"
             step="0.01"
             min="0"
@@ -128,12 +124,13 @@ export default function GroceryModal({ grocery, onClose }) {
         </Field>
 
         <Field label="Price type" className="sm:col-span-2">
-          <div className="segmented">
+          <div className="flex gap-2">
             {PRICE_TYPES.map((option) => (
-              <button
+              <Button
                 key={option.value}
                 type="button"
-                className={`segmented-option ${form.priceType === option.value ? "active" : ""}`}
+                variant={form.priceType === option.value ? "default" : "outline"}
+                className="flex-1"
                 onClick={() =>
                   setForm((current) => ({
                     ...current,
@@ -143,11 +140,11 @@ export default function GroceryModal({ grocery, onClose }) {
               >
                 <i className={`fa-solid ${option.icon}`} />
                 {option.label}
-              </button>
+              </Button>
             ))}
           </div>
 
-          <p className="mt-1.5 text-[11px] leading-relaxed text-slate-400">
+          <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
             Only regular prices are compared across stores. Offers and markdowns
             are still logged and searchable.
           </p>
@@ -165,17 +162,11 @@ export default function GroceryModal({ grocery, onClose }) {
         </Field>
 
         <Field label="Date">
-          <input
-            className="input"
-            type="date"
-            value={form.date}
-            onChange={set("date")}
-          />
+          <Input type="date" value={form.date} onChange={set("date")} />
         </Field>
 
         <Field label="Note" className="sm:col-span-2">
-          <input
-            className="input"
+          <Input
             value={form.description}
             onChange={set("description")}
             placeholder="On sale until Sunday"
@@ -184,7 +175,7 @@ export default function GroceryModal({ grocery, onClose }) {
 
         {error && (
           <div className="sm:col-span-2">
-            <p className="form-error">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           </div>
         )}
       </div>
