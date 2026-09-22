@@ -379,8 +379,14 @@ export default function TransactionModal({ transaction, onClose }) {
         <Field label="Account">
           <Select value={form.accountId} onValueChange={setValue("accountId")}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select an account" />
+              <SelectValue placeholder="Select an account">
+                {
+                  accounts.find((account) => account.id === form.accountId)
+                    ?.name
+                }
+              </SelectValue>
             </SelectTrigger>
+
             <SelectContent>
               {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
@@ -406,7 +412,13 @@ export default function TransactionModal({ transaction, onClose }) {
                     ? `No ${form.type} categories yet`
                     : "Select a category"
                 }
-              />
+              >
+                {
+                  availableCategories.find(
+                    (category) => category.id === form.categoryId,
+                  )?.name
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {availableCategories.map((category) => (

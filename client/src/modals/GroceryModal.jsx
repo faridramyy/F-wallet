@@ -129,7 +129,9 @@ export default function GroceryModal({ grocery, onClose }) {
               <Button
                 key={option.value}
                 type="button"
-                variant={form.priceType === option.value ? "default" : "outline"}
+                variant={
+                  form.priceType === option.value ? "default" : "outline"
+                }
                 className="flex-1"
                 onClick={() =>
                   setForm((current) => ({

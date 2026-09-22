@@ -152,7 +152,7 @@ export default function Layout({ children, onQuickAdd }) {
         type="button"
         onClick={onQuickAdd}
         aria-label="Add transaction"
-        className="fixed bottom-[calc(74px+env(safe-area-inset-bottom)+14px)] right-[18px] z-[45] flex size-14 items-center justify-center rounded-[18px] bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95 lg:bottom-7 lg:right-7"
+        className="fixed bottom-[calc(74px+env(safe-area-inset-bottom)+14px)] right-4.5 z-45 flex size-14 items-center justify-center rounded-[18px] bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95 lg:bottom-7 lg:right-7"
       >
         <i className="fa-solid fa-plus text-xl" />
       </button>
@@ -164,7 +164,7 @@ export default function Layout({ children, onQuickAdd }) {
             to={item.to}
             className={({ isActive }) =>
               cn(
-                "flex min-h-[62px] flex-col items-center justify-center gap-0.5 text-muted-foreground",
+                "flex min-h-15.5 flex-col items-center justify-center gap-0.5 text-muted-foreground",
                 isActive && "text-foreground",
               )
             }

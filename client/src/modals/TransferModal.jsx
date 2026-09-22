@@ -129,8 +129,14 @@ export default function TransferModal({ transfer, onClose }) {
             onValueChange={setValue("fromAccountId")}
           >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder="Select account">
+                {
+                  accounts.find((account) => account.id === form.fromAccountId)
+                    ?.name
+                }
+              </SelectValue>
             </SelectTrigger>
+
             <SelectContent>
               {accounts.map((account) => (
                 <SelectItem key={account.id} value={account.id}>
@@ -158,9 +164,17 @@ export default function TransferModal({ transfer, onClose }) {
         </div>
 
         <Field label="To" className="sm:col-span-2">
-          <Select value={form.toAccountId} onValueChange={setValue("toAccountId")}>
+          <Select
+            value={form.toAccountId}
+            onValueChange={setValue("toAccountId")}
+          >
             <SelectTrigger className="w-full">
-              <SelectValue />
+              <SelectValue placeholder="Select account">
+                {
+                  accounts.find((account) => account.id === form.toAccountId)
+                    ?.name
+                }
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               {accounts.map((account) => (

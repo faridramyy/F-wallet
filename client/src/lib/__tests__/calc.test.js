@@ -12,8 +12,18 @@ import {
 } from "../calc";
 
 const chequing = { id: "a1", type: "chequing", startingBalance: 1000 };
-const savings = { id: "a2", type: "savings", startingBalance: 5000, includeInTotal: false };
-const visa = { id: "a3", type: "credit", startingBalance: 0, creditLimit: 2000 };
+const savings = {
+  id: "a2",
+  type: "savings",
+  startingBalance: 5000,
+  includeInTotal: false,
+};
+const visa = {
+  id: "a3",
+  type: "credit",
+  startingBalance: 0,
+  creditLimit: 2000,
+};
 
 describe("accountBalance", () => {
   it("subtracts expenses and adds income on a normal account", () => {
@@ -36,16 +46,24 @@ describe("accountBalance", () => {
   it("treats a transfer into a credit card as a payment", () => {
     const balance = accountBalance(visa, [
       { type: "expense", accountId: "a3", amount: 300, date: "2026-09-01" },
-      { type: "transfer", fromAccountId: "a1", toAccountId: "a3", amount: 100, date: "2026-09-02" },
+      {
+        type: "transfer",
+        fromAccountId: "a1",
+        toAccountId: "a3",
+        amount: 100,
+        date: "2026-09-02",
+      },
     ]);
 
     expect(balance).toBe(200);
   });
 
   it("ignores transactions belonging to other accounts", () => {
-    expect(accountBalance(chequing, [
-      { type: "expense", accountId: "a3", amount: 999, date: "2026-09-01" },
-    ])).toBe(1000);
+    expect(
+      accountBalance(chequing, [
+        { type: "expense", accountId: "a3", amount: 999, date: "2026-09-01" },
+      ]),
+    ).toBe(1000);
   });
 });
 
@@ -60,7 +78,9 @@ describe("normalAccountTotal", () => {
 });
 
 describe("credit cards", () => {
-  const spent = [{ type: "expense", accountId: "a3", amount: 500, date: "2026-09-01" }];
+  const spent = [
+    { type: "expense", accountId: "a3", amount: 500, date: "2026-09-01" },
+  ];
 
   it("reports debt as a positive number", () => {
     expect(creditCardDebt([visa], spent)).toBe(500);
@@ -68,7 +88,13 @@ describe("credit cards", () => {
 
   it("never reports negative debt when a card is overpaid", () => {
     const overpaid = [
-      { type: "transfer", fromAccountId: "a1", toAccountId: "a3", amount: 100, date: "2026-09-01" },
+      {
+        type: "transfer",
+        fromAccountId: "a1",
+        toAccountId: "a3",
+        amount: 100,
+        date: "2026-09-01",
+      },
     ];
 
     expect(creditCardDebt([visa], overpaid)).toBe(0);
@@ -85,7 +111,12 @@ describe("calculatePay", () => {
   });
 
   it("applies the multiplier to overtime only", () => {
-    const result = calculatePay({ hours: 10, rate: 20, overtimeHours: 2, overtimeMultiplier: 1.5 });
+    const result = calculatePay({
+      hours: 10,
+      rate: 20,
+      overtimeHours: 2,
+      overtimeMultiplier: 1.5,
+    });
 
     expect(result.total).toBe(260);
     expect(result.overtimePay).toBe(60);

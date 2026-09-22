@@ -314,7 +314,7 @@ export default function Transactions({ onEdit }) {
                       className="flex items-center gap-2.5 py-3"
                     >
                       <span
-                        className={`flex size-[39px] shrink-0 items-center justify-center rounded-xl text-base ${
+                        className={`flex size-9.75 shrink-0 items-center justify-center rounded-xl text-base ${
                           transaction.type === "income"
                             ? "bg-primary/10 text-primary"
                             : transaction.type === "expense"

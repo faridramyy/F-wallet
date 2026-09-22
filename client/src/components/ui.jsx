@@ -4,13 +4,23 @@ import { useApp } from "../store";
 import { cn } from "cn";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 
 export function Panel({ title, subtitle, action, children, className = "" }) {
   return (
     <Card className={className}>
       {(title || action) && (
-        <CardHeader className={action ? "flex-row items-start justify-between gap-3" : undefined}>
+        <CardHeader
+          className={
+            action ? "flex-row items-start justify-between gap-3" : undefined
+          }
+        >
           <div>
             {title && <CardTitle>{title}</CardTitle>}
             {subtitle && <CardDescription>{subtitle}</CardDescription>}
@@ -30,18 +40,31 @@ export function StatCard({ label, value, help, tone = "", className = "" }) {
   // so "positive"/"negative" tones map directly onto tokens that already
   // exist rather than needing their own emerald-600/red-500 overrides.
   const toneClass =
-    tone === "positive" ? "text-primary" : tone === "negative" ? "text-destructive" : "";
+    tone === "positive"
+      ? "text-primary"
+      : tone === "negative"
+        ? "text-destructive"
+        : "";
 
   return (
     <Card size="sm" className={className}>
       <CardContent>
         <div className="text-xs font-medium text-muted-foreground">{label}</div>
 
-        <div className={cn("mt-1.5 truncate text-lg font-semibold tracking-tight sm:text-xl", toneClass)}>
+        <div
+          className={cn(
+            "mt-1.5 truncate text-lg font-semibold tracking-tight sm:text-xl",
+            toneClass,
+          )}
+        >
           {value}
         </div>
 
-        {help && <div className="mt-1 text-[10px] text-muted-foreground/70">{help}</div>}
+        {help && (
+          <div className="mt-1 text-[10px] text-muted-foreground/70">
+            {help}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
@@ -67,7 +90,7 @@ export function EmptyState({ icon = "fa-inbox", title, message, action }) {
       <p className="text-sm font-semibold">{title}</p>
 
       {message && (
-        <p className="mx-auto mt-1 max-w-[330px] text-xs leading-relaxed text-muted-foreground">
+        <p className="mx-auto mt-1 max-w-82.5 text-xs leading-relaxed text-muted-foreground">
           {message}
         </p>
       )}
@@ -110,7 +133,7 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-foreground/50 animate-in fade-in duration-200 sm:items-center sm:p-5"
+      className="fixed inset-0 z-25 flex items-end justify-center bg-foreground/50 animate-in fade-in duration-200 sm:items-center sm:p-5"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
@@ -140,7 +163,10 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
           onTouchMove={(event) => {
             if (startY.current === null) return;
 
-            const distance = Math.max(0, event.touches[0].clientY - startY.current);
+            const distance = Math.max(
+              0,
+              event.touches[0].clientY - startY.current,
+            );
 
             setDragOffset(distance);
           }}
@@ -158,7 +184,7 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
           <span className="h-1 w-9 rounded-full bg-border" />
         </div>
 
-        <div className="sticky top-0 z-[2] flex items-center justify-between border-b bg-card px-4.5 py-4">
+        <div className="sticky top-0 z-2 flex items-center justify-between border-b bg-card px-4.5 py-4">
           <h3 className="text-base font-semibold">{title}</h3>
 
           <Button
@@ -175,7 +201,9 @@ export function Modal({ title, onClose, children, footer, wide = false }) {
         <div className="p-4.5">{children}</div>
 
         {footer && (
-          <div className="flex gap-2 border-t px-4.5 py-3.5 [&>*]:flex-1">{footer}</div>
+          <div className="flex gap-2 border-t px-4.5 py-3.5 [*:flex-1">
+            {footer}
+          </div>
         )}
       </div>
     </div>
@@ -212,7 +240,9 @@ export function ConfirmModal({
         </>
       }
     >
-      <div className="text-sm leading-relaxed text-muted-foreground">{message}</div>
+      <div className="text-sm leading-relaxed text-muted-foreground">
+        {message}
+      </div>
     </Modal>
   );
 }
@@ -223,7 +253,7 @@ export function Toasts() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-3.5 bottom-20 z-[200] flex flex-col gap-2 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-[340px]">
+    <div className="pointer-events-none fixed inset-x-3.5 bottom-20 z-200 flex flex-col gap-2 sm:inset-x-auto sm:bottom-5 sm:right-5 sm:w-85">
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -266,7 +296,9 @@ export function MonthPicker({ month, onChange, label }) {
         <i className="fa-solid fa-chevron-left" />
       </Button>
 
-      <span className="min-w-[92px] text-center text-sm font-semibold">{label}</span>
+      <span className="min-w-23 text-center text-sm font-semibold">
+        {label}
+      </span>
 
       <Button
         type="button"
@@ -298,7 +330,10 @@ export function ProgressBar({ value, max, tone, color }) {
   return (
     <div className="h-2 overflow-hidden rounded-full bg-muted">
       <div
-        className={cn("h-full rounded-full transition-[width] duration-250", !color && toneClass)}
+        className={cn(
+          "h-full rounded-full transition-[width] duration-250",
+          !color && toneClass,
+        )}
         style={{
           width: `${percent}%`,
           ...(color ? { background: color } : null),
@@ -374,7 +409,7 @@ export function DonutChart({
             cy={center}
             r={radius}
             fill="none"
-            className="stroke-[var(--border)]"
+            className="stroke-border"
             strokeWidth={thickness}
           />
 
@@ -410,7 +445,9 @@ export function DonutChart({
       {(label || value) && (
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           {value && <div className="text-lg font-semibold">{value}</div>}
-          {label && <div className="text-xs text-muted-foreground">{label}</div>}
+          {label && (
+            <div className="text-xs text-muted-foreground">{label}</div>
+          )}
         </div>
       )}
     </div>

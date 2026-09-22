@@ -197,13 +197,18 @@ function ToBuyTab({
           <Input
             type="number"
             min="1"
-            className="w-[68px] shrink-0 text-center"
+            className="w-17 shrink-0 text-center"
             value={quantity}
             onChange={(event) => setQuantity(event.target.value)}
             aria-label="Quantity"
           />
 
-          <Button type="button" size="icon" onClick={add} disabled={!name.trim()}>
+          <Button
+            type="button"
+            size="icon"
+            onClick={add}
+            disabled={!name.trim()}
+          >
             <i className="fa-solid fa-plus" />
           </Button>
         </div>
@@ -294,7 +299,7 @@ function BuyRow({ item, onUpdate, onDelete }) {
           onChange={(event) =>
             onUpdate(item.id, { done: event.target.checked })
           }
-          className="relative size-6 shrink-0 appearance-none rounded-full border-2 border-input bg-transparent transition-colors after:absolute after:left-[7px] after:top-1 after:h-2.5 after:w-[5px] after:origin-center after:rotate-45 after:scale-0 after:border-2 after:border-b-white after:border-r-white after:border-l-0 after:border-t-0 after:transition-transform after:duration-150 after:content-[''] checked:border-primary checked:bg-primary checked:after:scale-100 hover:border-muted-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-90"
+          className="relative size-6 shrink-0 appearance-none rounded-full border-2 border-input bg-transparent transition-colors after:absolute after:left-1.75 after:top-1 after:h-2.5 after:w-1.25 after:origin-center after:rotate-45 after:scale-0 after:border-2 after:border-b-white after:border-r-white after:border-l-0 after:border-t-0 after:transition-transform after:duration-150 after:content-[''] checked:border-primary checked:bg-primary checked:after:scale-100 hover:border-muted-foreground focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-90"
         />
       </label>
 

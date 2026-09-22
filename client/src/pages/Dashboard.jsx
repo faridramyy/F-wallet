@@ -227,7 +227,8 @@ export default function Dashboard({ onEditTransaction }) {
                   className="flex-1 rounded-t-sm"
                   style={{
                     height: `${Math.max(4, (Math.abs(net) / max) * 100)}%`,
-                    background: net >= 0 ? "var(--primary)" : "var(--destructive)",
+                    background:
+                      net >= 0 ? "var(--primary)" : "var(--destructive)",
                   }}
                   title={`${formatMonth(item.month)}: ${fmtSigned(net)}`}
                 />
@@ -235,7 +236,9 @@ export default function Dashboard({ onEditTransaction }) {
             })}
           </div>
 
-          <p className="mt-2 text-[10px] text-muted-foreground">Last 6 months</p>
+          <p className="mt-2 text-[10px] text-muted-foreground">
+            Last 6 months
+          </p>
 
           {transfers > 0 && (
             <p className="mt-3 text-[11px] text-muted-foreground">
@@ -524,7 +527,7 @@ export default function Dashboard({ onEditTransaction }) {
                 onClick={() => onEditTransaction(transaction)}
               >
                 <span
-                  className={`flex size-[39px] shrink-0 items-center justify-center rounded-xl text-base ${
+                  className={`flex size-9.75 shrink-0 items-center justify-center rounded-xl text-base ${
                     transaction.type === "income"
                       ? "bg-primary/10 text-primary"
                       : transaction.type === "expense"
@@ -623,7 +626,8 @@ function CashFlowChart({ trend, currency }) {
 
       <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2.5 rounded-sm bg-primary" /> Income
+          <span className="inline-block size-2.5 rounded-sm bg-primary" />{" "}
+          Income
         </span>
 
         <span className="flex items-center gap-1.5">
