@@ -1,11 +1,18 @@
 import { useState } from "react";
+import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 
 import { useApp } from "../store";
 import BrandLogo from "../components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 
 export default function Login() {
   const { login } = useApp();
@@ -31,12 +38,16 @@ export default function Login() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="flex flex-row items-center gap-3">
+      <Card className="w-full max-w-sm border shadow-sm">
+        <CardHeader className="flex flex-row items-center gap-3 pb-4">
           <BrandLogo />
           <div>
-            <h1 className="text-lg font-bold tracking-tight">F-Wallet</h1>
-            <p className="text-xs text-muted-foreground">Personal Finance</p>
+            <CardTitle className="text-lg font-bold tracking-tight">
+              F-Wallet
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Personal Finance
+            </CardDescription>
           </div>
         </CardHeader>
 
@@ -56,36 +67,44 @@ export default function Login() {
                   className="pr-10"
                 />
 
-                {/*
-                  tabIndex -1 keeps the toggle out of the tab order, so tabbing
-                  from the password field lands on Sign in rather than here.
-                  aria-label changes with state so a screen reader announces what
-                  the button will do, not what it did.
-                */}
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground"
+                  className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
                   onClick={() => setRevealed((current) => !current)}
                   tabIndex={-1}
                   aria-label={revealed ? "Hide password" : "Show password"}
                 >
-                  <i
-                    className={`fa-solid ${revealed ? "fa-eye-slash" : "fa-eye"}`}
-                  />
+                  {revealed ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+              {error && (
+                <p className="text-xs font-medium text-destructive">{error}</p>
+              )}
             </div>
 
             <Button
               type="submit"
-              className="w-full"
+              className="w-full gap-2"
               disabled={busy || !password}
             >
-              {busy ? "Checking..." : "Sign in"}
+              {busy ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Checking...
+                </>
+              ) : (
+                <>
+                  <Lock className="h-4 w-4" />
+                  Sign in
+                </>
+              )}
             </Button>
 
             <p className="text-[11px] leading-relaxed text-muted-foreground">
