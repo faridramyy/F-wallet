@@ -100,44 +100,6 @@ function EmptyState({ icon: Icon, title, message }) {
   );
 }
 
-function ConfirmModal({
-  title,
-  message,
-  confirmLabel = "Confirm",
-  onConfirm,
-  onClose,
-}) {
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          {message && (
-            <DialogDescription className="text-sm text-muted-foreground">
-              {message}
-            </DialogDescription>
-          )}
-        </DialogHeader>
-        <DialogFooter className="flex gap-2 sm:justify-end">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-          >
-            {confirmLabel}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
 export default function Groceries() {
   const {
     groceries,
@@ -350,15 +312,36 @@ function ToBuyDrawerContent({
 
       {plan && <TripPlan plan={plan} fmt={fmt} onClose={() => setPlan(null)} />}
 
-      {confirmClear && (
-        <ConfirmModal
-          title="Clear bought items?"
-          message={`This removes ${bought.length} item${bought.length === 1 ? "" : "s"} from the list.`}
-          confirmLabel="Clear"
-          onConfirm={onClearBought}
-          onClose={() => setConfirmClear(false)}
-        />
-      )}
+      <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Clear bought items?</DialogTitle>
+            <DialogDescription>
+              This removes {bought.length} item{bought.length === 1 ? "" : "s"}{" "}
+              from the list.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmClear(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                onClearBought();
+                setConfirmClear(false);
+              }}
+            >
+              Clear
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -642,19 +625,41 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
         <GroceryModal grocery={editing} onClose={() => setShowModal(false)} />
       )}
 
-      {confirming && (
-        <ConfirmModal
-          title="Delete price entry?"
-          message={
-            <>
-              This will remove <strong>{confirming.item}</strong> from{" "}
-              {confirming.store} on {formatDate(confirming.date)}.
-            </>
-          }
-          onConfirm={() => deleteGrocery(confirming.id)}
-          onClose={() => setConfirming(null)}
-        />
-      )}
+      <Dialog
+        open={Boolean(confirming)}
+        onOpenChange={(open) => !open && setConfirming(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete price entry?</DialogTitle>
+            {confirming && (
+              <DialogDescription className="text-sm text-muted-foreground">
+                This will remove <strong>{confirming.item}</strong> from{" "}
+                {confirming.store} on {formatDate(confirming.date)}.
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (confirming) deleteGrocery(confirming.id);
+                setConfirming(null);
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

@@ -347,12 +347,6 @@ export default function Dashboard({ onEditTransaction }) {
               </CardTitle>
               <CardDescription>{formatMonth(month)}</CardDescription>
             </div>
-            <Link
-              to="/categories"
-              className={buttonVariants({ variant: "outline", size: "xs" })}
-            >
-              Manage
-            </Link>
           </CardHeader>
           <CardContent>
             {breakdown.rows.length === 0 ? (
@@ -426,12 +420,6 @@ export default function Dashboard({ onEditTransaction }) {
               </CardTitle>
               <CardDescription>Your monthly spending plan</CardDescription>
             </div>
-            <Link
-              to="/categories"
-              className={buttonVariants({ variant: "outline", size: "xs" })}
-            >
-              Edit
-            </Link>
           </CardHeader>
           <CardContent>
             {budgets.length === 0 ? (
@@ -493,12 +481,6 @@ export default function Dashboard({ onEditTransaction }) {
               </CardTitle>
               <CardDescription>{accounts.length} tracked</CardDescription>
             </div>
-            <Link
-              to="/accounts"
-              className={buttonVariants({ variant: "outline", size: "xs" })}
-            >
-              View all
-            </Link>
           </CardHeader>
           <CardContent>
             {accounts.length === 0 ? (
@@ -644,12 +626,6 @@ export default function Dashboard({ onEditTransaction }) {
             </CardTitle>
             <CardDescription>Your latest transactions</CardDescription>
           </div>
-          <Link
-            to="/transactions"
-            className={buttonVariants({ variant: "outline", size: "xs" })}
-          >
-            View all
-          </Link>
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
