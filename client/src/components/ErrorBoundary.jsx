@@ -1,4 +1,5 @@
 import { Component } from "react";
+import { TriangleAlert } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 
@@ -28,7 +29,7 @@ export default class ErrorBoundary extends Component {
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 bg-background p-6 text-center">
-        <i className="fa-solid fa-triangle-exclamation text-2xl text-amber-500" />
+        <TriangleAlert className="size-6 text-amber-500" />
 
         <p className="text-sm font-semibold">Something went wrong</p>
 

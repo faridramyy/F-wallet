@@ -1,13 +1,41 @@
 import { useMemo, useState } from "react";
+import {
+  Percent,
+  ArrowDown,
+  ListChecks,
+  ShoppingCart,
+  Plus,
+  X,
+  Store,
+  HelpCircle,
+  ShoppingBag,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 
 import { useApp } from "../store";
-import { Panel, EmptyState, ConfirmModal, Field } from "../components/ui";
 import { money, formatDate, fold } from "../lib/format";
 import { planTrip, knownItemSummaries, daysSince } from "../lib/shopping";
 import { SuggestInput } from "../components/SuggestInput";
 import GroceryModal from "../modals/GroceryModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -15,6 +43,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { cn } from "cn";
 
 const dangerIconButton =
@@ -23,23 +58,22 @@ const dangerIconButton =
 const PRICE_TAGS = {
   offer: {
     label: "Offer",
-    icon: "fa-percent",
+    icon: Percent,
     className: "bg-primary/10 text-primary",
   },
   reduced: {
     label: "Reduced",
-    icon: "fa-arrow-down",
+    icon: ArrowDown,
     className: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
   },
 };
 
 function PriceTag({ type }) {
-  // Regular prices get no tag. Marking the common case adds noise to
-  // every row without telling you anything. A missing type means the
-  // entry predates price types, which means it was a regular price.
   const tag = PRICE_TAGS[type];
 
   if (!tag) return null;
+
+  const Icon = tag.icon;
 
   return (
     <span
@@ -48,9 +82,59 @@ function PriceTag({ type }) {
         tag.className,
       )}
     >
-      <i className={`fa-solid ${tag.icon}`} />
+      <Icon className="size-3" />
       {tag.label}
     </span>
+  );
+}
+
+function EmptyState({ icon: Icon, title, message }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-10 text-center">
+      {Icon && <Icon className="mb-3 size-8 text-muted-foreground/60" />}
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {message && (
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{message}</p>
+      )}
+    </div>
+  );
+}
+
+function ConfirmModal({
+  title,
+  message,
+  confirmLabel = "Confirm",
+  onConfirm,
+  onClose,
+}) {
+  return (
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          {message && (
+            <DialogDescription className="text-sm text-muted-foreground">
+              {message}
+            </DialogDescription>
+          )}
+        </DialogHeader>
+        <DialogFooter className="flex gap-2 sm:justify-end">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            onClick={() => {
+              onConfirm();
+              onClose();
+            }}
+          >
+            {confirmLabel}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -66,74 +150,82 @@ export default function Groceries() {
     clearBoughtItems,
   } = useApp();
 
-  const [tab, setTab] = useState("buy");
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const fmt = (value) => money(value, { currency });
+  const pendingCount = shopping.filter((item) => !item.done).length;
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
-      <div>
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Shopping
-        </p>
-        <h2 className="text-2xl font-bold tracking-tight">Groceries</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          What you need to buy, and what it costs where.
-        </p>
+    <div className="relative animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Shopping
+          </p>
+          <h2 className="text-2xl font-bold tracking-tight">Groceries</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            What you need to buy, and what it costs where.
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-1.5 rounded-2xl bg-muted p-1">
-        <button
-          type="button"
-          className={cn(
-            "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold text-muted-foreground transition-colors",
-            tab === "buy" && "bg-card text-foreground shadow-sm",
-          )}
-          onClick={() => setTab("buy")}
-        >
-          <i className="fa-solid fa-list-check" />
-          To buy
-        </button>
+      {/* Vertical Side-Tab Drawer Trigger */}
+      <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            className="fixed right-0 top-1/2 z-40 flex origin-bottom-right -translate-y-1/2 -rotate-90 items-center gap-2 rounded-t-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Open shopping list"
+          >
+            <ListChecks className="size-4" />
+            <span>To buy</span>
+            {pendingCount > 0 && (
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-background text-[11px] font-bold text-foreground">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </SheetTrigger>
 
-        <button
-          type="button"
-          className={cn(
-            "flex items-center justify-center gap-1.5 rounded-xl px-2 py-2.5 text-xs font-semibold text-muted-foreground transition-colors",
-            tab === "prices" && "bg-card text-foreground shadow-sm",
-          )}
-          onClick={() => setTab("prices")}
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
         >
-          <i className="fa-solid fa-tags" />
-          Prices
-        </button>
-      </div>
+          <SheetHeader className="border-b border-border p-4">
+            <SheetTitle className="flex items-center gap-2">
+              <ShoppingCart className="size-5 text-primary" />
+              Shopping List
+            </SheetTitle>
+          </SheetHeader>
 
-      {tab === "buy" ? (
-        <ToBuyTab
-          shopping={shopping}
-          groceries={groceries}
-          fmt={fmt}
-          onCreate={createShoppingItem}
-          onUpdate={updateShoppingItem}
-          onDelete={deleteShoppingItem}
-          onClearBought={clearBoughtItems}
-        />
-      ) : (
-        <PricesTab
-          groceries={groceries}
-          fmt={fmt}
-          deleteGrocery={deleteGrocery}
-        />
-      )}
+          <div className="flex-1 overflow-y-auto p-4">
+            <ToBuyDrawerContent
+              shopping={shopping}
+              groceries={groceries}
+              fmt={fmt}
+              onCreate={createShoppingItem}
+              onUpdate={updateShoppingItem}
+              onDelete={deleteShoppingItem}
+              onClearBought={clearBoughtItems}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <PricesTab
+        groceries={groceries}
+        fmt={fmt}
+        deleteGrocery={deleteGrocery}
+      />
     </div>
   );
 }
 
 /* ---------------------------------------------------------
-   To buy
+   To Buy Drawer Content
 --------------------------------------------------------- */
 
-function ToBuyTab({
+function ToBuyDrawerContent({
   shopping = [],
   groceries = [],
   fmt,
@@ -146,15 +238,6 @@ function ToBuyTab({
   const [quantity, setQuantity] = useState("1");
   const [plan, setPlan] = useState(null);
   const [confirmClear, setConfirmClear] = useState(false);
-
-  /*
-    Suggesting names already used is what makes the trip planner work.
-    "Milk 4L" and "milk" are different items as far as matching goes, so
-    keeping spelling consistent matters more than it looks.
-
-    The cheapest known price rides along as meta, so picking a name also
-    tells you roughly what it costs and where.
-  */
 
   const itemOptions = useMemo(
     () =>
@@ -176,103 +259,94 @@ function ToBuyTab({
 
     setName("");
     setQuantity("1");
-    // The plan is now out of date, so drop it rather than showing a
-    // result that does not include what was just added.
     setPlan(null);
   };
 
   return (
-    <>
-      <Panel title="Shopping list" subtitle={`${pending.length} to buy`}>
-        <div className="mb-3.5 flex items-start gap-2">
-          <SuggestInput
-            className="flex-1"
-            value={name}
-            onChange={setName}
-            options={itemOptions}
-            onEnter={add}
-            placeholder="Add an item"
-          />
+    <div className="space-y-4">
+      <div className="flex items-start gap-2">
+        <SuggestInput
+          className="flex-1"
+          value={name}
+          onChange={setName}
+          options={itemOptions}
+          onEnter={add}
+          placeholder="Add an item"
+        />
 
-          <Input
-            type="number"
-            min="1"
-            className="w-17 shrink-0 text-center"
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-            aria-label="Quantity"
-          />
+        <Input
+          type="number"
+          min="1"
+          className="w-16 shrink-0 text-center"
+          value={quantity}
+          onChange={(event) => setQuantity(event.target.value)}
+          aria-label="Quantity"
+        />
 
-          <Button
-            type="button"
-            size="icon"
-            onClick={add}
-            disabled={!name.trim()}
-          >
-            <i className="fa-solid fa-plus" />
-          </Button>
-        </div>
+        <Button type="button" size="icon" onClick={add} disabled={!name.trim()}>
+          <Plus className="size-4" />
+        </Button>
+      </div>
 
-        {shopping.length === 0 ? (
-          <EmptyState
-            icon="fa-list-check"
-            title="Nothing on the list"
-            message="Add what you need and the app will work out where to buy it."
-          />
-        ) : (
-          <>
-            <div className="divide-y divide-border">
-              {pending.map((item) => (
-                <BuyRow
-                  key={item.id}
-                  item={item}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                />
-              ))}
-            </div>
+      {shopping.length === 0 ? (
+        <EmptyState
+          icon={ListChecks}
+          title="Nothing on the list"
+          message="Add what you need and the app will work out where to buy it."
+        />
+      ) : (
+        <>
+          <div className="divide-y divide-border">
+            {pending.map((item) => (
+              <BuyRow
+                key={item.id}
+                item={item}
+                onUpdate={onUpdate}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
 
-            {bought.length > 0 && (
-              <>
-                <div className="mt-4.5 flex items-center justify-between border-t border-border pt-3 text-[11.5px] font-bold uppercase tracking-wide text-muted-foreground">
-                  <span>Bought ({bought.length})</span>
+          {bought.length > 0 && (
+            <>
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[11.5px] font-bold uppercase tracking-wide text-muted-foreground">
+                <span>Bought ({bought.length})</span>
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setConfirmClear(true)}
-                  >
-                    Clear
-                  </Button>
-                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setConfirmClear(true)}
+                >
+                  Clear
+                </Button>
+              </div>
 
-                <div className="divide-y divide-border opacity-60">
-                  {bought.map((item) => (
-                    <BuyRow
-                      key={item.id}
-                      item={item}
-                      onUpdate={onUpdate}
-                      onDelete={onDelete}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
+              <div className="divide-y divide-border opacity-60">
+                {bought.map((item) => (
+                  <BuyRow
+                    key={item.id}
+                    item={item}
+                    onUpdate={onUpdate}
+                    onDelete={onDelete}
+                  />
+                ))}
+              </div>
+            </>
+          )}
+        </>
+      )}
 
-        {pending.length > 0 && (
-          <Button
-            type="button"
-            className="mt-4 w-full"
-            onClick={() => setPlan(planTrip(shopping, groceries))}
-          >
-            <i className="fa-solid fa-store" />
-            Where should I buy these?
-          </Button>
-        )}
-      </Panel>
+      {pending.length > 0 && (
+        <Button
+          type="button"
+          className="w-full"
+          onClick={() => setPlan(planTrip(shopping, groceries))}
+        >
+          <Store className="mr-1.5 size-4" />
+          Where should I buy these?
+        </Button>
+      )}
 
       {plan && <TripPlan plan={plan} fmt={fmt} onClose={() => setPlan(null)} />}
 
@@ -285,21 +359,21 @@ function ToBuyTab({
           onClose={() => setConfirmClear(false)}
         />
       )}
-    </>
+    </div>
   );
 }
 
 function BuyRow({ item, onUpdate, onDelete }) {
   return (
-    <div className="flex items-center gap-3 py-2.75">
-      <label className="-m-2.5 flex cursor-pointer p-2.5">
+    <div className="flex items-center gap-3 py-2.5">
+      <label className="-m-2 flex cursor-pointer p-2">
         <input
           type="checkbox"
           checked={Boolean(item.done)}
           onChange={(event) =>
             onUpdate(item.id, { done: event.target.checked })
           }
-          className="relative size-6 shrink-0 appearance-none rounded-full border-2 border-input bg-transparent transition-colors after:absolute after:left-1.75 after:top-1 after:h-2.5 after:w-1.25 after:origin-center after:rotate-45 after:scale-0 after:border-2 after:border-b-white after:border-r-white after:border-l-0 after:border-t-0 after:transition-transform after:duration-150 after:content-[''] checked:border-primary checked:bg-primary checked:after:scale-100 hover:border-muted-foreground focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-90"
+          className="relative size-5 shrink-0 appearance-none rounded-full border-2 border-input bg-transparent transition-colors after:absolute after:left-1.5 after:top-0.5 after:h-2 after:w-1.25 after:origin-center after:rotate-45 after:scale-0 after:border-2 after:border-b-white after:border-r-white after:border-l-0 after:border-t-0 after:transition-transform after:duration-150 after:content-[''] checked:border-primary checked:bg-primary checked:after:scale-100 hover:border-muted-foreground focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-90"
         />
       </label>
 
@@ -325,12 +399,12 @@ function BuyRow({ item, onUpdate, onDelete }) {
       <Button
         type="button"
         variant="ghost"
-        size="icon-sm"
-        className={dangerIconButton}
+        size="icon"
+        className={cn("size-8", dangerIconButton)}
         onClick={() => onDelete(item.id)}
         aria-label="Remove"
       >
-        <i className="fa-solid fa-xmark" />
+        <X className="size-4" />
       </Button>
     </div>
   );
@@ -338,76 +412,82 @@ function BuyRow({ item, onUpdate, onDelete }) {
 
 function TripPlan({ plan, fmt, onClose }) {
   return (
-    <Panel
-      title="Where to buy"
-      subtitle="Based on the regular prices you have logged"
-      action={
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <div>
+          <CardTitle className="text-base font-bold">Where to buy</CardTitle>
+          <CardDescription className="text-xs">
+            Based on the regular prices you have logged
+          </CardDescription>
+        </div>
         <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          <i className="fa-solid fa-xmark" />
+          <X className="mr-1 size-3.5" />
           Close
         </Button>
-      }
-    >
-      {plan.matched.length === 0 ? (
-        <EmptyState
-          icon="fa-circle-question"
-          title="No prices logged for these items"
-          message="Log what you pay on the Prices tab and this will start working."
-        />
-      ) : (
-        <>
-          <div className="space-y-4">
-            {plan.stops.map((stop) => (
-              <div key={stop.store}>
-                <div className="flex items-center justify-between border-b border-border pb-1 text-xs font-bold">
-                  <span>{stop.store}</span>
-                  <span>{fmt(stop.total)}</span>
-                </div>
+      </CardHeader>
 
-                {stop.items.map((row) => (
-                  <div
-                    key={row.item.id}
-                    className="flex items-center justify-between gap-3 py-1.75 text-[12.5px]"
-                  >
-                    <span className="min-w-0 flex-1 truncate">
-                      {row.item.name}
-                      {row.quantity > 1 ? ` x${row.quantity}` : ""}
-                    </span>
-
-                    <span
-                      className={
-                        row.best.stale
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-muted-foreground"
-                      }
-                    >
-                      {fmt(row.best.price)}
-                      {row.best.stale && (
-                        <span className="ml-1 text-[10px]">
-                          ({Math.round(daysSince(row.best.date) / 30)}mo old)
-                        </span>
-                      )}
-                    </span>
+      <CardContent className="pt-2">
+        {plan.matched.length === 0 ? (
+          <EmptyState
+            icon={HelpCircle}
+            title="No prices logged for these items"
+            message="Log what you pay on the Prices tab and this will start working."
+          />
+        ) : (
+          <>
+            <div className="space-y-4">
+              {plan.stops.map((stop) => (
+                <div key={stop.store}>
+                  <div className="flex items-center justify-between border-b border-border pb-1 text-xs font-bold">
+                    <span>{stop.store}</span>
+                    <span>{fmt(stop.total)}</span>
                   </div>
-                ))}
-              </div>
-            ))}
-          </div>
 
-          {plan.unknown.length > 0 && (
-            <div className="mt-4.5 border-t border-border pt-3.5">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                No price logged
-              </p>
+                  {stop.items.map((row) => (
+                    <div
+                      key={row.item.id}
+                      className="flex items-center justify-between gap-3 py-1.5 text-[12.5px]"
+                    >
+                      <span className="min-w-0 flex-1 truncate">
+                        {row.item.name}
+                        {row.quantity > 1 ? ` x${row.quantity}` : ""}
+                      </span>
 
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {plan.unknown.map((item) => item.name).join(", ")}
-              </p>
+                      <span
+                        className={
+                          row.best.stale
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-muted-foreground"
+                        }
+                      >
+                        {fmt(row.best.price)}
+                        {row.best.stale && (
+                          <span className="ml-1 text-[10px]">
+                            ({Math.round(daysSince(row.best.date) / 30)}mo old)
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
-          )}
-        </>
-      )}
-    </Panel>
+
+            {plan.unknown.length > 0 && (
+              <div className="mt-4 border-t border-border pt-3.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  No price logged
+                </p>
+
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {plan.unknown.map((item) => item.name).join(", ")}
+                </p>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -438,8 +518,6 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
       oldest: (a, b) => a.date.localeCompare(b.date),
       cheapest: (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0),
       priciest: (a, b) => (Number(b.price) || 0) - (Number(a.price) || 0),
-      // sensitivity "base" ignores case and accents, so "apples" and
-      // "Apples" sort together instead of in separate blocks.
       name: (a, b) =>
         a.item.localeCompare(b.item, undefined, { sensitivity: "base" }),
     };
@@ -457,100 +535,108 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
             setShowModal(true);
           }}
         >
-          <i className="fa-solid fa-plus" />
+          <Plus className="mr-1.5 size-4" />
           Log a price
         </Button>
       </div>
 
-      <Panel>
-        <div className="mb-4 grid gap-3.5 sm:grid-cols-2">
-          <Field label="Search" className="sm:col-span-2">
-            <Input
-              type="search"
-              placeholder="Item, store or note"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-          </Field>
+      <Card>
+        <CardContent className="pt-6">
+          <div className="mb-4 grid gap-3.5 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label htmlFor="search">Search</Label>
+              <Input
+                id="search"
+                type="search"
+                placeholder="Item, store or note"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+            </div>
 
-          <Field label="Sort by">
-            <Select value={sort} onValueChange={setSort}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recent">Newest first</SelectItem>
-                <SelectItem value="oldest">Oldest first</SelectItem>
-                <SelectItem value="cheapest">Cheapest first</SelectItem>
-                <SelectItem value="priciest">Most expensive first</SelectItem>
-                <SelectItem value="name">Item name</SelectItem>
-              </SelectContent>
-            </Select>
-          </Field>
-        </div>
-
-        {filtered.length === 0 ? (
-          <EmptyState
-            icon="fa-basket-shopping"
-            title={
-              groceries.length === 0
-                ? "No prices logged"
-                : "Nothing matches that search"
-            }
-            message={
-              groceries.length === 0
-                ? "Log what you paid for an item and where, and the To buy tab will tell you where it is cheapest."
-                : "Try a different search term."
-            }
-          />
-        ) : (
-          <div className="divide-y divide-border">
-            {filtered.map((entry) => (
-              <div key={entry.id} className="flex items-center gap-3 py-3">
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 truncate text-sm font-semibold">
-                    <span className="truncate">{entry.item}</span>
-                    <PriceTag type={entry.priceType} />
-                  </p>
-
-                  <p className="truncate text-[11px] text-muted-foreground">
-                    {entry.store} · {formatDate(entry.date)}
-                    {entry.description ? ` · ${entry.description}` : ""}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold">{fmt(entry.price)}</span>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    onClick={() => {
-                      setEditing(entry);
-                      setShowModal(true);
-                    }}
-                    aria-label="Edit"
-                  >
-                    <i className="fa-solid fa-pen" />
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    className={dangerIconButton}
-                    onClick={() => setConfirming(entry)}
-                    aria-label="Delete"
-                  >
-                    <i className="fa-solid fa-trash" />
-                  </Button>
-                </div>
-              </div>
-            ))}
+            <div className="space-y-1.5">
+              <Label htmlFor="sort">Sort by</Label>
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger id="sort" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="recent">Newest first</SelectItem>
+                  <SelectItem value="oldest">Oldest first</SelectItem>
+                  <SelectItem value="cheapest">Cheapest first</SelectItem>
+                  <SelectItem value="priciest">Most expensive first</SelectItem>
+                  <SelectItem value="name">Item name</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-        )}
-      </Panel>
+
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={ShoppingBag}
+              title={
+                groceries.length === 0
+                  ? "No prices logged"
+                  : "Nothing matches that search"
+              }
+              message={
+                groceries.length === 0
+                  ? "Log what you paid for an item and where, and the To buy list will tell you where it is cheapest."
+                  : "Try a different search term."
+              }
+            />
+          ) : (
+            <div className="divide-y divide-border">
+              {filtered.map((entry) => (
+                <div key={entry.id} className="flex items-center gap-3 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 truncate text-sm font-semibold">
+                      <span className="truncate">{entry.item}</span>
+                      <PriceTag type={entry.priceType} />
+                    </p>
+
+                    <p className="truncate text-[11px] text-muted-foreground">
+                      {entry.store} · {formatDate(entry.date)}
+                      {entry.description ? ` · ${entry.description}` : ""}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold">
+                      {fmt(entry.price)}
+                    </span>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-8"
+                      onClick={() => {
+                        setEditing(entry);
+                        setShowModal(true);
+                      }}
+                      aria-label="Edit"
+                    >
+                      <Pencil className="size-4" />
+                    </Button>
+
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className={cn("size-8", dangerIconButton)}
+                      onClick={() => setConfirming(entry)}
+                      aria-label="Delete"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {showModal && (
         <GroceryModal grocery={editing} onClose={() => setShowModal(false)} />

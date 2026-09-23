@@ -95,7 +95,7 @@ export default function GroceryModal({ grocery, onClose }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-125">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? "Edit price entry" : "Log a price"}

@@ -13,20 +13,16 @@ import {
 
 import { useApp } from "../store";
 import {
-  EmptyState,
-  ConfirmModal,
-  MonthPicker,
-  ProgressBar,
-} from "../components/ui";
-import {
   SortableList,
   SortableItem,
   DragHandle,
   reorderWithin,
 } from "../components/Reorder";
+import { MonthPicker } from "@/components/MonthPicker";
 import { categorySpending, categoryIncomeReceived } from "../lib/calc";
 import { money, formatMonth, currentMonth } from "../lib/format";
 import CategoryModal from "../modals/CategoryModal";
+
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -35,6 +31,17 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Categories() {
   const {
@@ -207,17 +214,22 @@ export default function Categories() {
         </CardHeader>
         <CardContent>
           {expenses.length === 0 ? (
-            <EmptyState
-              icon={Layers}
-              title="No expense categories"
-              message="Create categories like Groceries or Rent so your spending has somewhere to go."
-              action={
-                <Button type="button" onClick={openNew} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add a category
-                </Button>
-              }
-            />
+            <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Layers className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mt-4 text-base font-semibold">
+                No expense categories
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+                Create categories like Groceries or Rent so your spending has
+                somewhere to go.
+              </p>
+              <Button type="button" onClick={openNew} className="mt-6 gap-2">
+                <Plus className="h-4 w-4" />
+                Add a category
+              </Button>
+            </div>
           ) : (
             <SortableList
               ids={expenses.map((row) => row.category.id)}
@@ -227,6 +239,7 @@ export default function Categories() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {expenses.map(({ category, spent, budget }) => {
                   const remaining = budget - spent;
+                  const percentSpent = budget > 0 ? (spent / budget) * 100 : 0;
 
                   return (
                     <SortableItem key={category.id} id={category.id}>
@@ -283,7 +296,16 @@ export default function Categories() {
                             {budget > 0 ? (
                               <>
                                 <div className="mt-1.5">
-                                  <ProgressBar value={spent} max={budget} />
+                                  <Progress
+                                    value={Math.min(percentSpent, 100)}
+                                    className={`h-2 ${
+                                      percentSpent > 100
+                                        ? "[&>div]:bg-destructive"
+                                        : percentSpent >= 85
+                                          ? "[&>div]:bg-amber-500"
+                                          : ""
+                                    }`}
+                                  />
                                 </div>
 
                                 <p className="mt-1 text-[11px] text-muted-foreground">
@@ -327,11 +349,18 @@ export default function Categories() {
         </CardHeader>
         <CardContent>
           {incomes.length === 0 ? (
-            <EmptyState
-              icon={Coins}
-              title="No income categories"
-              message="Add categories like Salary or Freelance to track what you expect to earn."
-            />
+            <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Coins className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mt-4 text-base font-semibold">
+                No income categories
+              </h3>
+              <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+                Add categories like Salary or Freelance to track what you expect
+                to earn.
+              </p>
+            </div>
           ) : (
             <SortableList
               ids={incomes.map((row) => row.category.id)}
@@ -427,28 +456,47 @@ export default function Categories() {
         <CategoryModal category={editing} onClose={() => setShowModal(false)} />
       )}
 
-      {confirming && (
-        <ConfirmModal
-          title="Delete category?"
-          message={
-            <>
-              You are about to delete <strong>{confirming.name}</strong>.
-              <br />
-              <br />
-              {usageCount(confirming.id) > 0
-                ? `${usageCount(confirming.id)} transaction${
-                    usageCount(confirming.id) === 1 ? "" : "s"
-                  } use this category and will become uncategorized.`
-                : "No transactions currently use this category."}
-              <br />
-              <br />
-              This cannot be undone.
-            </>
-          }
-          onConfirm={() => deleteCategory(confirming.id)}
-          onClose={() => setConfirming(null)}
-        />
-      )}
+      <AlertDialog
+        open={Boolean(confirming)}
+        onOpenChange={(open) => !open && setConfirming(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete category?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  You are about to delete <strong>{confirming?.name}</strong>.
+                </p>
+                {confirming && usageCount(confirming.id) > 0 ? (
+                  <p className="font-semibold text-destructive">
+                    {usageCount(confirming.id)} transaction
+                    {usageCount(confirming.id) === 1 ? "" : "s"} use this
+                    category and will become uncategorized.
+                  </p>
+                ) : (
+                  <p>No transactions currently use this category.</p>
+                )}
+                <p>This cannot be undone.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirming) {
+                  deleteCategory(confirming.id);
+                  setConfirming(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

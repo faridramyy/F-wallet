@@ -15,6 +15,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { GripVertical } from "lucide-react";
 
 import { cn } from "cn";
 
@@ -115,7 +116,7 @@ export function DragHandle({ attributes, listeners, isDragging, className }) {
       {...attributes}
       {...listeners}
     >
-      <i className="fa-solid fa-grip-vertical" />
+      <GripVertical className="size-4" />
     </button>
   );
 }

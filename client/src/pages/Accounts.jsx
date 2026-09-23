@@ -9,13 +9,11 @@ import {
   Pencil,
   Trash2,
   Wallet,
-  ShieldAlert,
   TrendingDown,
   Scale,
 } from "lucide-react";
 
 import { useApp } from "../store";
-import { EmptyState, ConfirmModal, ProgressBar } from "../components/ui";
 import { SortableList, SortableItem, DragHandle } from "../components/Reorder";
 import {
   accountBalance,
@@ -27,6 +25,7 @@ import {
 import { money } from "../lib/format";
 import AccountModal from "../modals/AccountModal";
 import TransferModal from "../modals/TransferModal";
+
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -37,6 +36,17 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const TYPE_ICONS = {
   chequing: Landmark,
@@ -201,17 +211,20 @@ export default function Accounts() {
 
         <CardContent>
           {accounts.length === 0 ? (
-            <EmptyState
-              icon={Wallet}
-              title="No accounts yet"
-              message="Add a chequing account, savings account, cash or a credit card to get started."
-              action={
-                <Button type="button" onClick={openNew} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add your first account
-                </Button>
-              }
-            />
+            <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Wallet className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mt-4 text-base font-semibold">No accounts yet</h3>
+              <p className="mt-1 text-sm text-muted-foreground max-w-sm">
+                Add a chequing account, savings account, cash or a credit card
+                to get started.
+              </p>
+              <Button type="button" onClick={openNew} className="mt-6 gap-2">
+                <Plus className="h-4 w-4" />
+                Add your first account
+              </Button>
+            </div>
           ) : (
             <SortableList
               ids={accounts.map((account) => account.id)}
@@ -333,16 +346,15 @@ export default function Accounts() {
 
                                 {isCredit && limit > 0 && (
                                   <>
-                                    <ProgressBar
-                                      value={utilization}
-                                      max={100}
-                                      tone={
+                                    <Progress
+                                      value={Math.min(utilization, 100)}
+                                      className={`h-2 ${
                                         utilization >= 70
-                                          ? "danger"
+                                          ? "[&>div]:bg-destructive"
                                           : utilization >= 30
-                                            ? "warning"
+                                            ? "[&>div]:bg-amber-500"
                                             : ""
-                                      }
+                                      }`}
                                     />
 
                                     <p className="mt-1 text-[11px] text-muted-foreground">
@@ -400,33 +412,48 @@ export default function Accounts() {
 
       {showTransfer && <TransferModal onClose={() => setShowTransfer(false)} />}
 
-      {confirming && (
-        <ConfirmModal
-          title="Delete account?"
-          message={
-            <>
-              You are about to delete <strong>{confirming.name}</strong>.
-              <br />
-              <br />
-              {affectedCount(confirming.id) > 0 ? (
-                <span className="font-semibold text-destructive">
-                  This account has {affectedCount(confirming.id)} associated
-                  transaction
-                  {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it
-                  will also delete them.
-                </span>
-              ) : (
-                "This account has no associated transactions."
-              )}
-              <br />
-              <br />
-              This cannot be undone.
-            </>
-          }
-          onConfirm={() => deleteAccount(confirming.id)}
-          onClose={() => setConfirming(null)}
-        />
-      )}
+      <AlertDialog
+        open={Boolean(confirming)}
+        onOpenChange={(open) => !open && setConfirming(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete account?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground space-y-2">
+                <p>
+                  You are about to delete <strong>{confirming?.name}</strong>.
+                </p>
+                {confirming && affectedCount(confirming.id) > 0 ? (
+                  <p className="font-semibold text-destructive">
+                    This account has {affectedCount(confirming.id)} associated
+                    transaction
+                    {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it
+                    will also delete them.
+                  </p>
+                ) : (
+                  <p>This account has no associated transactions.</p>
+                )}
+                <p>This cannot be undone.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirming) {
+                  deleteAccount(confirming.id);
+                  setConfirming(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
