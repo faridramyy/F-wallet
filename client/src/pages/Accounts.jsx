@@ -8,7 +8,7 @@ import {
   ConfirmModal,
   ProgressBar,
 } from "../components/ui";
-import { ReorderButtons, moveItem } from "../components/Reorder";
+import { SortableList, SortableItem, DragHandle } from "../components/Reorder";
 import {
   accountBalance,
   creditCardDebt,
@@ -58,13 +58,7 @@ export default function Accounts() {
     setShowModal(true);
   };
 
-  const move = (from, to) => {
-    const reordered = moveItem(accounts, from, to);
-
-    if (reordered === accounts) return;
-
-    reorderAccounts(reordered.map((account) => account.id));
-  };
+  const handleReorder = (newIds) => reorderAccounts(newIds);
 
   const affectedCount = (accountId) =>
     transactions.filter(
@@ -143,170 +137,168 @@ export default function Accounts() {
             }
           />
         ) : (
-          <div className="space-y-3">
-            {accounts.map((account, index) => {
-              const balance = accountBalance(account, transactions);
-              const isCredit = account.type === "credit";
-              const limit = Math.max(0, Number(account.creditLimit) || 0);
-              const debt = Math.max(0, balance);
-              const utilization = limit > 0 ? (debt / limit) * 100 : 0;
+          <SortableList
+            ids={accounts.map((account) => account.id)}
+            onReorder={handleReorder}
+          >
+            <div className="space-y-3">
+              {accounts.map((account) => {
+                const balance = accountBalance(account, transactions);
+                const isCredit = account.type === "credit";
+                const limit = Math.max(0, Number(account.creditLimit) || 0);
+                const debt = Math.max(0, balance);
+                const utilization = limit > 0 ? (debt / limit) * 100 : 0;
 
-              return (
-                <div
-                  key={account.id}
-                  className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 rounded-2xl border border-border p-3.5 transition-colors hover:border-foreground/15 sm:grid-cols-[auto_auto_minmax(0,1fr)_auto_auto]"
-                  style={{
-                    gridTemplateAreas:
-                      '"icon main figures" "extra extra extra" "reorder actions actions"',
-                  }}
-                >
-                  <div
-                    className="hidden sm:flex"
-                    style={{ gridArea: "reorder" }}
-                  >
-                    <ReorderButtons
-                      index={index}
-                      total={accounts.length}
-                      onMove={move}
-                    />
-                  </div>
-
-                  <div
-                    className="flex size-11 items-center justify-center rounded-2xl bg-muted text-lg text-foreground"
-                    style={{ gridArea: "icon" }}
-                  >
-                    <i
-                      className={`fa-solid ${TYPE_ICONS[account.type] || "fa-wallet"}`}
-                    />
-                  </div>
-
-                  <div
-                    className="flex min-w-0 flex-col gap-0.5"
-                    style={{ gridArea: "main" }}
-                  >
-                    <p className="truncate text-sm font-bold">{account.name}</p>
-
-                    <p className="truncate text-[11px] text-muted-foreground">
-                      <span className="capitalize">{account.type}</span>
-                      {account.institution
-                        ? ` \u00b7 ${account.institution}`
-                        : ""}
-                      {account.lastFour
-                        ? ` \u00b7 ends ${account.lastFour}`
-                        : ""}
-                    </p>
-                  </div>
-
-                  <div
-                    className="whitespace-nowrap text-right"
-                    style={{ gridArea: "figures" }}
-                  >
-                    <p
-                      className={`text-[17px] font-bold tabular-nums ${
-                        isCredit
-                          ? debt > 0
-                            ? "text-destructive"
-                            : "text-primary"
-                          : balance >= 0
-                            ? ""
-                            : "text-destructive"
-                      }`}
-                    >
-                      {fmt(balance)}
-                    </p>
-
-                    {isCredit && (
-                      <p className="mt-px text-[11px] text-muted-foreground">
-                        {debt > 0 ? "owing" : "paid off"}
-                      </p>
-                    )}
-                  </div>
-
-                  {(!isCredit || (isCredit && limit > 0)) && (
-                    <div className="min-w-0" style={{ gridArea: "extra" }}>
-                      {!isCredit && (
-                        <label className="mt-1.5 inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
-                          <input
-                            type="checkbox"
-                            className="size-3.5 rounded accent-primary"
-                            checked={account.includeInTotal !== false}
-                            onChange={(event) =>
-                              updateAccount(account.id, {
-                                includeInTotal: event.target.checked,
-                              })
-                            }
+                return (
+                  <SortableItem key={account.id} id={account.id}>
+                    {({ attributes, listeners, isDragging }) => (
+                      <div
+                        className={`grid grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-x-3 gap-y-2.5 rounded-2xl border border-border bg-card p-3.5 transition-colors hover:border-foreground/15 ${
+                          isDragging ? "opacity-60" : ""
+                        }`}
+                        style={{
+                          gridTemplateAreas:
+                            '"handle icon main figures" "handle bar bar actions"',
+                        }}
+                      >
+                        <div
+                          className="flex h-full items-center justify-center"
+                          style={{ gridArea: "handle" }}
+                        >
+                          <DragHandle
+                            attributes={attributes}
+                            listeners={listeners}
+                            isDragging={isDragging}
                           />
-                          <span>
-                            {account.includeInTotal === false
-                              ? "Not counted in total"
-                              : "Counted in total"}
-                          </span>
-                        </label>
-                      )}
+                        </div>
 
-                      {isCredit && limit > 0 && (
-                        <>
-                          <ProgressBar
-                            value={utilization}
-                            max={100}
-                            tone={
-                              utilization >= 70
-                                ? "danger"
-                                : utilization >= 30
-                                  ? "warning"
-                                  : ""
-                            }
-                          />
+                        <div style={{ gridArea: "icon" }}>
+                          <div className="flex size-11 items-center justify-center rounded-2xl bg-muted text-lg text-foreground">
+                            <i
+                              className={`fa-solid ${TYPE_ICONS[account.type] || "fa-wallet"}`}
+                            />
+                          </div>
+                        </div>
 
-                          <p className="mt-1 text-[11px] text-muted-foreground">
-                            {fmt(availableCredit(account, transactions))}{" "}
-                            available of {fmt(limit)}
+                        <div
+                          className="flex min-w-0 flex-col gap-0.5"
+                          style={{ gridArea: "main" }}
+                        >
+                          <p className="truncate text-sm font-bold">
+                            {account.name}
                           </p>
-                        </>
-                      )}
-                    </div>
-                  )}
 
-                  <div
-                    className="flex items-center gap-1 sm:hidden"
-                    style={{ gridArea: "reorder" }}
-                  >
-                    <ReorderButtons
-                      index={index}
-                      total={accounts.length}
-                      onMove={move}
-                    />
-                  </div>
+                          <p className="truncate text-[11px] text-muted-foreground">
+                            <span className="capitalize">{account.type}</span>
+                            {account.institution
+                              ? ` \u00b7 ${account.institution}`
+                              : ""}
+                            {account.lastFour
+                              ? ` \u00b7 ends ${account.lastFour}`
+                              : ""}
+                          </p>
+                        </div>
 
-                  <div
-                    className="flex justify-end gap-1"
-                    style={{ gridArea: "actions" }}
-                  >
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => openEdit(account)}
-                      aria-label="Edit"
-                    >
-                      <i className="fa-solid fa-pen" />
-                    </Button>
+                        <div
+                          className="whitespace-nowrap text-right"
+                          style={{ gridArea: "figures" }}
+                        >
+                          <p
+                            className={`text-[17px] font-bold tabular-nums ${
+                              isCredit
+                                ? debt > 0
+                                  ? "text-destructive"
+                                  : "text-primary"
+                                : balance >= 0
+                                  ? ""
+                                  : "text-destructive"
+                            }`}
+                          >
+                            {fmt(balance)}
+                          </p>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className={dangerIconButton}
-                      onClick={() => setConfirming(account)}
-                      aria-label="Delete"
-                    >
-                      <i className="fa-solid fa-trash" />
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                          {isCredit && (
+                            <p className="mt-px text-[11px] text-muted-foreground">
+                              {debt > 0 ? "owing" : "paid off"}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="min-w-0" style={{ gridArea: "bar" }}>
+                          {!isCredit && (
+                            <label className="inline-flex cursor-pointer items-center gap-1.5 text-[11px] font-semibold text-muted-foreground">
+                              <input
+                                type="checkbox"
+                                className="size-3.5 rounded accent-primary"
+                                checked={account.includeInTotal !== false}
+                                onChange={(event) =>
+                                  updateAccount(account.id, {
+                                    includeInTotal: event.target.checked,
+                                  })
+                                }
+                              />
+                              <span>
+                                {account.includeInTotal === false
+                                  ? "Not counted in total"
+                                  : "Counted in total"}
+                              </span>
+                            </label>
+                          )}
+
+                          {isCredit && limit > 0 && (
+                            <>
+                              <ProgressBar
+                                value={utilization}
+                                max={100}
+                                tone={
+                                  utilization >= 70
+                                    ? "danger"
+                                    : utilization >= 30
+                                      ? "warning"
+                                      : ""
+                                }
+                              />
+
+                              <p className="mt-1 text-[11px] text-muted-foreground">
+                                {fmt(availableCredit(account, transactions))}{" "}
+                                available of {fmt(limit)}
+                              </p>
+                            </>
+                          )}
+                        </div>
+
+                        <div
+                          className="flex justify-end gap-1"
+                          style={{ gridArea: "actions" }}
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => openEdit(account)}
+                            aria-label="Edit"
+                          >
+                            <i className="fa-solid fa-pen" />
+                          </Button>
+
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className={dangerIconButton}
+                            onClick={() => setConfirming(account)}
+                            aria-label="Delete"
+                          >
+                            <i className="fa-solid fa-trash" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </SortableItem>
+                );
+              })}
+            </div>
+          </SortableList>
         )}
       </Panel>
 

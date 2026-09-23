@@ -9,7 +9,12 @@ import {
   MonthPicker,
   ProgressBar,
 } from "../components/ui";
-import { ReorderButtons, moveItem } from "../components/Reorder";
+import {
+  SortableList,
+  SortableItem,
+  DragHandle,
+  reorderWithin,
+} from "../components/Reorder";
 import { categorySpending, categoryIncomeReceived } from "../lib/calc";
 import { money, formatMonth, currentMonth } from "../lib/format";
 import CategoryModal from "../modals/CategoryModal";
@@ -64,21 +69,18 @@ export default function Categories() {
   /*
     Reordering works on the full category list, not the filtered expense
     or income view, because order is stored once per category and drives
-    the dropdowns everywhere else in the app.
+    the dropdowns everywhere else in the app. Dragging only ever happens
+    within one of the two filtered groups though, so `reorderWithin`
+    moves just that group's items and leaves the other group's positions
+    untouched.
   */
 
-  const move = (category, direction) => {
-    const from = categories.findIndex((item) => item.id === category.id);
+  const reorderGroup = (rows, newOrder) => {
+    const subsetIds = rows.map((row) => row.category.id);
+    const reordered = reorderWithin(categories, subsetIds, newOrder);
 
-    const reordered = moveItem(categories, from, from + direction);
-
-    if (reordered === categories) return;
-
-    reorderCategories(reordered.map((item) => item.id));
+    reorderCategories(reordered.map((category) => category.id));
   };
-
-  const positionOf = (category) =>
-    categories.findIndex((item) => item.id === category.id);
 
   const openNew = () => {
     setEditing(null);
@@ -155,83 +157,89 @@ export default function Categories() {
             }
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {expenses.map(({ category, spent, budget }) => {
-              const remaining = budget - spent;
+          <SortableList
+            ids={expenses.map((row) => row.category.id)}
+            onReorder={(newOrder) => reorderGroup(expenses, newOrder)}
+            grid
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {expenses.map(({ category, spent, budget }) => {
+                const remaining = budget - spent;
 
-              return (
-                <div
-                  key={category.id}
-                  className="rounded-2xl border border-border p-3.5"
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <ReorderButtons
-                      index={positionOf(category)}
-                      total={categories.length}
-                      onMove={(from, to) => move(category, to - from)}
-                    />
-
-                    <span
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ background: "#f87171" }}
-                    />
-
-                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                      {category.name}
-                    </span>
-
-                    <span className="ml-auto flex gap-1">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        onClick={() => {
-                          setEditing(category);
-                          setShowModal(true);
-                        }}
-                        aria-label="Edit"
+                return (
+                  <SortableItem key={category.id} id={category.id}>
+                    {({ attributes, listeners, isDragging }) => (
+                      <div
+                        className={`rounded-2xl border border-border bg-card p-3.5 ${
+                          isDragging ? "opacity-60" : ""
+                        }`}
                       >
-                        <i className="fa-solid fa-pen" />
-                      </Button>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <DragHandle
+                            attributes={attributes}
+                            listeners={listeners}
+                            isDragging={isDragging}
+                          />
 
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon-sm"
-                        className={dangerIconButton}
-                        onClick={() => setConfirming(category)}
-                        aria-label="Delete"
-                      >
-                        <i className="fa-solid fa-trash" />
-                      </Button>
-                    </span>
-                  </div>
+                          <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                            {category.name}
+                          </span>
 
-                  <p className="mt-2.5 text-lg font-bold tabular-nums tracking-tight">
-                    {fmt(spent)}
-                  </p>
+                          <span className="ml-auto flex gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              onClick={() => {
+                                setEditing(category);
+                                setShowModal(true);
+                              }}
+                              aria-label="Edit"
+                            >
+                              <i className="fa-solid fa-pen" />
+                            </Button>
 
-                  {budget > 0 ? (
-                    <>
-                      <div className="mt-1.5">
-                        <ProgressBar value={spent} max={budget} />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-sm"
+                              className={dangerIconButton}
+                              onClick={() => setConfirming(category)}
+                              aria-label="Delete"
+                            >
+                              <i className="fa-solid fa-trash" />
+                            </Button>
+                          </span>
+                        </div>
+
+                        <p className="mt-2.5 text-lg font-bold tabular-nums tracking-tight">
+                          {fmt(spent)}
+                        </p>
+
+                        {budget > 0 ? (
+                          <>
+                            <div className="mt-1.5">
+                              <ProgressBar value={spent} max={budget} />
+                            </div>
+
+                            <p className="mt-1 text-[11px] text-muted-foreground">
+                              {remaining >= 0
+                                ? `${fmt(remaining)} left of ${fmt(budget)}`
+                                : `${fmt(Math.abs(remaining))} over ${fmt(budget)}`}
+                            </p>
+                          </>
+                        ) : (
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            No budget set
+                          </p>
+                        )}
                       </div>
-
-                      <p className="mt-1 text-[11px] text-muted-foreground">
-                        {remaining >= 0
-                          ? `${fmt(remaining)} left of ${fmt(budget)}`
-                          : `${fmt(Math.abs(remaining))} over ${fmt(budget)}`}
-                      </p>
-                    </>
-                  ) : (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      No budget set
-                    </p>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                    )}
+                  </SortableItem>
+                );
+              })}
+            </div>
+          </SortableList>
         )}
       </Panel>
 
@@ -243,82 +251,89 @@ export default function Categories() {
             message="Add categories like Salary or Freelance to track what you expect to earn."
           />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {incomes.map(({ category, received }) => (
-              <div
-                key={category.id}
-                className="rounded-2xl border border-border p-3.5"
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <ReorderButtons
-                    index={positionOf(category)}
-                    total={categories.length}
-                    onMove={(from, to) => move(category, to - from)}
-                  />
-
-                  <span
-                    className="size-2.5 shrink-0 rounded-full"
-                    style={{ background: "#34d399" }}
-                  />
-
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-                    {category.name}
-                  </span>
-
-                  <span className="ml-auto flex gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      onClick={() => {
-                        setEditing(category);
-                        setShowModal(true);
-                      }}
-                      aria-label="Edit"
+          <SortableList
+            ids={incomes.map((row) => row.category.id)}
+            onReorder={(newOrder) => reorderGroup(incomes, newOrder)}
+            grid
+          >
+            <div className="grid gap-3 sm:grid-cols-2">
+              {incomes.map(({ category, received }) => (
+                <SortableItem key={category.id} id={category.id}>
+                  {({ attributes, listeners, isDragging }) => (
+                    <div
+                      className={`rounded-2xl border border-border bg-card p-3.5 ${
+                        isDragging ? "opacity-60" : ""
+                      }`}
                     >
-                      <i className="fa-solid fa-pen" />
-                    </Button>
+                      <div className="flex min-w-0 items-center gap-2">
+                        <DragHandle
+                          attributes={attributes}
+                          listeners={listeners}
+                          isDragging={isDragging}
+                        />
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      className={dangerIconButton}
-                      onClick={() => setConfirming(category)}
-                      aria-label="Delete"
-                    >
-                      <i className="fa-solid fa-trash" />
-                    </Button>
-                  </span>
-                </div>
+                        <span className="min-w-0 flex-1 truncate text-sm font-semibold">
+                          {category.name}
+                        </span>
 
-                <p className="mt-2.5 text-lg font-bold tabular-nums tracking-tight text-primary">
-                  {fmt(received)}
-                </p>
+                        <span className="ml-auto flex gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => {
+                              setEditing(category);
+                              setShowModal(true);
+                            }}
+                            aria-label="Edit"
+                          >
+                            <i className="fa-solid fa-pen" />
+                          </Button>
 
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  {(category.entryMode ||
-                    (Number(category.hourlyRate) > 0 ? "hourly" : "fixed")) ===
-                  "hourly"
-                    ? `Hourly${Number(category.hourlyRate) > 0 ? ` at ${fmt(category.hourlyRate)}/h` : ""}`
-                    : `Fixed amount${Number(category.defaultAmount) > 0 ? `, usually ${fmt(category.defaultAmount)}` : ""}`}
-                </p>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className={dangerIconButton}
+                            onClick={() => setConfirming(category)}
+                            aria-label="Delete"
+                          >
+                            <i className="fa-solid fa-trash" />
+                          </Button>
+                        </span>
+                      </div>
 
-                {Number(category.hourlyRate) > 0 ? (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    {fmt(category.hourlyRate)} per hour
-                    {Number(category.overtimeRate) > 0
-                      ? ` · ${fmt(category.overtimeRate)} overtime`
-                      : ""}
-                  </p>
-                ) : (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    No pay rate set
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
+                      <p className="mt-2.5 text-lg font-bold tabular-nums tracking-tight text-primary">
+                        {fmt(received)}
+                      </p>
+
+                      <p className="mt-1 text-[11px] text-muted-foreground">
+                        {(category.entryMode ||
+                          (Number(category.hourlyRate) > 0
+                            ? "hourly"
+                            : "fixed")) === "hourly"
+                          ? `Hourly${Number(category.hourlyRate) > 0 ? ` at ${fmt(category.hourlyRate)}/h` : ""}`
+                          : `Fixed amount${Number(category.defaultAmount) > 0 ? `, usually ${fmt(category.defaultAmount)}` : ""}`}
+                      </p>
+
+                      {Number(category.hourlyRate) > 0 ? (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {fmt(category.hourlyRate)} per hour
+                          {Number(category.overtimeRate) > 0
+                            ? ` · ${fmt(category.overtimeRate)} overtime`
+                            : ""}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          No pay rate set
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </SortableItem>
+              ))}
+            </div>
+          </SortableList>
         )}
       </Panel>
 

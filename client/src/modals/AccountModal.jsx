@@ -16,9 +16,9 @@ import { round2 } from "../lib/format";
 
 const TYPES = [
   { value: "chequing", label: "Chequing" },
+  { value: "credit", label: "Credit card" },
   { value: "savings", label: "Savings" },
   { value: "cash", label: "Cash" },
-  { value: "credit", label: "Credit card" },
 ];
 
 export default function AccountModal({ account, onClose }) {
@@ -178,7 +178,7 @@ export default function AccountModal({ account, onClose }) {
           <Input
             value={form.institution}
             onChange={set("institution")}
-            placeholder="RBC"
+            placeholder="TD"
           />
         </Field>
 
