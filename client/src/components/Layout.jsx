@@ -1,32 +1,44 @@
 import { NavLink, useLocation } from "react-router-dom";
+import {
+  PieChart,
+  Wallet,
+  Layers,
+  ArrowLeftRight,
+  ShoppingBag,
+  Settings,
+  LogOut,
+  Eye,
+  RefreshCw,
+  Plus,
+} from "lucide-react";
 
 import { useApp } from "../store";
 import BrandLogo from "../components/BrandLogo";
 import { Button } from "@/components/ui/button";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { to: "/dashboard", label: "Dashboard", icon: "fa-chart-pie", short: "Home" },
-  { to: "/accounts", label: "Accounts", icon: "fa-wallet", short: "Accounts" },
+  { to: "/dashboard", label: "Dashboard", icon: PieChart, short: "Home" },
+  { to: "/accounts", label: "Accounts", icon: Wallet, short: "Accounts" },
   {
     to: "/categories",
     label: "Categories",
-    icon: "fa-layer-group",
+    icon: Layers,
     short: "Budget",
   },
   {
     to: "/transactions",
     label: "Transactions",
-    icon: "fa-arrow-right-arrow-left",
+    icon: ArrowLeftRight,
     short: "Activity",
   },
   {
     to: "/groceries",
     label: "Groceries",
-    icon: "fa-basket-shopping",
+    icon: ShoppingBag,
     short: "Prices",
   },
-  { to: "/settings", label: "Settings", icon: "fa-gear", short: "Settings" },
+  { to: "/settings", label: "Settings", icon: Settings, short: "Settings" },
 ];
 
 const MOBILE_NAV_ITEMS = NAV_ITEMS.slice(0, 5);
@@ -68,15 +80,18 @@ export default function Layout({ children, onQuickAdd }) {
         </div>
 
         <nav className="flex-1 space-y-1 px-3 py-4">
-          {NAV_ITEMS.map((item) => (
-            <NavLink key={item.to} to={item.to} className={navLinkClass}>
-              <span className="flex w-5.5 items-center justify-center text-[17px]">
-                <i className={`fa-solid ${item.icon}`} />
-              </span>
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink key={item.to} to={item.to} className={navLinkClass}>
+                <span className="flex w-5.5 items-center justify-center text-[17px]">
+                  <Icon className="h-5 w-5" />
+                </span>
 
-              {item.label}
-            </NavLink>
-          ))}
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="border-t border-sidebar-border p-3">
@@ -86,7 +101,7 @@ export default function Layout({ children, onQuickAdd }) {
             onClick={logout}
           >
             <span className="flex w-5.5 items-center justify-center text-[17px]">
-              <i className="fa-solid fa-arrow-right-from-bracket" />
+              <LogOut className="h-5 w-5" />
             </span>
             Sign out
           </button>
@@ -106,7 +121,7 @@ export default function Layout({ children, onQuickAdd }) {
 
           {isViewer && (
             <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
-              <i className="fa-solid fa-eye" />
+              <Eye className="h-3.5 w-3.5" />
               Read only
             </span>
           )}
@@ -121,7 +136,7 @@ export default function Layout({ children, onQuickAdd }) {
               aria-label="Refresh"
               title="Refresh data"
             >
-              <i className={`fa-solid fa-rotate ${loading ? "fa-spin" : ""}`} />
+              <RefreshCw className={cn("h-4 w-4", loading && "animate-spin")} />
             </Button>
 
             <NavLink
@@ -129,7 +144,7 @@ export default function Layout({ children, onQuickAdd }) {
               aria-label="Settings"
               className="flex size-9 items-center justify-center rounded-full bg-secondary text-secondary-foreground transition-colors hover:bg-secondary/80 lg:hidden"
             >
-              <i className="fa-solid fa-gear" />
+              <Settings className="h-4 w-4" />
             </NavLink>
 
             <Button
@@ -140,7 +155,7 @@ export default function Layout({ children, onQuickAdd }) {
               onClick={logout}
               aria-label="Sign out"
             >
-              <i className="fa-solid fa-arrow-right-from-bracket" />
+              <LogOut className="h-4 w-4" />
             </Button>
           </div>
         </header>
@@ -154,27 +169,30 @@ export default function Layout({ children, onQuickAdd }) {
         aria-label="Add transaction"
         className="fixed bottom-[calc(74px+env(safe-area-inset-bottom)+14px)] right-4.5 z-45 flex size-14 items-center justify-center rounded-[18px] bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95 lg:bottom-7 lg:right-7"
       >
-        <i className="fa-solid fa-plus text-xl" />
+        <Plus className="h-6 w-6" />
       </button>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
-        {MOBILE_NAV_ITEMS.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              cn(
-                "flex min-h-15.5 flex-col items-center justify-center gap-0.5 text-muted-foreground",
-                isActive && "text-foreground",
-              )
-            }
-          >
-            <span className="text-xl leading-none">
-              <i className={`fa-solid ${item.icon}`} />
-            </span>
-            <small className="text-[10px] font-semibold">{item.short}</small>
-          </NavLink>
-        ))}
+        {MOBILE_NAV_ITEMS.map((item) => {
+          const Icon = item.icon;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                cn(
+                  "flex min-h-15.5 flex-col items-center justify-center gap-0.5 text-muted-foreground",
+                  isActive && "text-foreground",
+                )
+              }
+            >
+              <span className="text-xl leading-none">
+                <Icon className="h-5 w-5" />
+              </span>
+              <small className="text-[10px] font-semibold">{item.short}</small>
+            </NavLink>
+          );
+        })}
       </nav>
     </div>
   );

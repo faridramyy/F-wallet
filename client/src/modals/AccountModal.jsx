@@ -1,9 +1,18 @@
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { useApp } from "../store";
-import { Modal, Field } from "../components/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectTrigger,
@@ -41,35 +50,31 @@ export default function AccountModal({ account, onClose }) {
       isEditing && account.type === "credit" ? String(existingBalance) : "",
   });
 
-  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // For native inputs: reads event.target.value, same as before.
   const set = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
 
-  // For the Select: Base UI hands back the value directly, not an event,
-  // so this is a separate helper rather than reusing `set`.
   const setValue = (key) => (value) =>
     setForm((current) => ({ ...current, [key]: value }));
 
-  const submit = async () => {
-    setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     if (!form.name.trim()) {
-      setError("Account name is required.");
+      toast.error("Account name is required.");
       return;
     }
 
     const startingBalanceInput = Number(form.startingBalance || 0);
 
     if (!Number.isFinite(startingBalanceInput) || startingBalanceInput < 0) {
-      setError("Starting balance must be a valid number.");
+      toast.error("Starting balance must be a valid number.");
       return;
     }
 
     if (form.lastFour && !/^\d{4}$/.test(form.lastFour)) {
-      setError("Last four digits must be exactly four numbers.");
+      toast.error("Last four digits must be exactly four numbers.");
       return;
     }
 
@@ -79,24 +84,17 @@ export default function AccountModal({ account, onClose }) {
       form.type === "credit" &&
       (!Number.isFinite(creditLimit) || creditLimit < 0)
     ) {
-      setError("Credit limit cannot be negative.");
+      toast.error("Credit limit cannot be negative.");
       return;
     }
 
     let startingBalance = startingBalanceInput;
 
-    /*
-      Editing a credit card's current balance is the fiddly bit, and it
-      works exactly as it did before. Rather than deleting history, the
-      starting debt shifts by the difference so the computed balance lands
-      on whatever number was typed.
-    */
-
     if (isEditing && form.type === "credit" && form.currentBalance !== "") {
       const desired = Number(form.currentBalance);
 
       if (!Number.isFinite(desired)) {
-        setError("Current balance must be a valid number.");
+        toast.error("Current balance must be a valid number.");
         return;
       }
 
@@ -123,125 +121,155 @@ export default function AccountModal({ account, onClose }) {
     try {
       if (isEditing) {
         await updateAccount(account.id, payload);
+        toast.success("Account updated successfully.");
       } else {
         await createAccount(payload);
+        toast.success("Account created successfully.");
       }
 
       onClose();
     } catch (submitError) {
       setSaving(false);
+      toast.error("Failed to save account. Please try again.");
     }
   };
 
   return (
-    <Modal
-      title={isEditing ? "Edit account" : "Add account"}
-      onClose={onClose}
-      footer={
-        <>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edit account" : "Add account"}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing
+              ? "Update your account details and balance settings."
+              : "Add a new account to keep track of your transactions."}
+          </DialogDescription>
+        </DialogHeader>
 
-          <Button type="button" onClick={submit} disabled={saving}>
-            {saving ? "Saving..." : isEditing ? "Save changes" : "Add account"}
-          </Button>
-        </>
-      }
-    >
-      <div className="grid gap-3.5 sm:grid-cols-2">
-        <Field label="Account name" className="sm:col-span-2">
-          <Input
-            value={form.name}
-            onChange={set("name")}
-            placeholder="Everyday chequing"
-            autoFocus
-          />
-        </Field>
-
-        <Field label="Type">
-          <Select value={form.type} onValueChange={setValue("type")}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TYPES.map((type) => (
-                <SelectItem key={type.value} value={type.value}>
-                  {type.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-
-        <Field label="Institution">
-          <Input
-            value={form.institution}
-            onChange={set("institution")}
-            placeholder="TD"
-          />
-        </Field>
-
-        <Field label="Last 4 digits">
-          <Input
-            value={form.lastFour}
-            onChange={set("lastFour")}
-            inputMode="numeric"
-            maxLength={4}
-            placeholder="4321"
-          />
-        </Field>
-
-        <Field
-          label={form.type === "credit" ? "Starting debt" : "Starting balance"}
-        >
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.startingBalance}
-            onChange={set("startingBalance")}
-            placeholder="0.00"
-          />
-        </Field>
-
-        {form.type === "credit" && (
-          <>
-            <Field label="Credit limit">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="account-name">Account name</Label>
               <Input
+                id="account-name"
+                value={form.name}
+                onChange={set("name")}
+                placeholder="Everyday chequing"
+                autoFocus
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="account-type">Type</Label>
+              <Select value={form.type} onValueChange={setValue("type")}>
+                <SelectTrigger id="account-type" className="w-full">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPES.map((type) => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="institution">Institution</Label>
+              <Input
+                id="institution"
+                value={form.institution}
+                onChange={set("institution")}
+                placeholder="TD"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="last-four">Last 4 digits</Label>
+              <Input
+                id="last-four"
+                value={form.lastFour}
+                onChange={set("lastFour")}
+                inputMode="numeric"
+                maxLength={4}
+                placeholder="4321"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="starting-balance">
+                {form.type === "credit" ? "Starting debt" : "Starting balance"}
+              </Label>
+              <Input
+                id="starting-balance"
                 type="number"
                 step="0.01"
                 min="0"
-                value={form.creditLimit}
-                onChange={set("creditLimit")}
-                placeholder="5000.00"
+                value={form.startingBalance}
+                onChange={set("startingBalance")}
+                placeholder="0.00"
               />
-            </Field>
+            </div>
 
-            {isEditing && (
-              <Field label="Current balance owing" className="sm:col-span-2">
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.currentBalance}
-                  onChange={set("currentBalance")}
-                />
+            {form.type === "credit" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="credit-limit">Credit limit</Label>
+                  <Input
+                    id="credit-limit"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={form.creditLimit}
+                    onChange={set("creditLimit")}
+                    placeholder="5000.00"
+                  />
+                </div>
 
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Set this to match your statement. Your transactions are kept
-                  and the starting debt is adjusted to fit.
-                </p>
-              </Field>
+                {isEditing && (
+                  <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="current-balance">
+                      Current balance owing
+                    </Label>
+                    <Input
+                      id="current-balance"
+                      type="number"
+                      step="0.01"
+                      value={form.currentBalance}
+                      onChange={set("currentBalance")}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Set this to match your statement. Your transactions are
+                      kept and the starting debt is adjusted to fit.
+                    </p>
+                  </div>
+                )}
+              </>
             )}
-          </>
-        )}
-
-        {error && (
-          <div className="sm:col-span-2">
-            <p className="text-sm text-destructive">{error}</p>
           </div>
-        )}
-      </div>
-    </Modal>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? "Saving..."
+                : isEditing
+                  ? "Save changes"
+                  : "Add account"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

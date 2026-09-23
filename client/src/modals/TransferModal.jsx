@@ -1,9 +1,19 @@
 import { useState } from "react";
+import { toast } from "sonner";
+import { ArrowUpDown } from "lucide-react";
 
 import { useApp } from "../store";
-import { Modal, Field } from "../components/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectTrigger,
@@ -33,7 +43,6 @@ export default function TransferModal({ transfer, onClose }) {
     notes: transfer?.notes || "",
   });
 
-  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fmt = (value) => money(value, { currency });
@@ -50,23 +59,23 @@ export default function TransferModal({ transfer, onClose }) {
       toAccountId: current.fromAccountId,
     }));
 
-  const submit = async () => {
-    setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     const amount = Number(form.amount || 0);
 
     if (!(amount > 0)) {
-      setError("Amount must be greater than zero.");
+      toast.error("Amount must be greater than zero.");
       return;
     }
 
     if (!form.fromAccountId || !form.toAccountId) {
-      setError("Choose both accounts.");
+      toast.error("Choose both accounts.");
       return;
     }
 
     if (form.fromAccountId === form.toAccountId) {
-      setError("Pick two different accounts.");
+      toast.error("Pick two different accounts.");
       return;
     }
 
@@ -84,13 +93,16 @@ export default function TransferModal({ transfer, onClose }) {
 
       if (isEditing) {
         await updateTransaction(transfer.id, payload);
+        toast.success("Transfer updated successfully.");
       } else {
         await createTransaction(payload);
+        toast.success("Transfer completed successfully.");
       }
 
       onClose();
     } catch (submitError) {
       setSaving(false);
+      toast.error("Failed to save transfer. Please try again.");
     }
   };
 
@@ -107,123 +119,134 @@ export default function TransferModal({ transfer, onClose }) {
   };
 
   return (
-    <Modal
-      title={isEditing ? "Edit transfer" : "Transfer money"}
-      onClose={onClose}
-      footer={
-        <>
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edit transfer" : "Transfer money"}
+          </DialogTitle>
+          <DialogDescription>
+            Move funds between your accounts or make a credit card payment.
+          </DialogDescription>
+        </DialogHeader>
 
-          <Button type="button" onClick={submit} disabled={saving}>
-            {saving ? "Saving..." : isEditing ? "Save changes" : "Transfer"}
-          </Button>
-        </>
-      }
-    >
-      <div className="grid gap-3.5 sm:grid-cols-2">
-        <Field label="From" className="sm:col-span-2">
-          <Select
-            value={form.fromAccountId}
-            onValueChange={setValue("fromAccountId")}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select account">
-                {
-                  accounts.find((account) => account.id === form.fromAccountId)
-                    ?.name
-                }
-              </SelectValue>
-            </SelectTrigger>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="from-account">From</Label>
+              <Select
+                value={form.fromAccountId}
+                onValueChange={setValue("fromAccountId")}
+              >
+                <SelectTrigger id="from-account" className="w-full">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
 
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {describe(form.fromAccountId)}
-          </p>
-        </Field>
+              <p className="text-[11px] text-muted-foreground">
+                {describe(form.fromAccountId)}
+              </p>
+            </div>
 
-        <div className="flex justify-center sm:col-span-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            onClick={swap}
-            aria-label="Swap accounts"
-          >
-            <i className="fa-solid fa-arrow-down-up-across-line" />
-          </Button>
-        </div>
+            <div className="flex justify-center sm:col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={swap}
+                aria-label="Swap accounts"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
 
-        <Field label="To" className="sm:col-span-2">
-          <Select
-            value={form.toAccountId}
-            onValueChange={setValue("toAccountId")}
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select account">
-                {
-                  accounts.find((account) => account.id === form.toAccountId)
-                    ?.name
-                }
-              </SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              {accounts.map((account) => (
-                <SelectItem key={account.id} value={account.id}>
-                  {account.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="to-account">To</Label>
+              <Select
+                value={form.toAccountId}
+                onValueChange={setValue("toAccountId")}
+              >
+                <SelectTrigger id="to-account" className="w-full">
+                  <SelectValue placeholder="Select account" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.map((account) => (
+                    <SelectItem key={account.id} value={account.id}>
+                      {account.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            {describe(form.toAccountId)}
-          </p>
-        </Field>
+              <p className="text-[11px] text-muted-foreground">
+                {describe(form.toAccountId)}
+              </p>
+            </div>
 
-        <Field label="Amount">
-          <Input
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.amount}
-            onChange={set("amount")}
-            placeholder="0.00"
-          />
-        </Field>
+            <div className="space-y-2">
+              <Label htmlFor="transfer-amount">Amount</Label>
+              <Input
+                id="transfer-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.amount}
+                onChange={set("amount")}
+                placeholder="0.00"
+                autoFocus
+              />
+            </div>
 
-        <Field label="Date">
-          <Input type="date" value={form.date} onChange={set("date")} />
-        </Field>
+            <div className="space-y-2">
+              <Label htmlFor="transfer-date">Date</Label>
+              <Input
+                id="transfer-date"
+                type="date"
+                value={form.date}
+                onChange={set("date")}
+              />
+            </div>
 
-        <Field label="Note" className="sm:col-span-2">
-          <Input
-            value={form.notes}
-            onChange={set("notes")}
-            placeholder="Optional"
-          />
-        </Field>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="transfer-notes">Note</Label>
+              <Input
+                id="transfer-notes"
+                value={form.notes}
+                onChange={set("notes")}
+                placeholder="Optional"
+              />
+            </div>
 
-        <p className="text-[11px] leading-relaxed text-muted-foreground sm:col-span-2">
-          Paying a credit card is a transfer from your chequing account to the
-          card. The card balance goes down and your cash goes down with it.
-        </p>
-
-        {error && (
-          <div className="sm:col-span-2">
-            <p className="text-sm text-destructive">{error}</p>
+            <p className="text-[11px] leading-relaxed text-muted-foreground sm:col-span-2">
+              Paying a credit card is a transfer from your chequing account to
+              the card. The card balance goes down and your cash goes down with
+              it.
+            </p>
           </div>
-        )}
-      </div>
-    </Modal>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : isEditing ? "Save changes" : "Transfer"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
