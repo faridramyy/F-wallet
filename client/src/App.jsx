@@ -11,7 +11,7 @@ import {
 import { AppProvider, useApp } from "./store";
 import Layout from "./components/Layout";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { Toasts } from "./components/ui";
+import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -22,12 +22,6 @@ import Groceries from "./pages/Groceries";
 import Settings from "./pages/Settings";
 import TransactionModal from "./modals/TransactionModal";
 import TransferModal from "./modals/TransferModal";
-
-/*
-  Shared by every "waiting on the network" state below: first load, the
-  share-link handoff, and the loading spinner used while refreshing.
-  Pulling it out once avoids repeating the same markup three times.
-*/
 
 function LoadingScreen({ message }) {
   return (
@@ -52,12 +46,6 @@ function Shell() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /*
-    Share links look like /#/share/<token>. The token is swapped for a
-    session and stripped from the URL straight away, so it does not sit
-    in the address bar or get saved in history as a working credential.
-  */
-
   const shareToken = location.pathname.startsWith("/share/")
     ? location.pathname.slice("/share/".length)
     : null;
@@ -68,9 +56,6 @@ function Shell() {
     loginWithToken(shareToken);
     navigate("/dashboard", { replace: true });
   }, [shareToken, loginWithToken, navigate]);
-
-  // Editing a transaction can start from the dashboard or the transactions
-  // page, so the selection lives above both of them.
 
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [quickAdd, setQuickAdd] = useState(false);
@@ -141,7 +126,7 @@ function Shell() {
           />
         ))}
 
-      <Toasts />
+      <Toaster />
     </>
   );
 }

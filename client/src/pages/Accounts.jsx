@@ -28,9 +28,6 @@ const TYPE_ICONS = {
   credit: "fa-credit-card",
 };
 
-const dangerIconButton =
-  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
-
 export default function Accounts() {
   const {
     accounts,
@@ -276,6 +273,7 @@ export default function Accounts() {
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => openEdit(account)}
+                            className="text-muted-foreground hover:bg-destructive/10"
                             aria-label="Edit"
                           >
                             <i className="fa-solid fa-pen" />
@@ -285,7 +283,7 @@ export default function Accounts() {
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className={dangerIconButton}
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                             onClick={() => setConfirming(account)}
                             aria-label="Delete"
                           >
