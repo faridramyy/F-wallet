@@ -2,12 +2,9 @@ import { useMemo, useState } from "react";
 import {
   Percent,
   ArrowDown,
-  ListChecks,
-  ShoppingCart,
   Plus,
   X,
   Store,
-  HelpCircle,
   ShoppingBag,
   Pencil,
   Trash2,
@@ -16,24 +13,19 @@ import {
   LayoutGrid,
   List,
   Calendar,
+  ListChecks,
+  ShoppingCart,
 } from "lucide-react";
 
 import { useApp } from "../store";
 import { money, formatDate, fold } from "../lib/format";
-import { planTrip, knownItemSummaries, daysSince } from "../lib/shopping";
-import { SuggestInput } from "../components/SuggestInput";
 import { PageHeader } from "../components/PageHeader";
 import GroceryModal from "../modals/GroceryModal";
+import ShoppingListDrawer from "./ShoppingList";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -77,7 +69,6 @@ const PRICE_TAGS = {
 
 function PriceTag({ type }) {
   const tag = PRICE_TAGS[type];
-
   if (!tag) return null;
 
   const Icon = tag.icon;
@@ -108,16 +99,7 @@ function EmptyState({ icon: Icon, title, message }) {
 }
 
 export default function Groceries() {
-  const {
-    groceries,
-    shopping,
-    currency,
-    deleteGrocery,
-    createShoppingItem,
-    updateShoppingItem,
-    deleteShoppingItem,
-    clearBoughtItems,
-  } = useApp();
+  const { groceries, shopping, currency, deleteGrocery } = useApp();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -191,314 +173,13 @@ export default function Groceries() {
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-4">
-            <ToBuyDrawerContent
-              shopping={shopping}
-              groceries={groceries}
-              fmt={fmt}
-              onCreate={createShoppingItem}
-              onUpdate={updateShoppingItem}
-              onDelete={deleteShoppingItem}
-              onClearBought={clearBoughtItems}
-            />
+            <ShoppingListDrawer fmt={fmt} />
           </div>
         </SheetContent>
       </Sheet>
     </>
   );
 }
-
-/* ---------------------------------------------------------
-   To Buy Drawer Content
---------------------------------------------------------- */
-
-function ToBuyDrawerContent({
-  shopping = [],
-  groceries = [],
-  fmt,
-  onCreate,
-  onUpdate,
-  onDelete,
-  onClearBought,
-}) {
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [plan, setPlan] = useState(null);
-  const [confirmClear, setConfirmClear] = useState(false);
-
-  const itemOptions = useMemo(
-    () =>
-      knownItemSummaries(groceries).map((entry) => ({
-        name: entry.name,
-        meta:
-          entry.price !== null ? `${fmt(entry.price)} at ${entry.store}` : null,
-      })),
-    [groceries, fmt],
-  );
-
-  const pending = shopping.filter((item) => !item.done);
-  const bought = shopping.filter((item) => item.done);
-
-  const add = async () => {
-    if (!name.trim()) return;
-
-    await onCreate({ name: name.trim(), quantity: Number(quantity) || 1 });
-
-    setName("");
-    setQuantity("1");
-    setPlan(null);
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-start gap-2">
-        <SuggestInput
-          className="flex-1"
-          value={name}
-          onChange={setName}
-          options={itemOptions}
-          onEnter={add}
-          placeholder="Add an item"
-        />
-
-        <Input
-          type="number"
-          min="1"
-          className="w-16 shrink-0 text-center"
-          value={quantity}
-          onChange={(event) => setQuantity(event.target.value)}
-          aria-label="Quantity"
-        />
-
-        <Button type="button" size="icon" onClick={add} disabled={!name.trim()}>
-          <Plus className="size-4" />
-        </Button>
-      </div>
-
-      {shopping.length === 0 ? (
-        <EmptyState
-          icon={ListChecks}
-          title="Nothing on the list"
-          message="Add what you need and the app will work out where to buy it."
-        />
-      ) : (
-        <>
-          <div className="divide-y divide-border">
-            {pending.map((item) => (
-              <BuyRow
-                key={item.id}
-                item={item}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-              />
-            ))}
-          </div>
-
-          {bought.length > 0 && (
-            <>
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
-                <span>Bought ({bought.length})</span>
-
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setConfirmClear(true)}
-                >
-                  Clear
-                </Button>
-              </div>
-
-              <div className="divide-y divide-border opacity-60">
-                {bought.map((item) => (
-                  <BuyRow
-                    key={item.id}
-                    item={item}
-                    onUpdate={onUpdate}
-                    onDelete={onDelete}
-                  />
-                ))}
-              </div>
-            </>
-          )}
-        </>
-      )}
-
-      {pending.length > 0 && (
-        <Button
-          type="button"
-          className="w-full"
-          onClick={() => setPlan(planTrip(shopping, groceries))}
-        >
-          <Store className="mr-1.5 size-4" />
-          Where should I buy these?
-        </Button>
-      )}
-
-      {plan && <TripPlan plan={plan} fmt={fmt} onClose={() => setPlan(null)} />}
-
-      <Dialog open={confirmClear} onOpenChange={setConfirmClear}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Clear bought items?</DialogTitle>
-            <DialogDescription>
-              This removes {bought.length} item{bought.length === 1 ? "" : "s"}{" "}
-              from the list.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="flex gap-2 sm:justify-end">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setConfirmClear(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                onClearBought();
-                setConfirmClear(false);
-              }}
-            >
-              Clear
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
-  );
-}
-
-function BuyRow({ item, onUpdate, onDelete }) {
-  return (
-    <div className="flex items-center gap-3 py-2.5">
-      <label className="-m-2 flex cursor-pointer p-2">
-        <input
-          type="checkbox"
-          checked={Boolean(item.done)}
-          onChange={(event) =>
-            onUpdate(item.id, { done: event.target.checked })
-          }
-          className="relative size-5 shrink-0 appearance-none rounded-full border-2 border-input bg-transparent transition-colors after:absolute after:left-1.5 after:top-0.5 after:h-2 after:w-1.25 after:origin-center after:rotate-45 after:scale-0 after:border-2 after:border-b-white after:border-r-white after:border-l-0 after:border-t-0 after:transition-transform after:duration-150 after:content-[''] checked:border-primary checked:bg-primary checked:after:scale-100 hover:border-muted-foreground focus-visible:outline focus-visible:outline-offset-2 focus-visible:outline-foreground active:scale-90"
-        />
-      </label>
-
-      <div className="min-w-0 flex-1">
-        <p
-          className={`truncate text-sm font-semibold ${item.done ? "line-through text-muted-foreground" : ""}`}
-        >
-          {item.name}
-          {Number(item.quantity) > 1 && (
-            <span className="ml-1.5 inline-flex rounded-full bg-muted px-2 py-0.5 text-3xs font-bold text-muted-foreground">
-              x{item.quantity}
-            </span>
-          )}
-        </p>
-
-        {item.note && (
-          <p className="truncate text-2xs text-muted-foreground">{item.note}</p>
-        )}
-      </div>
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon"
-        className={cn("size-8", dangerIconButton)}
-        onClick={() => onDelete(item.id)}
-        aria-label="Remove"
-      >
-        <X className="size-4" />
-      </Button>
-    </div>
-  );
-}
-
-function TripPlan({ plan, fmt, onClose }) {
-  return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <div>
-          <CardTitle className="text-base font-bold">Where to buy</CardTitle>
-          <CardDescription className="text-xs">
-            Based on the regular prices you have logged
-          </CardDescription>
-        </div>
-        <Button type="button" variant="outline" size="sm" onClick={onClose}>
-          <X className="mr-1 size-3.5" />
-          Close
-        </Button>
-      </CardHeader>
-
-      <CardContent className="pt-2">
-        {plan.matched.length === 0 ? (
-          <EmptyState
-            icon={HelpCircle}
-            title="No prices logged for these items"
-            message="Log what you pay on the Prices tab and this will start working."
-          />
-        ) : (
-          <>
-            <div className="space-y-4">
-              {plan.stops.map((stop) => (
-                <div key={stop.store}>
-                  <div className="flex items-center justify-between border-b border-border pb-1 text-xs font-bold">
-                    <span>{stop.store}</span>
-                    <span>{fmt(stop.total)}</span>
-                  </div>
-
-                  {stop.items.map((row) => (
-                    <div
-                      key={row.item.id}
-                      className="flex items-center justify-between gap-3 py-1.5 text-xs"
-                    >
-                      <span className="min-w-0 flex-1 truncate">
-                        {row.item.name}
-                        {row.quantity > 1 ? ` x${row.quantity}` : ""}
-                      </span>
-
-                      <span
-                        className={
-                          row.best.stale
-                            ? "text-amber-600 dark:text-amber-400"
-                            : "text-muted-foreground"
-                        }
-                      >
-                        {fmt(row.best.price)}
-                        {row.best.stale && (
-                          <span className="ml-1 text-3xs">
-                            ({Math.round(daysSince(row.best.date) / 30)}mo old)
-                          </span>
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-
-            {plan.unknown.length > 0 && (
-              <div className="mt-4 border-t border-border pt-3.5">
-                <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  No price logged
-                </p>
-
-                <p className="mt-1.5 text-xs text-muted-foreground">
-                  {plan.unknown.map((item) => item.name).join(", ")}
-                </p>
-              </div>
-            )}
-          </>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-/* ---------------------------------------------------------
-   Prices (Redesigned Search & Sort UI)
---------------------------------------------------------- */
 
 function PricesTab({
   groceries,
@@ -511,7 +192,7 @@ function PricesTab({
 }) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
-  const [viewMode, setViewMode] = useState("list"); // "list" | "grid"
+  const [viewMode, setViewMode] = useState("list");
   const [confirming, setConfirming] = useState(null);
 
   const filtered = useMemo(() => {
@@ -540,7 +221,6 @@ function PricesTab({
   return (
     <>
       <div className="space-y-4">
-        {/* Search, Sort, and View Controls Toolbar */}
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -607,9 +287,8 @@ function PricesTab({
           </div>
         </div>
 
-        {/* Results Metadata & Status */}
         {search && (
-          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
             <span>
               Found <strong>{filtered.length}</strong>{" "}
               {filtered.length === 1 ? "result" : "results"} for "{search}"
@@ -617,14 +296,13 @@ function PricesTab({
             <button
               type="button"
               onClick={() => setSearch("")}
-              className="text-primary hover:underline font-medium"
+              className="font-medium text-primary hover:underline"
             >
               Clear filters
             </button>
           </div>
         )}
 
-        {/* Content Display */}
         {filtered.length === 0 ? (
           <Card>
             <CardContent className="pt-6">
@@ -645,7 +323,7 @@ function PricesTab({
           </Card>
         ) : viewMode === "list" ? (
           <Card>
-            <CardContent className="p-0 divide-y divide-border">
+            <CardContent className="divide-y divide-border p-0">
               {filtered.map((entry) => (
                 <div
                   key={entry.id}
@@ -674,7 +352,7 @@ function PricesTab({
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0">
+                  <div className="flex shrink-0 items-center gap-3">
                     <span className="text-base font-bold text-foreground">
                       {fmt(entry.price)}
                     </span>
@@ -708,14 +386,13 @@ function PricesTab({
             </CardContent>
           </Card>
         ) : (
-          /* Grid View Mode */
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((entry) => (
               <Card key={entry.id} className="relative overflow-hidden">
-                <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                <CardContent className="flex h-full flex-col justify-between space-y-3 p-4">
                   <div className="space-y-1.5">
                     <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-semibold text-sm truncate leading-snug">
+                      <h4 className="truncate text-sm font-semibold leading-snug">
                         {entry.item}
                       </h4>
                       <PriceTag type={entry.priceType} />
@@ -733,13 +410,13 @@ function PricesTab({
                     </div>
 
                     {entry.description && (
-                      <p className="text-2xs text-muted-foreground line-clamp-2 pt-1">
+                      <p className="line-clamp-2 pt-1 text-2xs text-muted-foreground">
                         {entry.description}
                       </p>
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                  <div className="flex items-center justify-between border-t border-border pt-2">
                     <span className="text-lg font-bold text-foreground">
                       {fmt(entry.price)}
                     </span>

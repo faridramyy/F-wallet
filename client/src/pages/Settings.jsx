@@ -371,29 +371,31 @@ export default function Settings() {
               attempt to change something is refused by the server.
             </p>
 
-            <div className="mt-4 max-w-xs space-y-2">
-              <Label htmlFor="share-days">Link valid for</Label>
-              <Select value={shareDays} onValueChange={setShareDays}>
-                <SelectTrigger id="share-days">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 day</SelectItem>
-                  <SelectItem value="7">7 days</SelectItem>
-                  <SelectItem value="30">30 days</SelectItem>
-                  <SelectItem value="90">90 days</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="mt-4 flex items-center">
+              <div className="w-full max-w-xs space-y-2">
+                <Label htmlFor="share-days">Link valid for</Label>
+                <Select value={shareDays} onValueChange={setShareDays}>
+                  <SelectTrigger id="share-days">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">1 day</SelectItem>
+                    <SelectItem value="7">7 days</SelectItem>
+                    <SelectItem value="30">30 days</SelectItem>
+                    <SelectItem value="90">90 days</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Button
-              className="mt-3 gap-2"
-              onClick={makeShareLink}
-              disabled={sharing}
-            >
-              <LinkIcon className="h-4 w-4" />
-              {sharing ? "Creating..." : "Create share link"}
-            </Button>
+              <Button
+                className="gap-2 shrink-0"
+                onClick={makeShareLink}
+                disabled={sharing}
+              >
+                <LinkIcon className="h-4 w-4" />
+                {sharing ? "Creating..." : "Create share link"}
+              </Button>
+            </div>
 
             {shareLink && (
               <div className="mt-3 flex items-center gap-2 rounded-lg border bg-muted p-2">
