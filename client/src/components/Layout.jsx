@@ -189,7 +189,7 @@ export default function Layout({ children, onQuickAdd }) {
               <span className="text-xl leading-none">
                 <Icon className="h-5 w-5" />
               </span>
-              <small className="text-[10px] font-semibold">{item.short}</small>
+              <small className="text-3xs font-semibold">{item.short}</small>
             </NavLink>
           );
         })}

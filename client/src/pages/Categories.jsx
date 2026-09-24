@@ -186,7 +186,7 @@ export default function Categories() {
                   <div className="text-xl font-bold tracking-tight tabular-nums">
                     {stat.value}
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-2xs text-muted-foreground">
                     {stat.help}
                   </p>
                 </div>
@@ -308,14 +308,14 @@ export default function Categories() {
                                   />
                                 </div>
 
-                                <p className="mt-1 text-[11px] text-muted-foreground">
+                                <p className="mt-1 text-2xs text-muted-foreground">
                                   {remaining >= 0
                                     ? `${fmt(remaining)} left of ${fmt(budget)}`
                                     : `${fmt(Math.abs(remaining))} over ${fmt(budget)}`}
                                 </p>
                               </>
                             ) : (
-                              <p className="mt-1 text-[11px] text-muted-foreground">
+                              <p className="mt-1 text-2xs text-muted-foreground">
                                 No budget set
                               </p>
                             )}
@@ -420,7 +420,7 @@ export default function Categories() {
                             {fmt(received)}
                           </p>
 
-                          <p className="mt-1 text-[11px] text-muted-foreground">
+                          <p className="mt-1 text-2xs text-muted-foreground">
                             {(category.entryMode ||
                               (Number(category.hourlyRate) > 0
                                 ? "hourly"
@@ -430,14 +430,14 @@ export default function Categories() {
                           </p>
 
                           {Number(category.hourlyRate) > 0 ? (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
+                            <p className="mt-1 text-2xs text-muted-foreground">
                               {fmt(category.hourlyRate)} per hour
                               {Number(category.overtimeRate) > 0
                                 ? ` · ${fmt(category.overtimeRate)} overtime`
                                 : ""}
                             </p>
                           ) : (
-                            <p className="mt-1 text-[11px] text-muted-foreground">
+                            <p className="mt-1 text-2xs text-muted-foreground">
                               No pay rate set
                             </p>
                           )}

@@ -78,7 +78,7 @@ function PriceTag({ type }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold tracking-wide",
+        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-3xs font-bold tracking-wide",
         tag.className,
       )}
     >
@@ -142,7 +142,7 @@ export default function Groceries() {
             <ListChecks className="size-4" />
             <span>To buy</span>
             {pendingCount > 0 && (
-              <span className="inline-flex size-5 items-center justify-center rounded-full bg-background text-[11px] font-bold text-foreground">
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-background text-2xs font-bold text-foreground">
                 {pendingCount}
               </span>
             )}
@@ -271,7 +271,7 @@ function ToBuyDrawerContent({
 
           {bought.length > 0 && (
             <>
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-[11.5px] font-bold uppercase tracking-wide text-muted-foreground">
+              <div className="mt-4 flex items-center justify-between border-t border-border pt-3 text-2xs font-bold uppercase tracking-wide text-muted-foreground">
                 <span>Bought ({bought.length})</span>
 
                 <Button
@@ -366,16 +366,14 @@ function BuyRow({ item, onUpdate, onDelete }) {
         >
           {item.name}
           {Number(item.quantity) > 1 && (
-            <span className="ml-1.5 inline-flex rounded-full bg-muted px-2 py-0.5 text-[10.5px] font-bold text-muted-foreground">
+            <span className="ml-1.5 inline-flex rounded-full bg-muted px-2 py-0.5 text-3xs font-bold text-muted-foreground">
               x{item.quantity}
             </span>
           )}
         </p>
 
         {item.note && (
-          <p className="truncate text-[11px] text-muted-foreground">
-            {item.note}
-          </p>
+          <p className="truncate text-2xs text-muted-foreground">{item.note}</p>
         )}
       </div>
 
@@ -429,7 +427,7 @@ function TripPlan({ plan, fmt, onClose }) {
                   {stop.items.map((row) => (
                     <div
                       key={row.item.id}
-                      className="flex items-center justify-between gap-3 py-1.5 text-[12.5px]"
+                      className="flex items-center justify-between gap-3 py-1.5 text-xs"
                     >
                       <span className="min-w-0 flex-1 truncate">
                         {row.item.name}
@@ -445,7 +443,7 @@ function TripPlan({ plan, fmt, onClose }) {
                       >
                         {fmt(row.best.price)}
                         {row.best.stale && (
-                          <span className="ml-1 text-[10px]">
+                          <span className="ml-1 text-3xs">
                             ({Math.round(daysSince(row.best.date) / 30)}mo old)
                           </span>
                         )}
@@ -458,7 +456,7 @@ function TripPlan({ plan, fmt, onClose }) {
 
             {plan.unknown.length > 0 && (
               <div className="mt-4 border-t border-border pt-3.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <p className="text-2xs font-semibold uppercase tracking-wide text-muted-foreground">
                   No price logged
                 </p>
 
@@ -578,7 +576,7 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
                       <PriceTag type={entry.priceType} />
                     </p>
 
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <p className="truncate text-2xs text-muted-foreground">
                       {entry.store} · {formatDate(entry.date)}
                       {entry.description ? ` · ${entry.description}` : ""}
                     </p>

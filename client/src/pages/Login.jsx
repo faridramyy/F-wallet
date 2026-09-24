@@ -107,7 +107,7 @@ export default function Login() {
               )}
             </Button>
 
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
+            <p className="text-2xs leading-relaxed text-muted-foreground">
               The first request after a quiet spell can take a few seconds while
               the server wakes up.
             </p>

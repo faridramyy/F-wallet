@@ -341,7 +341,7 @@ export default function TransactionModal({ transaction, onClose }) {
                   </div>
 
                   {payResult.overtimePay > 0 && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1 text-2xs text-muted-foreground">
                       {fmt(payResult.regularPay)} regular +{" "}
                       {fmt(payResult.overtimePay)} overtime
                     </p>

@@ -161,7 +161,7 @@ export default function GroceryModal({ grocery, onClose }) {
                 })}
               </div>
 
-              <p className="text-[11px] leading-relaxed text-muted-foreground">
+              <p className="text-2xs leading-relaxed text-muted-foreground">
                 Only regular prices are compared across stores. Offers and
                 markdowns are still logged and searchable.
               </p>

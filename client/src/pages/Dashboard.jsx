@@ -188,7 +188,7 @@ export default function Dashboard({ onEditTransaction }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               Cash minus card debt
             </p>
           </CardContent>
@@ -207,7 +207,7 @@ export default function Dashboard({ onEditTransaction }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-[11px] text-muted-foreground">This month</p>
+            <p className="text-2xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
 
@@ -224,7 +224,7 @@ export default function Dashboard({ onEditTransaction }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-[11px] text-muted-foreground">This month</p>
+            <p className="text-2xs text-muted-foreground">This month</p>
           </CardContent>
         </Card>
 
@@ -247,7 +247,7 @@ export default function Dashboard({ onEditTransaction }) {
             </CardTitle>
           </CardHeader>
           <CardContent className="p-4 pt-0">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-2xs text-muted-foreground">
               {income > 0
                 ? `${rate.toFixed(0)}% of income`
                 : "No income logged"}
@@ -288,7 +288,7 @@ export default function Dashboard({ onEditTransaction }) {
               {fmtSigned(savings)}
             </p>
 
-            <p className="mt-1 text-[11px] font-semibold text-muted-foreground">
+            <p className="mt-1 text-2xs font-semibold text-muted-foreground">
               {income <= 0
                 ? "No income logged"
                 : rate >= 20
@@ -323,12 +323,10 @@ export default function Dashboard({ onEditTransaction }) {
               })}
             </div>
 
-            <p className="mt-2 text-[10px] text-muted-foreground">
-              Last 6 months
-            </p>
+            <p className="mt-2 text-3xs text-muted-foreground">Last 6 months</p>
 
             {transfers > 0 && (
-              <p className="mt-3 text-[11px] text-muted-foreground">
+              <p className="mt-3 text-2xs text-muted-foreground">
                 {fmt(transfers)} moved between accounts this month
               </p>
             )}
@@ -456,7 +454,7 @@ export default function Dashboard({ onEditTransaction }) {
 
                       <Progress value={percent} className="h-2" />
 
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-2xs text-muted-foreground">
                         {remaining >= 0
                           ? `${fmt(remaining)} left`
                           : `${fmt(Math.abs(remaining))} over budget`}
@@ -511,7 +509,7 @@ export default function Dashboard({ onEditTransaction }) {
                         <p className="truncate text-sm font-semibold">
                           {account.name}
                         </p>
-                        <p className="text-[11px] capitalize text-muted-foreground">
+                        <p className="text-2xs capitalize text-muted-foreground">
                           {account.type}
                           {account.lastFour ? ` · ${account.lastFour}` : ""}
                         </p>
@@ -603,7 +601,7 @@ export default function Dashboard({ onEditTransaction }) {
                         className="h-2"
                       />
 
-                      <p className="mt-1 text-[11px] text-muted-foreground">
+                      <p className="mt-1 text-2xs text-muted-foreground">
                         {fmt(debt)} owing ·{" "}
                         {fmt(availableCredit(card, transactions))} available
                       </p>
@@ -672,7 +670,7 @@ export default function Dashboard({ onEditTransaction }) {
                         : getCategoryName(transaction.categoryId)}
                     </p>
 
-                    <p className="truncate text-[11px] text-muted-foreground">
+                    <p className="truncate text-2xs text-muted-foreground">
                       {formatDate(transaction.date)}
                       {transaction.type !== "transfer"
                         ? ` · ${getAccountName(transaction.accountId)}`
@@ -737,7 +735,7 @@ function CashFlowChart({ trend, currency }) {
               />
             </div>
 
-            <span className="text-[10px] font-medium text-muted-foreground">
+            <span className="text-3xs font-medium text-muted-foreground">
               {formatMonth(item.month).split(" ")[0]}
             </span>
           </div>
@@ -746,7 +744,7 @@ function CashFlowChart({ trend, currency }) {
 
       <Separator className="my-3" />
 
-      <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+      <div className="flex items-center gap-4 text-2xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <span className="inline-block size-2.5 rounded-sm bg-primary" />{" "}
           Income

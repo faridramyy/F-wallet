@@ -198,7 +198,7 @@ export default function CategoryModal({ category, onClose }) {
                     </Button>
                   </div>
 
-                  <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  <p className="text-2xs leading-relaxed text-muted-foreground">
                     This sets how the transaction form opens for this category.
                     Fixed suits bonuses, gifts and refunds. You can still switch
                     modes on any individual transaction.
@@ -218,7 +218,7 @@ export default function CategoryModal({ category, onClose }) {
                       placeholder="0.00"
                     />
 
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-2xs text-muted-foreground">
                       Optional. If this income is usually the same amount, it
                       will be filled in for you. Leave blank to type it each
                       time.
@@ -254,7 +254,7 @@ export default function CategoryModal({ category, onClose }) {
                       />
                     </div>
 
-                    <p className="text-[11px] text-muted-foreground sm:col-span-2">
+                    <p className="text-2xs text-muted-foreground sm:col-span-2">
                       Both rates are filled in for you when you log income in
                       this category.
                     </p>

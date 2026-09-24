@@ -241,7 +241,7 @@ export default function AccountModal({ account, onClose }) {
                       value={form.currentBalance}
                       onChange={set("currentBalance")}
                     />
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-2xs text-muted-foreground">
                       Set this to match your statement. Your transactions are
                       kept and the starting debt is adjusted to fit.
                     </p>

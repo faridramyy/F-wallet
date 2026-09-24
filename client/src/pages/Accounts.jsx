@@ -184,7 +184,7 @@ export default function Accounts() {
                   >
                     {stat.value}
                   </div>
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-2xs text-muted-foreground">
                     {stat.help}
                   </p>
                 </div>
@@ -280,7 +280,7 @@ export default function Accounts() {
                                   {account.name}
                                 </p>
 
-                                <p className="truncate text-[11px] text-muted-foreground">
+                                <p className="truncate text-2xs text-muted-foreground">
                                   <span className="capitalize">
                                     {account.type}
                                   </span>
@@ -312,7 +312,7 @@ export default function Accounts() {
                                 </p>
 
                                 {isCredit && (
-                                  <p className="mt-px text-[11px] text-muted-foreground">
+                                  <p className="mt-px text-2xs text-muted-foreground">
                                     {debt > 0 ? "owing" : "paid off"}
                                   </p>
                                 )}
@@ -335,7 +335,7 @@ export default function Accounts() {
                                     />
                                     <Label
                                       htmlFor={`include-${account.id}`}
-                                      className="cursor-pointer text-[11px] font-medium text-muted-foreground"
+                                      className="cursor-pointer text-2xs font-medium text-muted-foreground"
                                     >
                                       {account.includeInTotal === false
                                         ? "Not counted in total"
@@ -357,7 +357,7 @@ export default function Accounts() {
                                       }`}
                                     />
 
-                                    <p className="mt-1 text-[11px] text-muted-foreground">
+                                    <p className="mt-1 text-2xs text-muted-foreground">
                                       {fmt(
                                         availableCredit(account, transactions),
                                       )}{" "}

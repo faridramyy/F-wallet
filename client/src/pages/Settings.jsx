@@ -235,7 +235,7 @@ export default function Settings() {
             </div>
           </div>
 
-          <p className="mt-4 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-4 text-2xs leading-relaxed text-muted-foreground">
             These are stored with your data, so they follow you to any device
             you sign in on. Matching your device means the app switches with
             your phone or laptop, including when it changes on its own in the
@@ -294,7 +294,7 @@ export default function Settings() {
               <p className="text-xs font-medium text-foreground">
                 Data Portability
               </p>
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-2xs text-muted-foreground">
                 Export a complete JSON backup of your records at any time.
               </p>
             </div>
@@ -341,7 +341,7 @@ export default function Settings() {
             {curlExample}
           </pre>
 
-          <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+          <p className="mt-3 text-2xs leading-relaxed text-muted-foreground">
             The key only allows creating transactions. It cannot read your
             balances, edit history or delete anything. Your API key lives in the
             Lambda environment variables, not in this page, so it is never
@@ -421,7 +421,7 @@ export default function Settings() {
               </div>
             )}
 
-            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+            <p className="mt-3 text-2xs leading-relaxed text-muted-foreground">
               Anyone with the link gets access until it expires, so treat it
               like a password. There is no way to revoke a single link short of
               changing JWT_SECRET, which signs everyone out. Prefer short

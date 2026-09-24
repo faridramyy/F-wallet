@@ -151,7 +151,7 @@ export default function TransferModal({ transfer, onClose }) {
                 </SelectContent>
               </Select>
 
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-2xs text-muted-foreground">
                 {describe(form.fromAccountId)}
               </p>
             </div>
@@ -186,7 +186,7 @@ export default function TransferModal({ transfer, onClose }) {
                 </SelectContent>
               </Select>
 
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-2xs text-muted-foreground">
                 {describe(form.toAccountId)}
               </p>
             </div>
@@ -225,7 +225,7 @@ export default function TransferModal({ transfer, onClose }) {
               />
             </div>
 
-            <p className="text-[11px] leading-relaxed text-muted-foreground sm:col-span-2">
+            <p className="text-2xs leading-relaxed text-muted-foreground sm:col-span-2">
               Paying a credit card is a transfer from your chequing account to
               the card. The card balance goes down and your cash goes down with
               it.
