@@ -17,6 +17,7 @@ import { useApp } from "../store";
 import { money, formatDate, fold } from "../lib/format";
 import { planTrip, knownItemSummaries, daysSince } from "../lib/shopping";
 import { SuggestInput } from "../components/SuggestInput";
+import { PageHeader } from "../components/PageHeader";
 import GroceryModal from "../modals/GroceryModal";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -118,20 +119,37 @@ export default function Groceries() {
   const pendingCount = shopping.filter((item) => !item.done).length;
 
   return (
-    <div className="relative animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Shopping
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight">Groceries</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            What you need to buy, and what it costs where.
-          </p>
-        </div>
+    <>
+      <div className="relative animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+        <PageHeader
+          eyebrow="Shopping"
+          title="Groceries"
+          description="What you need to buy, and what it costs where."
+          actions={
+            <Button
+              type="button"
+              onClick={() => {
+                setEditing(null);
+                setShowModal(true);
+              }}
+            >
+              <Plus className="mr-1.5 size-4" />
+              Log a price
+            </Button>
+          }
+        />
+
+        <PricesTab
+          groceries={groceries}
+          fmt={fmt}
+          deleteGrocery={deleteGrocery}
+        />
       </div>
 
-      {/* Vertical Side-Tab Drawer Trigger */}
+      {/* Vertical Side-Tab Drawer Trigger. Rendered outside the space-y-5
+          container above: its trigger is position:fixed, but it was still
+          sitting in the DOM between PageHeader and PricesTab, so it counted
+          as a sibling for space-y-5's margin and produced an extra gap. */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetTrigger asChild>
           <button
@@ -173,13 +191,7 @@ export default function Groceries() {
           </div>
         </SheetContent>
       </Sheet>
-
-      <PricesTab
-        groceries={groceries}
-        fmt={fmt}
-        deleteGrocery={deleteGrocery}
-      />
-    </div>
+    </>
   );
 }
 
@@ -508,19 +520,6 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
 
   return (
     <>
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          onClick={() => {
-            setEditing(null);
-            setShowModal(true);
-          }}
-        >
-          <Plus className="mr-1.5 size-4" />
-          Log a price
-        </Button>
-      </div>
-
       <Card>
         <CardContent className="pt-6">
           <div className="mb-4 grid gap-3.5 sm:grid-cols-2">

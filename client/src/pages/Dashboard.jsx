@@ -22,6 +22,7 @@ import { useApp } from "../store";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { MonthPicker } from "@/components/MonthPicker";
+import { PageHeader } from "@/components/PageHeader";
 import { Progress } from "@/components/ui/progress";
 import { DonutChart, donutColor } from "@/components/Donut";
 import {
@@ -151,23 +152,18 @@ export default function Dashboard({ onEditTransaction }) {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Overview
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight">Dashboard</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatMonthLong(month)}
-          </p>
-        </div>
-
-        <MonthPicker
-          month={month}
-          onChange={setMonth}
-          label={formatMonth(month)}
-        />
-      </div>
+      <PageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        description={formatMonthLong(month)}
+        actions={
+          <MonthPicker
+            month={month}
+            onChange={setMonth}
+            label={formatMonth(month)}
+          />
+        }
+      />
 
       {/* Overview Stat Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

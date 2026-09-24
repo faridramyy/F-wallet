@@ -18,6 +18,7 @@ import {
 
 import { useApp } from "../store";
 import { api } from "../lib/api";
+import { PageHeader } from "../components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,16 +161,12 @@ export default function Settings() {
   }'`;
 
   return (
-    <div className="page space-y-5">
-      <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-          Configuration
-        </p>
-        <h2 className="text-2xl font-bold tracking-tight">Settings</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Preferences, backups and API access.
-        </p>
-      </div>
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <PageHeader
+        eyebrow="Configuration"
+        title="Settings"
+        description="Preferences, backups and API access."
+      />
 
       <Card>
         <CardHeader className="pb-4">

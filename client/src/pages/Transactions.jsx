@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 
 import { useApp } from "../store";
+import { PageHeader } from "../components/PageHeader";
 import { describePay } from "../lib/calc";
 import { money, formatDate, formatHours, fold } from "../lib/format";
 import TransactionModal from "../modals/TransactionModal";
@@ -239,43 +240,42 @@ export default function Transactions({ onEdit }) {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-1 space-y-6 duration-200">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Activity
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight">Transactions</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+      <PageHeader
+        eyebrow="Activity"
+        title="Transactions"
+        description={
+          <>
             Showing{" "}
             <span className="font-semibold text-foreground">
               {filtered.length}
             </span>{" "}
             of {transactions.length} total transactions
-          </p>
-        </div>
+          </>
+        }
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowTransfer(true)}
+              disabled={accounts.length < 2}
+              className="gap-2"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Transfer
+            </Button>
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setShowTransfer(true)}
-            disabled={accounts.length < 2}
-            className="gap-2"
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            Transfer
-          </Button>
-
-          <Button
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            Add Transaction
-          </Button>
-        </div>
-      </div>
+            <Button
+              type="button"
+              onClick={() => setShowModal(true)}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Add Transaction
+            </Button>
+          </>
+        }
+      />
 
       <Card className="shadow-sm">
         <CardHeader className="pb-3">

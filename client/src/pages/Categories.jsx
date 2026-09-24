@@ -19,6 +19,7 @@ import {
   reorderWithin,
 } from "../components/Reorder";
 import { MonthPicker } from "@/components/MonthPicker";
+import { PageHeader } from "@/components/PageHeader";
 import { categorySpending, categoryIncomeReceived } from "../lib/calc";
 import { money, formatMonth, currentMonth } from "../lib/format";
 import CategoryModal from "../modals/CategoryModal";
@@ -141,30 +142,25 @@ export default function Categories() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Planning
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight">Categories</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Budgets for what goes out, expectations for what comes in.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Planning"
+        title="Categories"
+        description="Budgets and expectations"
+        actions={
+          <>
+            <MonthPicker
+              month={month}
+              onChange={setMonth}
+              label={formatMonth(month)}
+            />
 
-        <div className="flex items-center gap-2">
-          <MonthPicker
-            month={month}
-            onChange={setMonth}
-            label={formatMonth(month)}
-          />
-
-          <Button type="button" onClick={openNew} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add category
-          </Button>
-        </div>
-      </div>
+            <Button type="button" onClick={openNew} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add category
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {summaryStats.map((stat) => {

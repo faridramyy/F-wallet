@@ -15,6 +15,7 @@ import {
 
 import { useApp } from "../store";
 import { SortableList, SortableItem, DragHandle } from "../components/Reorder";
+import { PageHeader } from "../components/PageHeader";
 import {
   accountBalance,
   creditCardDebt,
@@ -127,35 +128,30 @@ export default function Accounts() {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Money
-          </p>
-          <h2 className="text-2xl font-bold tracking-tight">Accounts</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Every account you track, and what is in it.
-          </p>
-        </div>
+      <PageHeader
+        eyebrow="Money"
+        title="Accounts"
+        description="Every account you track, and what is in it."
+        actions={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              className="gap-2"
+              onClick={() => setShowTransfer(true)}
+              disabled={accounts.length < 2}
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+              Transfer
+            </Button>
 
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            className="gap-2"
-            onClick={() => setShowTransfer(true)}
-            disabled={accounts.length < 2}
-          >
-            <ArrowLeftRight className="h-4 w-4" />
-            Transfer
-          </Button>
-
-          <Button type="button" onClick={openNew} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add account
-          </Button>
-        </div>
-      </div>
+            <Button type="button" onClick={openNew} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add account
+            </Button>
+          </>
+        }
+      />
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {summaryStats.map((stat) => {
