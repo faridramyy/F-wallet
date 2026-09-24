@@ -16,11 +16,11 @@ import {
   CreditCard,
   Receipt,
   ArrowLeftRight,
+  TrendingDown,
 } from "lucide-react";
 
 import { useApp } from "../store";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { MonthPicker } from "@/components/MonthPicker";
 import { PageHeader } from "@/components/PageHeader";
 import { Progress } from "@/components/ui/progress";
@@ -150,6 +150,44 @@ export default function Dashboard({ onEditTransaction }) {
 
   const creditCards = accounts.filter((account) => account.type === "credit");
 
+  const summaryStats = [
+    {
+      label: "Net worth",
+      value: fmt(netWorth),
+      help: "Cash minus card debt",
+      icon: Scale,
+      color: netWorth >= 0 ? "text-emerald-500" : "text-destructive",
+      bgColor: netWorth >= 0 ? "bg-emerald-500/10" : "bg-destructive/10",
+      isDestructiveValue: netWorth < 0,
+    },
+    {
+      label: "Income",
+      value: fmt(income),
+      help: formatMonth(month),
+      icon: ArrowDown,
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
+    },
+    {
+      label: "Expenses",
+      value: fmt(expenses),
+      help: formatMonth(month),
+      icon: TrendingDown,
+      color: "text-destructive",
+      bgColor: "bg-destructive/10",
+      isDestructiveValue: true,
+    },
+    {
+      label: "Saved",
+      value: fmtSigned(savings),
+      help: income > 0 ? `${rate.toFixed(0)}% of income` : "No income logged",
+      icon: PiggyBank,
+      color: savings >= 0 ? "text-emerald-500" : "text-destructive",
+      bgColor: savings >= 0 ? "bg-emerald-500/10" : "bg-destructive/10",
+      isDestructiveValue: savings < 0,
+    },
+  ];
+
   return (
     <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
       <PageHeader
@@ -165,102 +203,56 @@ export default function Dashboard({ onEditTransaction }) {
         }
       />
 
-      {/* Overview Stat Cards */}
+      {/* Overview Summary Stat Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-medium">
-                Net worth
-              </CardDescription>
-              <Scale className="size-3.5 text-muted-foreground" />
-            </div>
-            <CardTitle
-              className={`text-2xl font-bold ${
-                netWorth < 0 ? "text-destructive" : ""
-              }`}
-            >
-              {fmt(netWorth)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <p className="text-2xs text-muted-foreground">
-              Cash minus card debt
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-medium">
-                Income
-              </CardDescription>
-              <ArrowDown className="size-3.5 text-emerald-600 dark:text-emerald-500" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-emerald-600 dark:text-emerald-500">
-              {fmt(income)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <p className="text-2xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-medium">
-                Expenses
-              </CardDescription>
-              <ArrowUp className="size-3.5 text-destructive" />
-            </div>
-            <CardTitle className="text-2xl font-bold text-destructive">
-              {fmt(expenses)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <p className="text-2xs text-muted-foreground">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="p-4 pb-2">
-            <div className="flex items-center justify-between">
-              <CardDescription className="text-xs font-medium">
-                Saved
-              </CardDescription>
-              <PiggyBank className="size-3.5 text-muted-foreground" />
-            </div>
-            <CardTitle
-              className={`text-2xl font-bold ${
-                savings >= 0
-                  ? "text-emerald-600 dark:text-emerald-500"
-                  : "text-destructive"
-              }`}
-            >
-              {fmtSigned(savings)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-4 pt-0">
-            <p className="text-2xs text-muted-foreground">
-              {income > 0
-                ? `${rate.toFixed(0)}% of income`
-                : "No income logged"}
-            </p>
-          </CardContent>
-        </Card>
+        {summaryStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.label} className="border shadow-xs">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {stat.label}
+                  </span>
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg ${stat.bgColor} ${stat.color}`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div
+                    className={`text-xl font-bold tracking-tight tabular-nums ${
+                      stat.isDestructiveValue ? "text-destructive" : ""
+                    }`}
+                  >
+                    {stat.value}
+                  </div>
+                  <p className="mt-1 text-2xs text-muted-foreground">
+                    {stat.help}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Cash Flow & Savings */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <TrendingUp className="size-3.5 text-muted-foreground" />
-              Cash flow
-            </CardTitle>
-            <CardDescription>Last 6 months</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Cash flow</CardTitle>
+                <CardDescription className="text-xs">
+                  Last 6 months
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <CashFlowChart trend={trend} currency={currency} />
@@ -268,16 +260,22 @@ export default function Dashboard({ onEditTransaction }) {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Vault className="size-3.5 text-muted-foreground" />
-              Savings
-            </CardTitle>
-            <CardDescription>Income minus expenses</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Vault className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Savings</CardTitle>
+                <CardDescription className="text-xs">
+                  Income minus expenses
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <p
-              className={`text-2xl font-bold tracking-tight ${
+              className={`text-2xl font-bold tracking-tight tabular-nums ${
                 savings < 0 ? "text-destructive" : ""
               }`}
             >
@@ -333,23 +331,31 @@ export default function Dashboard({ onEditTransaction }) {
       {/* Category Spending & Budgets */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <PieChart className="size-3.5 text-muted-foreground" />
-                Spending by category
-              </CardTitle>
-              <CardDescription>{formatMonth(month)}</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <PieChart className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">
+                  Spending by category
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {formatMonth(month)}
+                </CardDescription>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             {breakdown.rows.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <BarChart2 className="size-5" />
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <BarChart2 className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-semibold">No spending yet</p>
-                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                <h3 className="mt-4 text-base font-semibold">
+                  No spending yet
+                </h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                   Once you log expenses for this month they will break down
                   here.
                 </p>
@@ -393,7 +399,7 @@ export default function Dashboard({ onEditTransaction }) {
                           </span>
                         </span>
 
-                        <span className="shrink-0 text-muted-foreground">
+                        <span className="shrink-0 text-muted-foreground tabular-nums">
                           {fmt(row.amount)} · {share.toFixed(0)}%
                         </span>
                       </div>
@@ -406,23 +412,27 @@ export default function Dashboard({ onEditTransaction }) {
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Target className="size-3.5 text-muted-foreground" />
-                Budgets
-              </CardTitle>
-              <CardDescription>Your monthly spending plan</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Target className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Budgets</CardTitle>
+                <CardDescription className="text-xs">
+                  Your monthly spending plan
+                </CardDescription>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             {budgets.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Layers className="size-5" />
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Layers className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-semibold">No budgets set</p>
-                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                <h3 className="mt-4 text-base font-semibold">No budgets set</h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                   Add a monthly budget to an expense category to track it here.
                 </p>
               </div>
@@ -430,7 +440,7 @@ export default function Dashboard({ onEditTransaction }) {
               <div className="space-y-3.5">
                 {budgets.slice(0, 5).map(({ category, spent, budget }) => {
                   const remaining = budget - spent;
-                  const percent = Math.min(100, (spent / budget) * 100);
+                  const percentSpent = (spent / budget) * 100;
 
                   return (
                     <div key={category.id}>
@@ -438,17 +448,26 @@ export default function Dashboard({ onEditTransaction }) {
                         <span className="font-semibold">{category.name}</span>
 
                         <span
-                          className={
+                          className={`tabular-nums ${
                             remaining < 0
                               ? "font-semibold text-destructive"
                               : "text-muted-foreground"
-                          }
+                          }`}
                         >
                           {fmt(spent)} of {fmt(budget)}
                         </span>
                       </div>
 
-                      <Progress value={percent} className="h-2" />
+                      <Progress
+                        value={Math.min(100, percentSpent)}
+                        className={`h-2 ${
+                          percentSpent > 100
+                            ? "[&>div]:bg-destructive"
+                            : percentSpent >= 85
+                              ? "[&>div]:bg-amber-500"
+                              : ""
+                        }`}
+                      />
 
                       <p className="mt-1 text-2xs text-muted-foreground">
                         {remaining >= 0
@@ -467,26 +486,35 @@ export default function Dashboard({ onEditTransaction }) {
       {/* Accounts & Credit Health */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
-                <Wallet className="size-3.5 text-muted-foreground" />
-                Accounts
-              </CardTitle>
-              <CardDescription>{accounts.length} tracked</CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Wallet className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Accounts</CardTitle>
+                <CardDescription className="text-xs">
+                  {accounts.length} tracked
+                </CardDescription>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
             {accounts.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <Wallet className="size-5" />
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Wallet className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-semibold">No accounts yet</p>
-                <p className="mb-4 mt-1 max-w-xs text-xs text-muted-foreground">
+                <h3 className="mt-4 text-base font-semibold">
+                  No accounts yet
+                </h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                   Add an account to start tracking your balance.
                 </p>
-                <Link to="/accounts" className={buttonVariants({ size: "sm" })}>
+                <Link
+                  to="/accounts"
+                  className={buttonVariants({ size: "sm", className: "mt-6" })}
+                >
                   Add account
                 </Link>
               </div>
@@ -512,7 +540,7 @@ export default function Dashboard({ onEditTransaction }) {
                       </div>
 
                       <p
-                        className={`text-sm font-bold ${
+                        className={`text-sm font-bold tabular-nums ${
                           isCredit
                             ? balance > 0
                               ? "text-destructive"
@@ -533,23 +561,31 @@ export default function Dashboard({ onEditTransaction }) {
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <CreditCard className="size-3.5 text-muted-foreground" />
-              Credit health
-            </CardTitle>
-            <CardDescription>
-              {creditCards.length} card{creditCards.length === 1 ? "" : "s"}
-            </CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">
+                  Credit health
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {creditCards.length} card{creditCards.length === 1 ? "" : "s"}
+                </CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             {creditCards.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-8 text-center">
-                <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                  <CreditCard className="size-5" />
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-semibold">No credit cards</p>
-                <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+                <h3 className="mt-4 text-base font-semibold">
+                  No credit cards
+                </h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                   Add a credit account to track utilization and available
                   credit.
                 </p>
@@ -557,20 +593,20 @@ export default function Dashboard({ onEditTransaction }) {
             ) : (
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
+                  <div className="rounded-xl border bg-card p-3">
                     <p className="text-xs font-medium text-muted-foreground">
                       Total debt
                     </p>
-                    <p className="text-lg font-bold text-destructive">
+                    <p className="text-lg font-bold text-destructive tabular-nums">
                       {fmt(creditCardDebt(accounts, transactions))}
                     </p>
                   </div>
 
-                  <div>
+                  <div className="rounded-xl border bg-card p-3">
                     <p className="text-xs font-medium text-muted-foreground">
                       Available credit
                     </p>
-                    <p className="text-lg font-bold text-primary">
+                    <p className="text-lg font-bold text-blue-500 tabular-nums">
                       {fmt(totalAvailableCredit(accounts, transactions))}
                     </p>
                   </div>
@@ -594,7 +630,13 @@ export default function Dashboard({ onEditTransaction }) {
 
                       <Progress
                         value={Math.min(100, utilization)}
-                        className="h-2"
+                        className={`h-2 ${
+                          utilization >= 70
+                            ? "[&>div]:bg-destructive"
+                            : utilization >= 30
+                              ? "[&>div]:bg-amber-500"
+                              : ""
+                        }`}
                       />
 
                       <p className="mt-1 text-2xs text-muted-foreground">
@@ -612,23 +654,31 @@ export default function Dashboard({ onEditTransaction }) {
 
       {/* Recent Activity */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <div>
-            <CardTitle className="flex items-center gap-2 text-base font-semibold">
-              <Receipt className="size-3.5 text-muted-foreground" />
-              Recent activity
-            </CardTitle>
-            <CardDescription>Your latest transactions</CardDescription>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Receipt className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold">
+                Recent activity
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Your latest transactions
+              </CardDescription>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
           {recent.length === 0 ? (
-            <div className="flex flex-col items-center justify-center p-8 text-center">
-              <div className="mb-3 flex size-10 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                <Receipt className="size-5" />
+            <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Receipt className="h-6 w-6 text-muted-foreground" />
               </div>
-              <p className="text-sm font-semibold">Nothing logged yet</p>
-              <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+              <h3 className="mt-4 text-base font-semibold">
+                Nothing logged yet
+              </h3>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
                 Add your first transaction to see it here.
               </p>
             </div>
@@ -644,10 +694,10 @@ export default function Dashboard({ onEditTransaction }) {
                   <span
                     className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-base ${
                       transaction.type === "income"
-                        ? "bg-primary/10 text-primary"
+                        ? "bg-emerald-500/10 text-emerald-500"
                         : transaction.type === "expense"
                           ? "bg-destructive/10 text-destructive"
-                          : "bg-sky-500/10 text-sky-600 dark:text-sky-400"
+                          : "bg-blue-500/10 text-blue-500"
                     }`}
                   >
                     {transaction.type === "income" ? (
@@ -676,9 +726,9 @@ export default function Dashboard({ onEditTransaction }) {
                   </div>
 
                   <span
-                    className={`text-sm font-bold ${
+                    className={`text-sm font-bold tabular-nums ${
                       transaction.type === "income"
-                        ? "text-primary"
+                        ? "text-emerald-500"
                         : transaction.type === "expense"
                           ? "text-destructive"
                           : "text-muted-foreground"
@@ -717,7 +767,7 @@ function CashFlowChart({ trend, currency }) {
           >
             <div className="flex h-full w-full items-end justify-center gap-1">
               <div
-                className="w-1/2 rounded-t-md bg-primary/85 transition-all"
+                className="w-1/2 rounded-t-md bg-emerald-500/85 transition-all"
                 style={{ height: `${Math.max(2, (item.income / max) * 100)}%` }}
                 title={`Income ${money(item.income, { currency })}`}
               />
@@ -738,15 +788,13 @@ function CashFlowChart({ trend, currency }) {
         ))}
       </div>
 
-      <Separator className="my-3" />
-
-      <div className="flex items-center gap-4 text-2xs text-muted-foreground">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block size-2.5 rounded-sm bg-primary" />{" "}
+      <div className="mt-4 flex items-center justify-center gap-6 text-2xs text-muted-foreground border-t pt-3">
+        <span className="flex items-center gap-1.5 font-medium">
+          <span className="inline-block size-2.5 rounded-sm bg-emerald-500" />{" "}
           Income
         </span>
 
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1.5 font-medium">
           <span className="inline-block size-2.5 rounded-sm bg-destructive" />{" "}
           Expenses
         </span>

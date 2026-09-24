@@ -4,7 +4,7 @@ import { fold } from "../lib/format";
 import { Input } from "@/components/ui/input";
 import { cn } from "cn";
 
-const MIN_CHARACTERS = 2;
+const MIN_CHARACTERS = 1; // Changed from 2 to allow single-character search
 const MAX_SUGGESTIONS = 5;
 
 export function matchSuggestions(options, term) {
@@ -19,7 +19,8 @@ export function matchSuggestions(options, term) {
     const label = typeof option === "string" ? option : option.name;
     const folded = fold(label);
 
-    if (folded === needle) continue;
+    // Removed: if (folded === needle) continue;
+    // Keeping exact matches allows suggestions to stay visible when full word is typed
 
     if (folded.startsWith(needle)) starts.push(option);
     else if (folded.includes(needle)) contains.push(option);
@@ -49,13 +50,6 @@ export function distinctValues(entries, key, ignore = []) {
     .sort((a, b) => b.count - a.count)
     .map((entry) => entry.value);
 }
-
-/*
-  A shadcn Input with a suggestion list under it. `className` used to
-  default to the old "input" class; the shadcn Input already carries its
-  own base styling, so callers just pass extra classes (e.g. "flex-1")
-  when they need them.
-*/
 
 export function SuggestInput({
   value,
@@ -108,11 +102,6 @@ export function SuggestInput({
                 key={label}
                 className="border-t border-border first:border-t-0"
               >
-                {/*
-                  onMouseDown rather than onClick: blur fires first on a
-                  click, which would unmount the list before the
-                  selection registered.
-                */}
                 <button
                   type="button"
                   className={cn(

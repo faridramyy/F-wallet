@@ -11,6 +11,11 @@ import {
   ShoppingBag,
   Pencil,
   Trash2,
+  Search,
+  SlidersHorizontal,
+  LayoutGrid,
+  List,
+  Calendar,
 } from "lucide-react";
 
 import { useApp } from "../store";
@@ -60,12 +65,13 @@ const PRICE_TAGS = {
   offer: {
     label: "Offer",
     icon: Percent,
-    className: "bg-primary/10 text-primary",
+    className: "bg-primary/10 text-primary border-primary/20",
   },
   reduced: {
     label: "Reduced",
     icon: ArrowDown,
-    className: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    className:
+      "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
   },
 };
 
@@ -79,7 +85,7 @@ function PriceTag({ type }) {
   return (
     <span
       className={cn(
-        "inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-3xs font-bold tracking-wide",
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-3xs font-bold tracking-wide",
         tag.className,
       )}
     >
@@ -91,8 +97,8 @@ function PriceTag({ type }) {
 
 function EmptyState({ icon: Icon, title, message }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 text-center">
-      {Icon && <Icon className="mb-3 size-8 text-muted-foreground/60" />}
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      {Icon && <Icon className="mb-3 size-10 text-muted-foreground/40" />}
       <h3 className="text-base font-semibold text-foreground">{title}</h3>
       {message && (
         <p className="mt-1 max-w-sm text-sm text-muted-foreground">{message}</p>
@@ -114,9 +120,21 @@ export default function Groceries() {
   } = useApp();
 
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
   const fmt = (value) => money(value, { currency });
   const pendingCount = shopping.filter((item) => !item.done).length;
+
+  const openNewPrice = () => {
+    setEditing(null);
+    setShowModal(true);
+  };
+
+  const openEditPrice = (entry) => {
+    setEditing(entry);
+    setShowModal(true);
+  };
 
   return (
     <>
@@ -126,13 +144,7 @@ export default function Groceries() {
           title="Groceries"
           description="What you need to buy, and what it costs where."
           actions={
-            <Button
-              type="button"
-              onClick={() => {
-                setEditing(null);
-                setShowModal(true);
-              }}
-            >
+            <Button type="button" onClick={openNewPrice}>
               <Plus className="mr-1.5 size-4" />
               Log a price
             </Button>
@@ -143,13 +155,13 @@ export default function Groceries() {
           groceries={groceries}
           fmt={fmt}
           deleteGrocery={deleteGrocery}
+          editing={editing}
+          showModal={showModal}
+          onEdit={openEditPrice}
+          onCloseModal={() => setShowModal(false)}
         />
       </div>
 
-      {/* Vertical Side-Tab Drawer Trigger. Rendered outside the space-y-5
-          container above: its trigger is position:fixed, but it was still
-          sitting in the DOM between PageHeader and PricesTab, so it counted
-          as a sibling for space-y-5's margin and produced an extra gap. */}
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
         <SheetTrigger asChild>
           <button
@@ -374,7 +386,7 @@ function BuyRow({ item, onUpdate, onDelete }) {
 
       <div className="min-w-0 flex-1">
         <p
-          className={`truncate text-sm font-semibold ${item.done ? "line-through" : ""}`}
+          className={`truncate text-sm font-semibold ${item.done ? "line-through text-muted-foreground" : ""}`}
         >
           {item.name}
           {Number(item.quantity) > 1 && (
@@ -485,14 +497,21 @@ function TripPlan({ plan, fmt, onClose }) {
 }
 
 /* ---------------------------------------------------------
-   Prices
+   Prices (Redesigned Search & Sort UI)
 --------------------------------------------------------- */
 
-function PricesTab({ groceries, fmt, deleteGrocery }) {
+function PricesTab({
+  groceries,
+  fmt,
+  deleteGrocery,
+  editing,
+  showModal,
+  onEdit,
+  onCloseModal,
+}) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
-  const [editing, setEditing] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState("list"); // "list" | "grid"
   const [confirming, setConfirming] = useState(null);
 
   const filtered = useMemo(() => {
@@ -520,107 +539,243 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
 
   return (
     <>
-      <Card>
-        <CardContent className="pt-6">
-          <div className="mb-4 grid gap-3.5 sm:grid-cols-2">
-            <div className="space-y-1.5 sm:col-span-2">
-              <Label htmlFor="search">Search</Label>
-              <Input
-                id="search"
-                type="search"
-                placeholder="Item, store or note"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
+      <div className="space-y-4">
+        {/* Search, Sort, and View Controls Toolbar */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search items, stores or notes..."
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              className="pl-9 pr-8"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
 
-            <div className="space-y-1.5">
-              <Label htmlFor="sort">Sort by</Label>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-48 sm:flex-initial">
               <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger id="sort" className="w-full">
-                  <SelectValue />
+                <SelectTrigger className="w-full">
+                  <div className="flex items-center gap-2 truncate">
+                    <SlidersHorizontal className="size-3.5 shrink-0 text-muted-foreground" />
+                    <SelectValue placeholder="Sort by" />
+                  </div>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent align="end">
                   <SelectItem value="recent">Newest first</SelectItem>
                   <SelectItem value="oldest">Oldest first</SelectItem>
                   <SelectItem value="cheapest">Cheapest first</SelectItem>
                   <SelectItem value="priciest">Most expensive first</SelectItem>
-                  <SelectItem value="name">Item name</SelectItem>
+                  <SelectItem value="name">Item name (A-Z)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center rounded-lg border border-input bg-background p-1">
+              <Button
+                type="button"
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="icon"
+                className="size-7"
+                onClick={() => setViewMode("list")}
+                aria-label="List view"
+              >
+                <List className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="icon"
+                className="size-7"
+                onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="size-3.5" />
+              </Button>
+            </div>
           </div>
+        </div>
 
-          {filtered.length === 0 ? (
-            <EmptyState
-              icon={ShoppingBag}
-              title={
-                groceries.length === 0
-                  ? "No prices logged"
-                  : "Nothing matches that search"
-              }
-              message={
-                groceries.length === 0
-                  ? "Log what you paid for an item and where, and the To buy list will tell you where it is cheapest."
-                  : "Try a different search term."
-              }
-            />
-          ) : (
-            <div className="divide-y divide-border">
+        {/* Results Metadata & Status */}
+        {search && (
+          <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+            <span>
+              Found <strong>{filtered.length}</strong>{" "}
+              {filtered.length === 1 ? "result" : "results"} for "{search}"
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="text-primary hover:underline font-medium"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
+        {/* Content Display */}
+        {filtered.length === 0 ? (
+          <Card>
+            <CardContent className="pt-6">
+              <EmptyState
+                icon={ShoppingBag}
+                title={
+                  groceries.length === 0
+                    ? "No prices logged"
+                    : "Nothing matches that search"
+                }
+                message={
+                  groceries.length === 0
+                    ? "Log what you paid for an item and where, and the To buy list will tell you where it is cheapest."
+                    : "Try adjusting your search terms or filters."
+                }
+              />
+            </CardContent>
+          </Card>
+        ) : viewMode === "list" ? (
+          <Card>
+            <CardContent className="p-0 divide-y divide-border">
               {filtered.map((entry) => (
-                <div key={entry.id} className="flex items-center gap-3 py-3">
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/30"
+                >
                   <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-2 truncate text-sm font-semibold">
-                      <span className="truncate">{entry.item}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {entry.item}
+                      </span>
                       <PriceTag type={entry.priceType} />
-                    </p>
+                    </div>
 
-                    <p className="truncate text-2xs text-muted-foreground">
-                      {entry.store} · {formatDate(entry.date)}
-                      {entry.description ? ` · ${entry.description}` : ""}
-                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-muted-foreground">
+                      <span className="font-medium text-foreground/80">
+                        {entry.store}
+                      </span>
+                      <span>·</span>
+                      <span>{formatDate(entry.date)}</span>
+                      {entry.description && (
+                        <>
+                          <span>·</span>
+                          <span className="italic">{entry.description}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold">
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="text-base font-bold text-foreground">
                       {fmt(entry.price)}
                     </span>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="size-8"
-                      onClick={() => {
-                        setEditing(entry);
-                        setShowModal(true);
-                      }}
-                      aria-label="Edit"
-                    >
-                      <Pencil className="size-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onEdit(entry)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
 
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className={cn("size-8", dangerIconButton)}
-                      onClick={() => setConfirming(entry)}
-                      aria-label="Delete"
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn("size-8", dangerIconButton)}
+                        onClick={() => setConfirming(entry)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        ) : (
+          /* Grid View Mode */
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((entry) => (
+              <Card key={entry.id} className="relative overflow-hidden">
+                <CardContent className="p-4 flex flex-col justify-between h-full space-y-3">
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-semibold text-sm truncate leading-snug">
+                        {entry.item}
+                      </h4>
+                      <PriceTag type={entry.priceType} />
+                    </div>
 
-      {showModal && (
-        <GroceryModal grocery={editing} onClose={() => setShowModal(false)} />
-      )}
+                    <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                        <Store className="size-3" />
+                        {entry.store}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="size-3" />
+                        {formatDate(entry.date)}
+                      </span>
+                    </div>
+
+                    {entry.description && (
+                      <p className="text-2xs text-muted-foreground line-clamp-2 pt-1">
+                        {entry.description}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2 border-t border-border">
+                    <span className="text-lg font-bold text-foreground">
+                      {fmt(entry.price)}
+                    </span>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onEdit(entry)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn("size-8", dangerIconButton)}
+                        onClick={() => setConfirming(entry)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showModal && <GroceryModal grocery={editing} onClose={onCloseModal} />}
 
       <Dialog
         open={Boolean(confirming)}
