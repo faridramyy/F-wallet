@@ -1,7 +1,29 @@
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+import { ArrowUpRight, ArrowDownLeft, Banknote, Clock } from "lucide-react";
 
 import { useApp } from "../store";
-import { Modal, Field } from "../components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
+} from "@/components/ui/select";
 import { calculatePay, DEFAULT_OVERTIME_MULTIPLIER } from "../lib/calc";
 import { money, today, formatHours } from "../lib/format";
 
@@ -27,15 +49,6 @@ export default function TransactionModal({ transaction, onClose }) {
     notes: transaction?.notes || "",
   });
 
-  /*
-    Entry mode for income.
-
-    New transactions open in whichever mode was used last, defaulting to
-    fixed. Editing an existing one opens in the mode it was saved with;
-    records created before entryMode existed are read from whether they
-    have pay data, which is more reliable than assuming.
-  */
-
   const [entryMode, setEntryMode] = useState(() => {
     if (transaction) {
       return transaction.entryMode || (transaction.pay ? "hourly" : "fixed");
@@ -54,40 +67,47 @@ export default function TransactionModal({ transaction, onClose }) {
       transaction?.pay?.overtimeMultiplier ?? DEFAULT_OVERTIME_MULTIPLIER,
   });
 
-  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fmt = (value) => money(value, { currency });
 
   const set = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  const setValue = (key) => (value) =>
+    setForm((current) => ({ ...current, [key]: value }));
   const setPayField = (key) => (event) =>
     setPay((current) => ({ ...current, [key]: event.target.value }));
 
+  // Group accounts by type
+  const groupedAccounts = useMemo(() => {
+    return accounts.reduce((acc, account) => {
+      const type = account.type || "other";
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(account);
+      return acc;
+    }, {});
+  }, [accounts]);
+
+  // Filter categories by form type and group by parent/group property if present
   const availableCategories = useMemo(
     () => categories.filter((category) => category.type === form.type),
     [categories, form.type],
   );
 
-  /*
-    Picking an income category fills in its saved pay rates.
-
-    Categories store an absolute overtime rate, which is the number people
-    actually know off the top of their head. The transaction stores a
-    multiplier, which is what the maths uses. Converting here keeps both
-    sides in the form they are easiest to think about, and leaves every
-    transaction already saved working unchanged.
-
-    Anything typed manually afterwards wins. This only ever fills blanks.
-  */
+  const groupedCategories = useMemo(() => {
+    return availableCategories.reduce((acc, category) => {
+      const group = category.group || category.type || "general";
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(category);
+      return acc;
+    }, {});
+  }, [availableCategories]);
 
   const applyCategoryDefaults = (categoryId) => {
     const category = categories.find((item) => item.id === categoryId);
 
     if (!category || category.type !== "income") return;
 
-    // The category decides how the form opens. Categories saved before
-    // entryMode existed fall back to whether they have an hourly rate.
     const mode =
       category.entryMode ||
       (Number(category.hourlyRate) > 0 ? "hourly" : "fixed");
@@ -129,53 +149,45 @@ export default function TransactionModal({ transaction, onClose }) {
     ? payResult.total
     : Number(form.amount || 0);
 
-  /*
-    Switching type invalidates the selected category, since an expense
-    cannot sit in an income category. Clearing it here avoids a confusing
-    server error later.
-  */
-
   const changeType = (nextType) => {
     setForm((current) => ({ ...current, type: nextType, categoryId: "" }));
 
-    // Only income can be hourly, so switching away resets the mode.
     if (nextType !== "income") setEntryMode("fixed");
   };
 
-  const submit = async () => {
-    setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     if (
       !usePayCalculator &&
       form.amount !== "" &&
       !/^\d*\.?\d{0,2}$/.test(String(form.amount).trim())
     ) {
-      setError("Amount can have at most two decimal places.");
+      toast.error("Amount can have at most two decimal places.");
       return;
     }
 
     if (!(effectiveAmount > 0)) {
-      setError(
+      toast.error(
         usePayCalculator
           ? "Enter hours and an hourly rate greater than zero."
           : "Amount must be greater than zero.",
       );
-
       return;
     }
 
     if (!form.accountId) {
-      setError("Select an account.");
+      toast.error("Select an account.");
       return;
     }
 
     if (!form.categoryId) {
-      setError("Select a category. Create one first if the list is empty.");
+      toast.error("Select a category. Create one first if the list is empty.");
       return;
     }
 
     if (!form.date) {
-      setError("Select a date.");
+      toast.error("Select a date.");
       return;
     }
 
@@ -209,229 +221,287 @@ export default function TransactionModal({ transaction, onClose }) {
     try {
       if (isEditing) {
         await updateTransaction(transaction.id, payload);
+        toast.success("Transaction updated successfully.");
       } else {
         await createTransaction(payload);
+        toast.success("Transaction added successfully.");
       }
 
       onClose();
     } catch (submitError) {
       setSaving(false);
+      toast.error("Failed to save transaction. Please try again.");
     }
   };
 
+  const selectedAccount = accounts.find((a) => a.id === form.accountId);
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+
   return (
-    <Modal
-      title={isEditing ? "Edit transaction" : "Add transaction"}
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="secondary-button" onClick={onClose}>
-            Cancel
-          </button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-125">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edit transaction" : "Add transaction"}
+          </DialogTitle>
+          <DialogDescription>
+            {isEditing
+              ? "Update transaction details, accounts, or amounts."
+              : "Log a new income or expense transaction."}
+          </DialogDescription>
+        </DialogHeader>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={submit}
-            disabled={saving}
-          >
-            {saving
-              ? "Saving..."
-              : isEditing
-                ? "Save changes"
-                : "Add transaction"}
-          </button>
-        </>
-      }
-    >
-      <div className="mb-4 grid grid-cols-2 gap-2">
-        {["expense", "income"].map((type) => (
-          <button
-            key={type}
-            type="button"
-            className={`type-toggle ${form.type === type ? "active" : ""} ${type}`}
-            onClick={() => changeType(type)}
-          >
-            <i
-              className={`fa-solid ${type === "income" ? "fa-arrow-down" : "fa-arrow-up"}`}
-            />
-            {type === "income" ? "Income" : "Expense"}
-          </button>
-        ))}
-      </div>
-
-      <div className="form-grid">
-        {form.type === "income" && (
-          <div className="entry-mode sm:col-span-2">
-            <button
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-2">
+            <Button
               type="button"
-              className={`entry-mode-option ${entryMode === "fixed" ? "active" : ""}`}
-              onClick={() => setEntryMode("fixed")}
+              variant={form.type === "expense" ? "destructive" : "outline"}
+              className="gap-2"
+              onClick={() => changeType("expense")}
             >
-              <i className="fa-solid fa-money-bill" />
-              Fixed amount
-            </button>
+              <ArrowUpRight className="h-4 w-4" />
+              Expense
+            </Button>
 
-            <button
+            <Button
               type="button"
-              className={`entry-mode-option ${entryMode === "hourly" ? "active" : ""}`}
-              onClick={() => setEntryMode("hourly")}
+              variant={form.type === "income" ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => changeType("income")}
             >
-              <i className="fa-solid fa-clock" />
-              Hourly
-            </button>
+              <ArrowDownLeft className="h-4 w-4" />
+              Income
+            </Button>
           </div>
-        )}
 
-        {usePayCalculator ? (
-          <>
-            <Field label="Hours worked">
-              <input
-                className="input"
-                type="number"
-                step="0.25"
-                min="0"
-                value={pay.hours}
-                onChange={setPayField("hours")}
-                placeholder="0"
-              />
-            </Field>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {form.type === "income" && (
+              <div className="flex gap-2 sm:col-span-2">
+                <Button
+                  type="button"
+                  variant={entryMode === "fixed" ? "default" : "outline"}
+                  className="flex-1 gap-2"
+                  onClick={() => setEntryMode("fixed")}
+                >
+                  <Banknote className="h-4 w-4" />
+                  Fixed amount
+                </Button>
 
-            <Field label="Hourly rate">
-              <input
-                className="input"
-                type="number"
-                step="0.01"
-                min="0"
-                value={pay.rate}
-                onChange={setPayField("rate")}
-                placeholder="17.20"
-              />
-            </Field>
-
-            <Field label="Overtime hours">
-              <input
-                className="input"
-                type="number"
-                step="0.25"
-                min="0"
-                value={pay.overtimeHours}
-                onChange={setPayField("overtimeHours")}
-                placeholder="0"
-              />
-            </Field>
-
-            <Field label="Overtime multiplier">
-              <input
-                className="input"
-                type="number"
-                step="0.1"
-                min="1"
-                value={pay.overtimeMultiplier}
-                onChange={setPayField("overtimeMultiplier")}
-              />
-            </Field>
-
-            <div className="pay-summary sm:col-span-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-500">
-                  {formatHours(payResult.totalHours)} hours
-                  {payResult.overtimePay > 0
-                    ? ` · OT at ${fmt(payResult.overtimeRate)}`
-                    : ""}
-                </span>
-
-                <span className="text-base font-bold">
-                  {fmt(payResult.total)}
-                </span>
+                <Button
+                  type="button"
+                  variant={entryMode === "hourly" ? "default" : "outline"}
+                  className="flex-1 gap-2"
+                  onClick={() => setEntryMode("hourly")}
+                >
+                  <Clock className="h-4 w-4" />
+                  Hourly
+                </Button>
               </div>
+            )}
 
-              {payResult.overtimePay > 0 && (
-                <p className="mt-1 text-[11px] text-slate-400">
-                  {fmt(payResult.regularPay)} regular +{" "}
-                  {fmt(payResult.overtimePay)} overtime
-                </p>
-              )}
+            {usePayCalculator ? (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="pay-hours">Hours worked</Label>
+                  <Input
+                    id="pay-hours"
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={pay.hours}
+                    onChange={setPayField("hours")}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pay-rate">Hourly rate</Label>
+                  <Input
+                    id="pay-rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={pay.rate}
+                    onChange={setPayField("rate")}
+                    placeholder="17.20"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pay-ot-hours">Overtime hours</Label>
+                  <Input
+                    id="pay-ot-hours"
+                    type="number"
+                    step="0.25"
+                    min="0"
+                    value={pay.overtimeHours}
+                    onChange={setPayField("overtimeHours")}
+                    placeholder="0"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="pay-ot-multiplier">Overtime multiplier</Label>
+                  <Input
+                    id="pay-ot-multiplier"
+                    type="number"
+                    step="0.1"
+                    min="1"
+                    value={pay.overtimeMultiplier}
+                    onChange={setPayField("overtimeMultiplier")}
+                  />
+                </div>
+
+                <div className="rounded-2xl bg-muted p-3 sm:col-span-2">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">
+                      {formatHours(payResult.totalHours)} hours
+                      {payResult.overtimePay > 0
+                        ? ` · OT at ${fmt(payResult.overtimeRate)}`
+                        : ""}
+                    </span>
+
+                    <span className="text-base font-bold">
+                      {fmt(payResult.total)}
+                    </span>
+                  </div>
+
+                  {payResult.overtimePay > 0 && (
+                    <p className="mt-1 text-2xs text-muted-foreground">
+                      {fmt(payResult.regularPay)} regular +{" "}
+                      {fmt(payResult.overtimePay)} overtime
+                    </p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2 sm:col-span-2">
+                <Label htmlFor="amount">Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={form.amount}
+                  onChange={set("amount")}
+                  placeholder="0.00"
+                  autoFocus
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="account-select">Account</Label>
+              <Select
+                value={form.accountId}
+                onValueChange={setValue("accountId")}
+              >
+                <SelectTrigger id="account-select" className="w-full">
+                  <SelectValue placeholder="Select an account">
+                    {selectedAccount?.name}
+                  </SelectValue>
+                </SelectTrigger>
+
+                <SelectContent>
+                  {Object.entries(groupedAccounts).map(
+                    ([groupType, items], index) => (
+                      <SelectGroup key={groupType}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupType} Accounts
+                        </SelectLabel>
+                        {items.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
             </div>
-          </>
-        ) : (
-          <Field label="Amount" className="sm:col-span-2">
-            <input
-              className="input"
-              type="number"
-              step="0.01"
-              min="0"
-              value={form.amount}
-              onChange={set("amount")}
-              placeholder="0.00"
-              autoFocus
-            />
-          </Field>
-        )}
 
-        <Field label="Account">
-          <select
-            className="input"
-            value={form.accountId}
-            onChange={set("accountId")}
-          >
-            <option value="">Select an account</option>
+            <div className="space-y-2">
+              <Label htmlFor="category-select">Category</Label>
+              <Select
+                value={form.categoryId}
+                onValueChange={(value) => {
+                  setValue("categoryId")(value);
+                  applyCategoryDefaults(value);
+                }}
+              >
+                <SelectTrigger id="category-select" className="w-full">
+                  <SelectValue
+                    placeholder={
+                      availableCategories.length === 0
+                        ? `No ${form.type} categories yet`
+                        : "Select a category"
+                    }
+                  >
+                    {selectedCategory?.name}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(groupedCategories).map(
+                    ([groupLabel, items], index) => (
+                      <SelectGroup key={groupLabel}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupLabel}
+                        </SelectLabel>
+                        {items.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
 
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
-        </Field>
+            <div className="space-y-2">
+              <Label htmlFor="tx-date">Date</Label>
+              <Input
+                id="tx-date"
+                type="date"
+                value={form.date}
+                onChange={set("date")}
+              />
+            </div>
 
-        <Field label="Category">
-          <select
-            className="input"
-            value={form.categoryId}
-            onChange={(event) => {
-              set("categoryId")(event);
-              applyCategoryDefaults(event.target.value);
-            }}
-          >
-            <option value="">
-              {availableCategories.length === 0
-                ? `No ${form.type} categories yet`
-                : "Select a category"}
-            </option>
-
-            {availableCategories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Date">
-          <input
-            className="input"
-            type="date"
-            value={form.date}
-            onChange={set("date")}
-          />
-        </Field>
-
-        <Field label="Note">
-          <input
-            className="input"
-            value={form.notes}
-            onChange={set("notes")}
-            placeholder="Optional"
-          />
-        </Field>
-
-        {error && (
-          <div className="sm:col-span-2">
-            <p className="form-error">{error}</p>
+            <div className="space-y-2">
+              <Label htmlFor="tx-note">Note</Label>
+              <Input
+                id="tx-note"
+                value={form.notes}
+                onChange={set("notes")}
+                placeholder="Optional"
+              />
+            </div>
           </div>
-        )}
-      </div>
-    </Modal>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving
+                ? "Saving..."
+                : isEditing
+                  ? "Save changes"
+                  : "Add transaction"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

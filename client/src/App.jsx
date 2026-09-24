@@ -11,7 +11,8 @@ import {
 import { AppProvider, useApp } from "./store";
 import Layout from "./components/Layout";
 import ErrorBoundary from "./components/ErrorBoundary";
-import { Toasts } from "./components/ui";
+import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Accounts from "./pages/Accounts";
@@ -21,6 +22,15 @@ import Groceries from "./pages/Groceries";
 import Settings from "./pages/Settings";
 import TransactionModal from "./modals/TransactionModal";
 import TransferModal from "./modals/TransferModal";
+
+function LoadingScreen({ message }) {
+  return (
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-sm text-muted-foreground">
+      <div className="size-6.5 animate-spin rounded-full border-[2.5px] border-border border-t-foreground" />
+      <p>{message}</p>
+    </div>
+  );
+}
 
 function Shell() {
   const {
@@ -36,12 +46,6 @@ function Shell() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  /*
-    Share links look like /#/share/<token>. The token is swapped for a
-    session and stripped from the URL straight away, so it does not sit
-    in the address bar or get saved in history as a working credential.
-  */
-
   const shareToken = location.pathname.startsWith("/share/")
     ? location.pathname.slice("/share/".length)
     : null;
@@ -53,19 +57,11 @@ function Shell() {
     navigate("/dashboard", { replace: true });
   }, [shareToken, loginWithToken, navigate]);
 
-  // Editing a transaction can start from the dashboard or the transactions
-  // page, so the selection lives above both of them.
-
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [quickAdd, setQuickAdd] = useState(false);
 
   if (shareToken) {
-    return (
-      <div className="loading-screen">
-        <div className="spinner" />
-        <p>Opening shared view...</p>
-      </div>
-    );
+    return <LoadingScreen message="Opening shared view..." />;
   }
 
   if (!authenticated) return <Login />;
@@ -77,17 +73,16 @@ function Shell() {
     <>
       <Layout onQuickAdd={() => setQuickAdd(true)}>
         {firstLoad ? (
-          <div className="loading-screen">
-            <div className="spinner" />
-            <p>Loading your data...</p>
-          </div>
+          <LoadingScreen message="Loading your data..." />
         ) : loadError ? (
-          <div className="loading-screen">
-            <p className="text-sm font-semibold text-red-500">{loadError}</p>
+          <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 text-center">
+            <p className="text-sm font-semibold text-destructive">
+              {loadError}
+            </p>
 
-            <button type="button" className="primary-button" onClick={refresh}>
+            <Button type="button" onClick={refresh}>
               Try again
-            </button>
+            </Button>
           </div>
         ) : (
           <Routes>
@@ -131,7 +126,7 @@ function Shell() {
           />
         ))}
 
-      <Toasts />
+      <Toaster />
     </>
   );
 }

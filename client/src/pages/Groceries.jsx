@@ -1,395 +1,199 @@
 import { useMemo, useState } from "react";
+import {
+  Percent,
+  ArrowDown,
+  Plus,
+  X,
+  Store,
+  ShoppingBag,
+  Pencil,
+  Trash2,
+  Search,
+  SlidersHorizontal,
+  LayoutGrid,
+  List,
+  Calendar,
+  ListChecks,
+  ShoppingCart,
+} from "lucide-react";
 
 import { useApp } from "../store";
-import { Panel, EmptyState, ConfirmModal, Field } from "../components/ui";
 import { money, formatDate, fold } from "../lib/format";
-import { planTrip, knownItemSummaries, daysSince } from "../lib/shopping";
-import { SuggestInput } from "../components/SuggestInput";
+import { PageHeader } from "../components/PageHeader";
 import GroceryModal from "../modals/GroceryModal";
+import ShoppingListDrawer from "./ShoppingList";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { cn } from "cn";
+
+const dangerIconButton =
+  "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
 
 const PRICE_TAGS = {
-  offer: { label: "Offer", icon: "fa-percent" },
-  reduced: { label: "Reduced", icon: "fa-arrow-down" },
+  offer: {
+    label: "Offer",
+    icon: Percent,
+    className: "bg-primary/10 text-primary border-primary/20",
+  },
+  reduced: {
+    label: "Reduced",
+    icon: ArrowDown,
+    className:
+      "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+  },
 };
 
 function PriceTag({ type }) {
-  // Regular prices get no tag. Marking the common case adds noise to
-  // every row without telling you anything. A missing type means the
-  // entry predates price types, which means it was a regular price.
   const tag = PRICE_TAGS[type];
-
   if (!tag) return null;
 
+  const Icon = tag.icon;
+
   return (
-    <span className={`price-tag ${type}`}>
-      <i className={`fa-solid ${tag.icon}`} />
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-3xs font-bold tracking-wide",
+        tag.className,
+      )}
+    >
+      <Icon className="size-3" />
       {tag.label}
     </span>
   );
 }
 
-export default function Groceries() {
-  const {
-    groceries,
-    shopping,
-    currency,
-    deleteGrocery,
-    createShoppingItem,
-    updateShoppingItem,
-    deleteShoppingItem,
-    clearBoughtItems,
-  } = useApp();
-
-  const [tab, setTab] = useState("buy");
-
-  const fmt = (value) => money(value, { currency });
-
+function EmptyState({ icon: Icon, title, message }) {
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Shopping</p>
-          <h2 className="page-title">Groceries</h2>
-          <p className="page-description">
-            What you need to buy, and what it costs where.
-          </p>
-        </div>
-      </div>
-
-      <div className="segmented">
-        <button
-          type="button"
-          className={`segmented-option ${tab === "buy" ? "active" : ""}`}
-          onClick={() => setTab("buy")}
-        >
-          <i className="fa-solid fa-list-check" />
-          To buy
-        </button>
-
-        <button
-          type="button"
-          className={`segmented-option ${tab === "prices" ? "active" : ""}`}
-          onClick={() => setTab("prices")}
-        >
-          <i className="fa-solid fa-tags" />
-          Prices
-        </button>
-      </div>
-
-      {tab === "buy" ? (
-        <ToBuyTab
-          shopping={shopping}
-          groceries={groceries}
-          fmt={fmt}
-          onCreate={createShoppingItem}
-          onUpdate={updateShoppingItem}
-          onDelete={deleteShoppingItem}
-          onClearBought={clearBoughtItems}
-        />
-      ) : (
-        <PricesTab
-          groceries={groceries}
-          fmt={fmt}
-          deleteGrocery={deleteGrocery}
-        />
+    <div className="flex flex-col items-center justify-center py-12 text-center">
+      {Icon && <Icon className="mb-3 size-10 text-muted-foreground/40" />}
+      <h3 className="text-base font-semibold text-foreground">{title}</h3>
+      {message && (
+        <p className="mt-1 max-w-sm text-sm text-muted-foreground">{message}</p>
       )}
     </div>
   );
 }
 
-/* ---------------------------------------------------------
-   To buy
---------------------------------------------------------- */
+export default function Groceries() {
+  const { groceries, shopping, currency, deleteGrocery } = useApp();
 
-function ToBuyTab({
-  shopping = [],
-  groceries = [],
-  fmt,
-  onCreate,
-  onUpdate,
-  onDelete,
-  onClearBought,
-}) {
-  const [name, setName] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [plan, setPlan] = useState(null);
-  const [confirmClear, setConfirmClear] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
+  const [showModal, setShowModal] = useState(false);
 
-  /*
-    Suggesting names already used is what makes the trip planner work.
-    "Milk 4L" and "milk" are different items as far as matching goes, so
-    keeping spelling consistent matters more than it looks.
+  const fmt = (value) => money(value, { currency });
+  const pendingCount = shopping.filter((item) => !item.done).length;
 
-    The cheapest known price rides along as meta, so picking a name also
-    tells you roughly what it costs and where.
-  */
+  const openNewPrice = () => {
+    setEditing(null);
+    setShowModal(true);
+  };
 
-  const itemOptions = useMemo(
-    () =>
-      knownItemSummaries(groceries).map((entry) => ({
-        name: entry.name,
-        meta:
-          entry.price !== null ? `${fmt(entry.price)} at ${entry.store}` : null,
-      })),
-    [groceries, fmt],
-  );
-
-  const pending = shopping.filter((item) => !item.done);
-  const bought = shopping.filter((item) => item.done);
-
-  const add = async () => {
-    if (!name.trim()) return;
-
-    await onCreate({ name: name.trim(), quantity: Number(quantity) || 1 });
-
-    setName("");
-    setQuantity("1");
-    // The plan is now out of date, so drop it rather than showing a
-    // result that does not include what was just added.
-    setPlan(null);
+  const openEditPrice = (entry) => {
+    setEditing(entry);
+    setShowModal(true);
   };
 
   return (
     <>
-      <Panel title="Shopping list" subtitle={`${pending.length} to buy`}>
-        <div className="buy-add-row">
-          <SuggestInput
-            className="input flex-1"
-            value={name}
-            onChange={setName}
-            options={itemOptions}
-            onEnter={add}
-            placeholder="Add an item"
-          />
-
-          <input
-            className="input buy-qty"
-            type="number"
-            min="1"
-            value={quantity}
-            onChange={(event) => setQuantity(event.target.value)}
-            aria-label="Quantity"
-          />
-
-          <button
-            type="button"
-            className="primary-button"
-            onClick={add}
-            disabled={!name.trim()}
-          >
-            <i className="fa-solid fa-plus" />
-          </button>
-        </div>
-
-        {shopping.length === 0 ? (
-          <EmptyState
-            icon="fa-list-check"
-            title="Nothing on the list"
-            message="Add what you need and the app will work out where to buy it."
-          />
-        ) : (
-          <>
-            <div className="divide-y divide-slate-100">
-              {pending.map((item) => (
-                <BuyRow
-                  key={item.id}
-                  item={item}
-                  onUpdate={onUpdate}
-                  onDelete={onDelete}
-                />
-              ))}
-            </div>
-
-            {bought.length > 0 && (
-              <>
-                <div className="buy-done-header">
-                  <span>Bought ({bought.length})</span>
-
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    onClick={() => setConfirmClear(true)}
-                  >
-                    Clear
-                  </button>
-                </div>
-
-                <div className="divide-y divide-slate-100 opacity-60">
-                  {bought.map((item) => (
-                    <BuyRow
-                      key={item.id}
-                      item={item}
-                      onUpdate={onUpdate}
-                      onDelete={onDelete}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
-          </>
-        )}
-
-        {pending.length > 0 && (
-          <button
-            type="button"
-            className="primary-button full-button mt-4"
-            onClick={() => setPlan(planTrip(shopping, groceries))}
-          >
-            <i className="fa-solid fa-store" />
-            Where should I buy these?
-          </button>
-        )}
-      </Panel>
-
-      {plan && <TripPlan plan={plan} fmt={fmt} onClose={() => setPlan(null)} />}
-
-      {confirmClear && (
-        <ConfirmModal
-          title="Clear bought items?"
-          message={`This removes ${bought.length} item${bought.length === 1 ? "" : "s"} from the list.`}
-          confirmLabel="Clear"
-          onConfirm={onClearBought}
-          onClose={() => setConfirmClear(false)}
+      <div className="relative animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+        <PageHeader
+          eyebrow="Shopping"
+          title="Groceries"
+          description="What you need to buy, and what it costs where."
+          actions={
+            <Button type="button" onClick={openNewPrice}>
+              <Plus className="mr-1.5 size-4" />
+              Log a price
+            </Button>
+          }
         />
-      )}
+
+        <PricesTab
+          groceries={groceries}
+          fmt={fmt}
+          deleteGrocery={deleteGrocery}
+          editing={editing}
+          showModal={showModal}
+          onEdit={openEditPrice}
+          onCloseModal={() => setShowModal(false)}
+        />
+      </div>
+
+      <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+        <SheetTrigger asChild>
+          <button
+            type="button"
+            className="fixed right-0 top-1/2 z-40 flex origin-bottom-right -translate-y-1/2 -rotate-90 items-center gap-2 rounded-t-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            aria-label="Open shopping list"
+          >
+            <ListChecks className="size-4" />
+            <span>To buy</span>
+            {pendingCount > 0 && (
+              <span className="inline-flex size-5 items-center justify-center rounded-full bg-background text-2xs font-bold text-foreground">
+                {pendingCount}
+              </span>
+            )}
+          </button>
+        </SheetTrigger>
+
+        <SheetContent
+          side="right"
+          className="flex w-full flex-col gap-0 overflow-hidden p-0 sm:max-w-md"
+        >
+          <SheetHeader className="border-b border-border p-4">
+            <SheetTitle className="flex items-center gap-2">
+              <ShoppingCart className="size-5 text-primary" />
+              Shopping List
+            </SheetTitle>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto p-4">
+            <ShoppingListDrawer fmt={fmt} />
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
 
-function BuyRow({ item, onUpdate, onDelete }) {
-  return (
-    <div className="buy-item">
-      <label className="buy-check">
-        <input
-          type="checkbox"
-          checked={Boolean(item.done)}
-          onChange={(event) =>
-            onUpdate(item.id, { done: event.target.checked })
-          }
-        />
-      </label>
-
-      <div className="min-w-0 flex-1">
-        <p
-          className={`truncate text-sm font-semibold ${item.done ? "line-through" : ""}`}
-        >
-          {item.name}
-          {Number(item.quantity) > 1 && (
-            <span className="buy-qty-tag">x{item.quantity}</span>
-          )}
-        </p>
-
-        {item.note && (
-          <p className="truncate text-[11px] text-slate-400">{item.note}</p>
-        )}
-      </div>
-
-      <button
-        type="button"
-        className="icon-button danger"
-        onClick={() => onDelete(item.id)}
-        aria-label="Remove"
-      >
-        <i className="fa-solid fa-xmark" />
-      </button>
-    </div>
-  );
-}
-
-function TripPlan({ plan, fmt, onClose }) {
-  return (
-    <Panel
-      title="Where to buy"
-      subtitle="Based on the regular prices you have logged"
-      action={
-        <button type="button" className="secondary-button" onClick={onClose}>
-          <i className="fa-solid fa-xmark" />
-          Close
-        </button>
-      }
-    >
-      {plan.matched.length === 0 ? (
-        <EmptyState
-          icon="fa-circle-question"
-          title="No prices logged for these items"
-          message="Log what you pay on the Prices tab and this will start working."
-        />
-      ) : (
-        <>
-          <div className="space-y-4">
-            {plan.stops.map((stop) => (
-              <div key={stop.store}>
-                <div className="plan-stop-header">
-                  <span>{stop.store}</span>
-                  <span>{fmt(stop.total)}</span>
-                </div>
-
-                {stop.items.map((row) => (
-                  <div key={row.item.id} className="plan-item">
-                    <span className="min-w-0 flex-1 truncate">
-                      {row.item.name}
-                      {row.quantity > 1 ? ` x${row.quantity}` : ""}
-                    </span>
-
-                    <span
-                      className={
-                        row.best.stale ? "text-amber-600" : "text-slate-500"
-                      }
-                    >
-                      {fmt(row.best.price)}
-                      {row.best.stale && (
-                        <span className="ml-1 text-[10px]">
-                          ({Math.round(daysSince(row.best.date) / 30)}mo old)
-                        </span>
-                      )}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          {plan.unknown.length > 0 && (
-            <div className="plan-unknown">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                No price logged
-              </p>
-
-              <p className="mt-1.5 text-xs text-slate-500">
-                {plan.unknown.map((item) => item.name).join(", ")}
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </Panel>
-  );
-}
-
-/* ---------------------------------------------------------
-   Prices
---------------------------------------------------------- */
-
-function PricesTab({ groceries, fmt, deleteGrocery }) {
+function PricesTab({
+  groceries,
+  fmt,
+  deleteGrocery,
+  editing,
+  showModal,
+  onEdit,
+  onCloseModal,
+}) {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("recent");
-  const [editing, setEditing] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState("list");
   const [confirming, setConfirming] = useState(null);
-
-  const stores = useMemo(
-    () => new Set(groceries.map((entry) => entry.store)).size,
-    [groceries],
-  );
-
-  const average = useMemo(() => {
-    if (groceries.length === 0) return 0;
-
-    return (
-      groceries.reduce((sum, entry) => sum + (Number(entry.price) || 0), 0) /
-      groceries.length
-    );
-  }, [groceries]);
 
   const filtered = useMemo(() => {
     const term = fold(search.trim());
@@ -407,8 +211,6 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
       oldest: (a, b) => a.date.localeCompare(b.date),
       cheapest: (a, b) => (Number(a.price) || 0) - (Number(b.price) || 0),
       priciest: (a, b) => (Number(b.price) || 0) - (Number(a.price) || 0),
-      // sensitivity "base" ignores case and accents, so "apples" and
-      // "Apples" sort together instead of in separate blocks.
       name: (a, b) =>
         a.item.localeCompare(b.item, undefined, { sensitivity: "base" }),
     };
@@ -418,124 +220,275 @@ function PricesTab({ groceries, fmt, deleteGrocery }) {
 
   return (
     <>
-      <div className="flex justify-end">
-        <button
-          type="button"
-          className="primary-button"
-          onClick={() => {
-            setEditing(null);
-            setShowModal(true);
-          }}
-        >
-          <i className="fa-solid fa-plus" />
-          Log a price
-        </button>
-      </div>
-
-      <Panel>
-        <div className="form-grid mb-4">
-          <Field label="Search" className="sm:col-span-2">
-            <input
-              type="search"
-              className="input"
-              placeholder="Item, store or note"
+      <div className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search items, stores or notes..."
               value={search}
               onChange={(event) => setSearch(event.target.value)}
+              className="pl-9 pr-8"
             />
-          </Field>
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label="Clear search"
+              >
+                <X className="size-4" />
+              </button>
+            )}
+          </div>
 
-          <Field label="Sort by">
-            <select
-              className="input"
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-            >
-              <option value="recent">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="cheapest">Cheapest first</option>
-              <option value="priciest">Most expensive first</option>
-              <option value="name">Item name</option>
-            </select>
-          </Field>
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:w-48 sm:flex-initial">
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger className="w-full">
+                  <div className="flex items-center gap-2 truncate">
+                    <SlidersHorizontal className="size-3.5 shrink-0 text-muted-foreground" />
+                    <SelectValue placeholder="Sort by" />
+                  </div>
+                </SelectTrigger>
+                <SelectContent align="end">
+                  <SelectItem value="recent">Newest first</SelectItem>
+                  <SelectItem value="oldest">Oldest first</SelectItem>
+                  <SelectItem value="cheapest">Cheapest first</SelectItem>
+                  <SelectItem value="priciest">Most expensive first</SelectItem>
+                  <SelectItem value="name">Item name (A-Z)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex items-center rounded-lg border border-input bg-background p-1">
+              <Button
+                type="button"
+                variant={viewMode === "list" ? "secondary" : "ghost"}
+                size="icon"
+                className="size-7"
+                onClick={() => setViewMode("list")}
+                aria-label="List view"
+              >
+                <List className="size-3.5" />
+              </Button>
+              <Button
+                type="button"
+                variant={viewMode === "grid" ? "secondary" : "ghost"}
+                size="icon"
+                className="size-7"
+                onClick={() => setViewMode("grid")}
+                aria-label="Grid view"
+              >
+                <LayoutGrid className="size-3.5" />
+              </Button>
+            </div>
+          </div>
         </div>
 
+        {search && (
+          <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+            <span>
+              Found <strong>{filtered.length}</strong>{" "}
+              {filtered.length === 1 ? "result" : "results"} for "{search}"
+            </span>
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="font-medium text-primary hover:underline"
+            >
+              Clear filters
+            </button>
+          </div>
+        )}
+
         {filtered.length === 0 ? (
-          <EmptyState
-            icon="fa-basket-shopping"
-            title={
-              groceries.length === 0
-                ? "No prices logged"
-                : "Nothing matches that search"
-            }
-            message={
-              groceries.length === 0
-                ? "Log what you paid for an item and where, and the To buy tab will tell you where it is cheapest."
-                : "Try a different search term."
-            }
-          />
+          <Card>
+            <CardContent className="pt-6">
+              <EmptyState
+                icon={ShoppingBag}
+                title={
+                  groceries.length === 0
+                    ? "No prices logged"
+                    : "Nothing matches that search"
+                }
+                message={
+                  groceries.length === 0
+                    ? "Log what you paid for an item and where, and the To buy list will tell you where it is cheapest."
+                    : "Try adjusting your search terms or filters."
+                }
+              />
+            </CardContent>
+          </Card>
+        ) : viewMode === "list" ? (
+          <Card>
+            <CardContent className="divide-y divide-border p-0">
+              {filtered.map((entry) => (
+                <div
+                  key={entry.id}
+                  className="flex items-center justify-between gap-4 p-4 transition-colors hover:bg-muted/30"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-semibold text-foreground">
+                        {entry.item}
+                      </span>
+                      <PriceTag type={entry.priceType} />
+                    </div>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-2xs text-muted-foreground">
+                      <span className="font-medium text-foreground/80">
+                        {entry.store}
+                      </span>
+                      <span>·</span>
+                      <span>{formatDate(entry.date)}</span>
+                      {entry.description && (
+                        <>
+                          <span>·</span>
+                          <span className="italic">{entry.description}</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex shrink-0 items-center gap-3">
+                    <span className="text-base font-bold text-foreground">
+                      {fmt(entry.price)}
+                    </span>
+
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onEdit(entry)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn("size-8", dangerIconButton)}
+                        onClick={() => setConfirming(entry)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         ) : (
-          <div className="divide-y divide-slate-100">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((entry) => (
-              <div key={entry.id} className="grocery-item">
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 truncate text-sm font-semibold">
-                    <span className="truncate">{entry.item}</span>
-                    <PriceTag type={entry.priceType} />
-                  </p>
+              <Card key={entry.id} className="relative overflow-hidden">
+                <CardContent className="flex h-full flex-col justify-between space-y-3 p-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="truncate text-sm font-semibold leading-snug">
+                        {entry.item}
+                      </h4>
+                      <PriceTag type={entry.priceType} />
+                    </div>
 
-                  <p className="truncate text-[11px] text-slate-400">
-                    {entry.store} · {formatDate(entry.date)}
-                    {entry.description ? ` · ${entry.description}` : ""}
-                  </p>
-                </div>
+                    <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                      <span className="inline-flex items-center gap-1 font-medium text-foreground/80">
+                        <Store className="size-3" />
+                        {entry.store}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <Calendar className="size-3" />
+                        {formatDate(entry.date)}
+                      </span>
+                    </div>
 
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold">{fmt(entry.price)}</span>
+                    {entry.description && (
+                      <p className="line-clamp-2 pt-1 text-2xs text-muted-foreground">
+                        {entry.description}
+                      </p>
+                    )}
+                  </div>
 
-                  <button
-                    type="button"
-                    className="icon-button"
-                    onClick={() => {
-                      setEditing(entry);
-                      setShowModal(true);
-                    }}
-                    aria-label="Edit"
-                  >
-                    <i className="fa-solid fa-pen" />
-                  </button>
+                  <div className="flex items-center justify-between border-t border-border pt-2">
+                    <span className="text-lg font-bold text-foreground">
+                      {fmt(entry.price)}
+                    </span>
 
-                  <button
-                    type="button"
-                    className="icon-button danger"
-                    onClick={() => setConfirming(entry)}
-                    aria-label="Delete"
-                  >
-                    <i className="fa-solid fa-trash" />
-                  </button>
-                </div>
-              </div>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                        onClick={() => onEdit(entry)}
+                        aria-label="Edit"
+                      >
+                        <Pencil className="size-3.5" />
+                      </Button>
+
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className={cn("size-8", dangerIconButton)}
+                        onClick={() => setConfirming(entry)}
+                        aria-label="Delete"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
-      </Panel>
+      </div>
 
-      {showModal && (
-        <GroceryModal grocery={editing} onClose={() => setShowModal(false)} />
-      )}
+      {showModal && <GroceryModal grocery={editing} onClose={onCloseModal} />}
 
-      {confirming && (
-        <ConfirmModal
-          title="Delete price entry?"
-          message={
-            <>
-              This will remove <strong>{confirming.item}</strong> from{" "}
-              {confirming.store} on {formatDate(confirming.date)}.
-            </>
-          }
-          onConfirm={() => deleteGrocery(confirming.id)}
-          onClose={() => setConfirming(null)}
-        />
-      )}
+      <Dialog
+        open={Boolean(confirming)}
+        onOpenChange={(open) => !open && setConfirming(null)}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete price entry?</DialogTitle>
+            {confirming && (
+              <DialogDescription className="text-sm text-muted-foreground">
+                This will remove <strong>{confirming.item}</strong> from{" "}
+                {confirming.store} on {formatDate(confirming.date)}.
+              </DialogDescription>
+            )}
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirming(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (confirming) deleteGrocery(confirming.id);
+                setConfirming(null);
+              }}
+            >
+              Confirm
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }

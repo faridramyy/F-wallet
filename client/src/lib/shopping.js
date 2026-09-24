@@ -16,13 +16,15 @@
 const STALE_AFTER_DAYS = 60;
 
 export function normalizeName(value) {
-  return String(value || "")
-    .toLowerCase()
-    // Punctuation varies more than people think: "Milk, 4L" and
-    // "Milk 4L" should be the same thing.
-    .replace(/[^a-z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+  return (
+    String(value || "")
+      .toLowerCase()
+      // Punctuation varies more than people think: "Milk, 4L" and
+      // "Milk 4L" should be the same thing.
+      .replace(/[^a-z0-9\s]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+  );
 }
 
 export function daysSince(dateString) {
@@ -56,7 +58,8 @@ export function buildPriceIndex(groceries) {
     if (!index.has(key)) index.set(key, new Map());
 
     const byStore = index.get(key);
-    const store = String(entry.store || "Unknown store").trim() || "Unknown store";
+    const store =
+      String(entry.store || "Unknown store").trim() || "Unknown store";
     const existing = byStore.get(store);
 
     if (!existing || String(entry.date) > String(existing.date)) {
@@ -117,7 +120,10 @@ export function planTrip(shopping, groceries) {
       best: options[0],
       options,
       // Only meaningful with two or more shops to compare.
-      saving: options.length > 1 ? (options[options.length - 1].price - options[0].price) * quantity : 0,
+      saving:
+        options.length > 1
+          ? (options[options.length - 1].price - options[0].price) * quantity
+          : 0,
     });
   }
 

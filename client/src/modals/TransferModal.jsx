@@ -1,7 +1,29 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
+import { ArrowUpDown } from "lucide-react";
 
 import { useApp } from "../store";
-import { Modal, Field } from "../components/ui";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
+} from "@/components/ui/select";
 import { accountBalance } from "../lib/calc";
 import { money, today } from "../lib/format";
 
@@ -24,13 +46,21 @@ export default function TransferModal({ transfer, onClose }) {
     notes: transfer?.notes || "",
   });
 
-  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   const fmt = (value) => money(value, { currency });
 
   const set = (key) => (event) =>
     setForm((current) => ({ ...current, [key]: event.target.value }));
+  const setValue = (key) => (value) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  // Automatically prevent selecting the same account for From and To
+  useEffect(() => {
+    if (form.fromAccountId && form.fromAccountId === form.toAccountId) {
+      setForm((current) => ({ ...current, toAccountId: "" }));
+    }
+  }, [form.fromAccountId, form.toAccountId]);
 
   const swap = () =>
     setForm((current) => ({
@@ -39,23 +69,23 @@ export default function TransferModal({ transfer, onClose }) {
       toAccountId: current.fromAccountId,
     }));
 
-  const submit = async () => {
-    setError("");
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
     const amount = Number(form.amount || 0);
 
     if (!(amount > 0)) {
-      setError("Amount must be greater than zero.");
+      toast.error("Amount must be greater than zero.");
       return;
     }
 
     if (!form.fromAccountId || !form.toAccountId) {
-      setError("Choose both accounts.");
+      toast.error("Choose both accounts.");
       return;
     }
 
     if (form.fromAccountId === form.toAccountId) {
-      setError("Pick two different accounts.");
+      toast.error("Pick two different accounts.");
       return;
     }
 
@@ -73,13 +103,16 @@ export default function TransferModal({ transfer, onClose }) {
 
       if (isEditing) {
         await updateTransaction(transfer.id, payload);
+        toast.success("Transfer updated successfully.");
       } else {
         await createTransaction(payload);
+        toast.success("Transfer completed successfully.");
       }
 
       onClose();
     } catch (submitError) {
       setSaving(false);
+      toast.error("Failed to save transfer. Please try again.");
     }
   };
 
@@ -95,116 +128,185 @@ export default function TransferModal({ transfer, onClose }) {
       : `${fmt(balance)} available`;
   };
 
+  // Group all accounts by type for the "From" select
+  const groupedFromAccounts = useMemo(() => {
+    return accounts.reduce((acc, account) => {
+      const type = account.type || "other";
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(account);
+      return acc;
+    }, {});
+  }, [accounts]);
+
+  // Group accounts by type for the "To" select (excluding fromAccountId)
+  const groupedToAccounts = useMemo(() => {
+    return accounts
+      .filter((account) => account.id !== form.fromAccountId)
+      .reduce((acc, account) => {
+        const type = account.type || "other";
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(account);
+        return acc;
+      }, {});
+  }, [accounts, form.fromAccountId]);
+
+  const fromAccount = accounts.find((a) => a.id === form.fromAccountId);
+  const toAccount = accounts.find((a) => a.id === form.toAccountId);
+
   return (
-    <Modal
-      title={isEditing ? "Edit transfer" : "Transfer money"}
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className="secondary-button" onClick={onClose}>
-            Cancel
-          </button>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-125">
+        <DialogHeader>
+          <DialogTitle>
+            {isEditing ? "Edit transfer" : "Transfer money"}
+          </DialogTitle>
+          <DialogDescription>
+            Move funds between your accounts or make a credit card payment.
+          </DialogDescription>
+        </DialogHeader>
 
-          <button
-            type="button"
-            className="primary-button"
-            onClick={submit}
-            disabled={saving}
-          >
-            {saving ? "Saving..." : isEditing ? "Save changes" : "Transfer"}
-          </button>
-        </>
-      }
-    >
-      <div className="form-grid">
-        <Field label="From" className="sm:col-span-2">
-          <select
-            className="input"
-            value={form.fromAccountId}
-            onChange={set("fromAccountId")}
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="from-account">From</Label>
+              <Select
+                value={form.fromAccountId}
+                onValueChange={setValue("fromAccountId")}
+              >
+                <SelectTrigger id="from-account" className="w-full">
+                  <SelectValue placeholder="Select account">
+                    {fromAccount?.name}
+                  </SelectValue>
+                </SelectTrigger>
 
-          <p className="mt-1 text-[11px] text-slate-400">
-            {describe(form.fromAccountId)}
-          </p>
-        </Field>
+                <SelectContent>
+                  {Object.entries(groupedFromAccounts).map(
+                    ([groupType, items], index) => (
+                      <SelectGroup key={groupType}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupType} Accounts
+                        </SelectLabel>
+                        {items.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
 
-        <div className="flex justify-center sm:col-span-2">
-          <button
-            type="button"
-            className="icon-button"
-            onClick={swap}
-            aria-label="Swap accounts"
-          >
-            <i className="fa-solid fa-arrow-down-up-across-line" />
-          </button>
-        </div>
+              <p className="text-2xs text-muted-foreground">
+                {describe(form.fromAccountId)}
+              </p>
+            </div>
 
-        <Field label="To" className="sm:col-span-2">
-          <select
-            className="input"
-            value={form.toAccountId}
-            onChange={set("toAccountId")}
-          >
-            {accounts.map((account) => (
-              <option key={account.id} value={account.id}>
-                {account.name}
-              </option>
-            ))}
-          </select>
+            <div className="flex justify-center sm:col-span-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={swap}
+                aria-label="Swap accounts"
+              >
+                <ArrowUpDown className="h-4 w-4" />
+              </Button>
+            </div>
 
-          <p className="mt-1 text-[11px] text-slate-400">
-            {describe(form.toAccountId)}
-          </p>
-        </Field>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="to-account">To</Label>
+              <Select
+                value={form.toAccountId}
+                onValueChange={setValue("toAccountId")}
+              >
+                <SelectTrigger id="to-account" className="w-full">
+                  <SelectValue placeholder="Select account">
+                    {toAccount?.name}
+                  </SelectValue>
+                </SelectTrigger>
 
-        <Field label="Amount">
-          <input
-            className="input"
-            type="number"
-            step="0.01"
-            min="0"
-            value={form.amount}
-            onChange={set("amount")}
-            placeholder="0.00"
-          />
-        </Field>
+                <SelectContent>
+                  {Object.entries(groupedToAccounts).map(
+                    ([groupType, items], index) => (
+                      <SelectGroup key={groupType}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupType} Accounts
+                        </SelectLabel>
+                        {items.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
+                </SelectContent>
+              </Select>
 
-        <Field label="Date">
-          <input
-            className="input"
-            type="date"
-            value={form.date}
-            onChange={set("date")}
-          />
-        </Field>
+              <p className="text-2xs text-muted-foreground">
+                {describe(form.toAccountId)}
+              </p>
+            </div>
 
-        <Field label="Note" className="sm:col-span-2">
-          <input
-            className="input"
-            value={form.notes}
-            onChange={set("notes")}
-            placeholder="Optional"
-          />
-        </Field>
+            <div className="space-y-2">
+              <Label htmlFor="transfer-amount">Amount</Label>
+              <Input
+                id="transfer-amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.amount}
+                onChange={set("amount")}
+                placeholder="0.00"
+                autoFocus
+              />
+            </div>
 
-        <p className="text-[11px] leading-relaxed text-slate-400 sm:col-span-2">
-          Paying a credit card is a transfer from your chequing account to the
-          card. The card balance goes down and your cash goes down with it.
-        </p>
+            <div className="space-y-2">
+              <Label htmlFor="transfer-date">Date</Label>
+              <Input
+                id="transfer-date"
+                type="date"
+                value={form.date}
+                onChange={set("date")}
+              />
+            </div>
 
-        {error && (
-          <div className="sm:col-span-2">
-            <p className="form-error">{error}</p>
+            <div className="space-y-2 sm:col-span-2">
+              <Label htmlFor="transfer-notes">Note</Label>
+              <Input
+                id="transfer-notes"
+                value={form.notes}
+                onChange={set("notes")}
+                placeholder="Optional"
+              />
+            </div>
+
+            <p className="text-2xs leading-relaxed text-muted-foreground sm:col-span-2">
+              Paying a credit card is a transfer from your chequing account to
+              the card. The card balance goes down and your cash goes down with
+              it.
+            </p>
           </div>
-        )}
-      </div>
-    </Modal>
+
+          <DialogFooter className="pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving..." : isEditing ? "Save changes" : "Transfer"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

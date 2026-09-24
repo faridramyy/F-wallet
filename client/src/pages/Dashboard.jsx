@@ -1,16 +1,38 @@
+// src/pages/Dashboard.jsx
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  Scale,
+  ArrowDown,
+  ArrowUp,
+  PiggyBank,
+  TrendingUp,
+  Vault,
+  PieChart,
+  BarChart2,
+  Target,
+  Layers,
+  Wallet,
+  CreditCard,
+  Receipt,
+  ArrowLeftRight,
+  TrendingDown,
+} from "lucide-react";
 
 import { useApp } from "../store";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { MonthPicker } from "@/components/MonthPicker";
+import { PageHeader } from "@/components/PageHeader";
+import { Progress } from "@/components/ui/progress";
+import { DonutChart, donutColor } from "@/components/Donut";
 import {
-  Panel,
-  StatCard,
-  EmptyState,
-  MonthPicker,
-  ProgressBar,
-  DonutChart,
-  donutColor,
-} from "../components/ui";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
 import {
   accountBalance,
   normalAccountTotal,
@@ -24,6 +46,7 @@ import {
   savingsRate,
   isSameMonth,
 } from "../lib/calc";
+
 import {
   money,
   moneySigned,
@@ -127,434 +150,603 @@ export default function Dashboard({ onEditTransaction }) {
 
   const creditCards = accounts.filter((account) => account.type === "credit");
 
+  const summaryStats = [
+    {
+      label: "Net worth",
+      value: fmt(netWorth),
+      help: "Cash minus card debt",
+      icon: Scale,
+      color: netWorth >= 0 ? "text-emerald-500" : "text-destructive",
+      bgColor: netWorth >= 0 ? "bg-emerald-500/10" : "bg-destructive/10",
+      isDestructiveValue: netWorth < 0,
+    },
+    {
+      label: "Income",
+      value: fmt(income),
+      help: formatMonth(month),
+      icon: ArrowDown,
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-500/10",
+    },
+    {
+      label: "Expenses",
+      value: fmt(expenses),
+      help: formatMonth(month),
+      icon: TrendingDown,
+      color: "text-destructive",
+      bgColor: "bg-destructive/10",
+      isDestructiveValue: true,
+    },
+    {
+      label: "Saved",
+      value: fmtSigned(savings),
+      help: income > 0 ? `${rate.toFixed(0)}% of income` : "No income logged",
+      icon: PiggyBank,
+      color: savings >= 0 ? "text-emerald-500" : "text-destructive",
+      bgColor: savings >= 0 ? "bg-emerald-500/10" : "bg-destructive/10",
+      isDestructiveValue: savings < 0,
+    },
+  ];
+
   return (
-    <div className="page space-y-5">
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">Overview</p>
-          <h2 className="page-title">Dashboard</h2>
-          <p className="page-description">{formatMonthLong(month)}</p>
-        </div>
+    <div className="animate-in fade-in slide-in-from-bottom-1 space-y-5 duration-200">
+      <PageHeader
+        eyebrow="Overview"
+        title="Dashboard"
+        description={formatMonthLong(month)}
+        actions={
+          <MonthPicker
+            month={month}
+            onChange={setMonth}
+            label={formatMonth(month)}
+          />
+        }
+      />
 
-        <MonthPicker
-          month={month}
-          onChange={setMonth}
-          label={formatMonth(month)}
-        />
-      </div>
-
+      {/* Overview Summary Stat Cards */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard
-          label="Net worth"
-          value={fmt(netWorth)}
-          tone={netWorth >= 0 ? "positive" : "negative"}
-          help="Cash minus card debt"
-        />
-
-        <StatCard
-          label="Income"
-          value={fmt(income)}
-          tone="positive"
-          help="This month"
-        />
-
-        <StatCard
-          label="Expenses"
-          value={fmt(expenses)}
-          tone="negative"
-          help="This month"
-        />
-
-        <StatCard
-          label="Saved"
-          value={fmtSigned(savings)}
-          tone={savings >= 0 ? "positive" : "negative"}
-          help={
-            income > 0 ? `${rate.toFixed(0)}% of income` : "No income logged"
-          }
-        />
+        {summaryStats.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.label} className="border shadow-xs">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {stat.label}
+                  </span>
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-lg ${stat.bgColor} ${stat.color}`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <div className="mt-2">
+                  <div
+                    className={`text-xl font-bold tracking-tight tabular-nums ${
+                      stat.isDestructiveValue ? "text-destructive" : ""
+                    }`}
+                  >
+                    {stat.value}
+                  </div>
+                  <p className="mt-1 text-2xs text-muted-foreground">
+                    {stat.help}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
+      {/* Cash Flow & Savings */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <Panel
-          title="Cash flow"
-          subtitle="Last 6 months"
-          className="lg:col-span-2"
-        >
-          <CashFlowChart trend={trend} currency={currency} />
-        </Panel>
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Cash flow</CardTitle>
+                <CardDescription className="text-xs">
+                  Last 6 months
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <CashFlowChart trend={trend} currency={currency} />
+          </CardContent>
+        </Card>
 
-        <Panel title="Savings" subtitle="Income minus expenses">
-          <p
-            className={`text-2xl font-bold tracking-tight ${savings >= 0 ? "" : "text-red-500"}`}
-          >
-            {fmtSigned(savings)}
-          </p>
-
-          <p className="mt-1 text-[11px] font-semibold text-slate-400">
-            {income <= 0
-              ? "No income logged"
-              : rate >= 20
-                ? "Healthy savings rate"
-                : rate >= 0
-                  ? "Tight, but positive"
-                  : "Spending more than you earn"}
-          </p>
-
-          <div className="mt-4 flex h-14 items-end gap-1.5">
-            {trend.map((item) => {
-              const net = item.income - item.expenses;
-              const max = Math.max(
-                1,
-                ...trend.map((entry) =>
-                  Math.abs(entry.income - entry.expenses),
-                ),
-              );
-
-              return (
-                <div
-                  key={item.month}
-                  className="flex-1 rounded-t-sm"
-                  style={{
-                    height: `${Math.max(4, (Math.abs(net) / max) * 100)}%`,
-                    background: net >= 0 ? "#10b981" : "#f87171",
-                  }}
-                  title={`${formatMonth(item.month)}: ${fmtSigned(net)}`}
-                />
-              );
-            })}
-          </div>
-
-          <p className="mt-2 text-[10px] text-slate-400">Last 6 months</p>
-
-          {transfers > 0 && (
-            <p className="mt-3 text-[11px] text-slate-400">
-              {fmt(transfers)} moved between accounts this month
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Vault className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Savings</CardTitle>
+                <CardDescription className="text-xs">
+                  Income minus expenses
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p
+              className={`text-2xl font-bold tracking-tight tabular-nums ${
+                savings < 0 ? "text-destructive" : ""
+              }`}
+            >
+              {fmtSigned(savings)}
             </p>
-          )}
-        </Panel>
+
+            <p className="mt-1 text-2xs font-semibold text-muted-foreground">
+              {income <= 0
+                ? "No income logged"
+                : rate >= 20
+                  ? "Healthy savings rate"
+                  : rate >= 0
+                    ? "Tight, but positive"
+                    : "Spending more than you earn"}
+            </p>
+
+            <div className="mt-4 flex h-14 items-end gap-1.5">
+              {trend.map((item) => {
+                const net = item.income - item.expenses;
+                const max = Math.max(
+                  1,
+                  ...trend.map((entry) =>
+                    Math.abs(entry.income - entry.expenses),
+                  ),
+                );
+
+                return (
+                  <div
+                    key={item.month}
+                    className="flex-1 rounded-t-sm transition-all"
+                    style={{
+                      height: `${Math.max(4, (Math.abs(net) / max) * 100)}%`,
+                      background:
+                        net >= 0 ? "var(--primary)" : "var(--destructive)",
+                    }}
+                    title={`${formatMonth(item.month)}: ${fmtSigned(net)}`}
+                  />
+                );
+              })}
+            </div>
+
+            <p className="mt-2 text-3xs text-muted-foreground">Last 6 months</p>
+
+            {transfers > 0 && (
+              <p className="mt-3 text-2xs text-muted-foreground">
+                {fmt(transfers)} moved between accounts this month
+              </p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Category Spending & Budgets */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel
-          title="Spending by category"
-          subtitle={formatMonth(month)}
-          action={
-            <Link to="/categories" className="secondary-button">
-              Manage
-            </Link>
-          }
-        >
-          {breakdown.rows.length === 0 ? (
-            <EmptyState
-              icon="fa-chart-simple"
-              title="No spending yet"
-              message="Once you log expenses for this month they will break down here."
-            />
-          ) : (
-            <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-              <DonutChart
-                data={breakdown.rows.map((row) => ({
-                  id: row.categoryId,
-                  label:
-                    row.categoryId === "uncategorized"
-                      ? "Uncategorized"
-                      : getCategoryName(row.categoryId),
-                  value: row.amount,
-                }))}
-                value={fmt(breakdown.total)}
-                label="Total"
-              />
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <PieChart className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">
+                  Spending by category
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {formatMonth(month)}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {breakdown.rows.length === 0 ? (
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <BarChart2 className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold">
+                  No spending yet
+                </h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                  Once you log expenses for this month they will break down
+                  here.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+                <DonutChart
+                  data={breakdown.rows.map((row) => ({
+                    id: row.categoryId,
+                    label:
+                      row.categoryId === "uncategorized"
+                        ? "Uncategorized"
+                        : getCategoryName(row.categoryId),
+                    value: row.amount,
+                  }))}
+                  value={fmt(breakdown.total)}
+                  label="Total"
+                />
 
-              <div className="w-full flex-1 space-y-2.5">
-                {breakdown.rows.map((row, index) => {
-                  const share =
-                    breakdown.total > 0
-                      ? (row.amount / breakdown.total) * 100
-                      : 0;
+                <div className="w-full flex-1 space-y-2.5">
+                  {breakdown.rows.map((row, index) => {
+                    const share =
+                      breakdown.total > 0
+                        ? (row.amount / breakdown.total) * 100
+                        : 0;
+
+                    return (
+                      <div
+                        key={row.categoryId}
+                        className="flex items-center justify-between gap-3 text-xs"
+                      >
+                        <span className="flex min-w-0 items-center gap-2 font-semibold">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ background: donutColor(index) }}
+                          />
+                          <span className="truncate">
+                            {row.categoryId === "uncategorized"
+                              ? "Uncategorized"
+                              : getCategoryName(row.categoryId)}
+                          </span>
+                        </span>
+
+                        <span className="shrink-0 text-muted-foreground tabular-nums">
+                          {fmt(row.amount)} · {share.toFixed(0)}%
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Target className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Budgets</CardTitle>
+                <CardDescription className="text-xs">
+                  Your monthly spending plan
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {budgets.length === 0 ? (
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Layers className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold">No budgets set</h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                  Add a monthly budget to an expense category to track it here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3.5">
+                {budgets.slice(0, 5).map(({ category, spent, budget }) => {
+                  const remaining = budget - spent;
+                  const percentSpent = (spent / budget) * 100;
 
                   return (
-                    <div
-                      key={row.categoryId}
-                      className="flex items-center justify-between gap-3 text-xs"
-                    >
-                      <span className="flex min-w-0 items-center gap-2 font-semibold">
-                        <span
-                          className="h-2.5 w-2.5 shrink-0 rounded-full"
-                          style={{ background: donutColor(index) }}
-                        />
-                        <span className="truncate">
-                          {row.categoryId === "uncategorized"
-                            ? "Uncategorized"
-                            : getCategoryName(row.categoryId)}
-                        </span>
-                      </span>
+                    <div key={category.id}>
+                      <div className="mb-1.5 flex items-center justify-between text-xs">
+                        <span className="font-semibold">{category.name}</span>
 
-                      <span className="shrink-0 text-slate-500">
-                        {fmt(row.amount)} · {share.toFixed(0)}%
-                      </span>
+                        <span
+                          className={`tabular-nums ${
+                            remaining < 0
+                              ? "font-semibold text-destructive"
+                              : "text-muted-foreground"
+                          }`}
+                        >
+                          {fmt(spent)} of {fmt(budget)}
+                        </span>
+                      </div>
+
+                      <Progress
+                        value={Math.min(100, percentSpent)}
+                        className={`h-2 ${
+                          percentSpent > 100
+                            ? "[&>div]:bg-destructive"
+                            : percentSpent >= 85
+                              ? "[&>div]:bg-amber-500"
+                              : ""
+                        }`}
+                      />
+
+                      <p className="mt-1 text-2xs text-muted-foreground">
+                        {remaining >= 0
+                          ? `${fmt(remaining)} left`
+                          : `${fmt(Math.abs(remaining))} over budget`}
+                      </p>
                     </div>
                   );
                 })}
               </div>
-            </div>
-          )}
-        </Panel>
-
-        <Panel
-          title="Budgets"
-          subtitle="Your monthly spending plan"
-          action={
-            <Link to="/categories" className="secondary-button">
-              Edit
-            </Link>
-          }
-        >
-          {budgets.length === 0 ? (
-            <EmptyState
-              icon="fa-layer-group"
-              title="No budgets set"
-              message="Add a monthly budget to an expense category to track it here."
-            />
-          ) : (
-            <div className="space-y-3.5">
-              {budgets.slice(0, 5).map(({ category, spent, budget }) => {
-                const remaining = budget - spent;
-
-                return (
-                  <div key={category.id}>
-                    <div className="mb-1.5 flex items-center justify-between text-xs">
-                      <span className="font-semibold">{category.name}</span>
-
-                      <span
-                        className={
-                          remaining < 0
-                            ? "font-semibold text-red-500"
-                            : "text-slate-500"
-                        }
-                      >
-                        {fmt(spent)} of {fmt(budget)}
-                      </span>
-                    </div>
-
-                    <ProgressBar value={spent} max={budget} />
-
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      {remaining >= 0
-                        ? `${fmt(remaining)} left`
-                        : `${fmt(Math.abs(remaining))} over budget`}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Panel>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
+      {/* Accounts & Credit Health */}
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel
-          title="Accounts"
-          subtitle={`${accounts.length} tracked`}
-          action={
-            <Link to="/accounts" className="secondary-button">
-              View all
-            </Link>
-          }
-        >
-          {accounts.length === 0 ? (
-            <EmptyState
-              icon="fa-wallet"
-              title="No accounts yet"
-              message="Add an account to start tracking your balance."
-              action={
-                <Link to="/accounts" className="primary-button">
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Wallet className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Accounts</CardTitle>
+                <CardDescription className="text-xs">
+                  {accounts.length} tracked
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {accounts.length === 0 ? (
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <Wallet className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold">
+                  No accounts yet
+                </h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                  Add an account to start tracking your balance.
+                </p>
+                <Link
+                  to="/accounts"
+                  className={buttonVariants({ size: "sm", className: "mt-6" })}
+                >
                   Add account
                 </Link>
-              }
-            />
-          ) : (
-            <div className="space-y-2.5">
-              {accounts.slice(0, 5).map((account) => {
-                const balance = accountBalance(account, transactions);
-                const isCredit = account.type === "credit";
-
-                return (
-                  <div
-                    key={account.id}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold">
-                        {account.name}
-                      </p>
-                      <p className="text-[11px] capitalize text-slate-400">
-                        {account.type}
-                        {account.lastFour ? ` · ${account.lastFour}` : ""}
-                      </p>
-                    </div>
-
-                    <p
-                      className={`text-sm font-bold ${
-                        isCredit
-                          ? balance > 0
-                            ? "text-red-500"
-                            : "text-emerald-600"
-                          : balance >= 0
-                            ? ""
-                            : "text-red-500"
-                      }`}
-                    >
-                      {fmt(balance)}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Panel>
-
-        <Panel
-          title="Credit health"
-          subtitle={`${creditCards.length} card${creditCards.length === 1 ? "" : "s"}`}
-        >
-          {creditCards.length === 0 ? (
-            <EmptyState
-              icon="fa-credit-card"
-              title="No credit cards"
-              message="Add a credit account to track utilization and available credit."
-            />
-          ) : (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <p className="stat-label">Total debt</p>
-                  <p className="text-lg font-bold text-red-500">
-                    {fmt(creditCardDebt(accounts, transactions))}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="stat-label">Available credit</p>
-                  <p className="text-lg font-bold text-emerald-600">
-                    {fmt(totalAvailableCredit(accounts, transactions))}
-                  </p>
-                </div>
               </div>
+            ) : (
+              <div className="space-y-2.5">
+                {accounts.slice(0, 5).map((account) => {
+                  const balance = accountBalance(account, transactions);
+                  const isCredit = account.type === "credit";
 
-              {creditCards.map((card) => {
-                const debt = Math.max(0, accountBalance(card, transactions));
-                const limit = Math.max(0, Number(card.creditLimit) || 0);
-                const utilization = limit > 0 ? (debt / limit) * 100 : 0;
+                  return (
+                    <div
+                      key={account.id}
+                      className="flex items-center justify-between"
+                    >
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold">
+                          {account.name}
+                        </p>
+                        <p className="text-2xs capitalize text-muted-foreground">
+                          {account.type}
+                          {account.lastFour ? ` · ${account.lastFour}` : ""}
+                        </p>
+                      </div>
 
-                return (
-                  <div key={card.id}>
-                    <div className="mb-1.5 flex items-center justify-between text-xs">
-                      <span className="font-semibold">{card.name}</span>
-                      <span className="text-slate-500">
-                        {limit > 0
-                          ? `${utilization.toFixed(0)}% used`
-                          : "No limit set"}
-                      </span>
+                      <p
+                        className={`text-sm font-bold tabular-nums ${
+                          isCredit
+                            ? balance > 0
+                              ? "text-destructive"
+                              : "text-primary"
+                            : balance >= 0
+                              ? ""
+                              : "text-destructive"
+                        }`}
+                      >
+                        {fmt(balance)}
+                      </p>
                     </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-                    <ProgressBar
-                      value={utilization}
-                      max={100}
-                      tone={
-                        utilization >= 70
-                          ? "danger"
-                          : utilization >= 30
-                            ? "warning"
-                            : ""
-                      }
-                    />
-
-                    <p className="mt-1 text-[11px] text-slate-400">
-                      {fmt(debt)} owing ·{" "}
-                      {fmt(availableCredit(card, transactions))} available
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <CreditCard className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">
+                  Credit health
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  {creditCards.length} card{creditCards.length === 1 ? "" : "s"}
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {creditCards.length === 0 ? (
+              <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                  <CreditCard className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <h3 className="mt-4 text-base font-semibold">
+                  No credit cards
+                </h3>
+                <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                  Add a credit account to track utilization and available
+                  credit.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border bg-card p-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Total debt
+                    </p>
+                    <p className="text-lg font-bold text-destructive tabular-nums">
+                      {fmt(creditCardDebt(accounts, transactions))}
                     </p>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </Panel>
+
+                  <div className="rounded-xl border bg-card p-3">
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Available credit
+                    </p>
+                    <p className="text-lg font-bold text-blue-500 tabular-nums">
+                      {fmt(totalAvailableCredit(accounts, transactions))}
+                    </p>
+                  </div>
+                </div>
+
+                {creditCards.map((card) => {
+                  const debt = Math.max(0, accountBalance(card, transactions));
+                  const limit = Math.max(0, Number(card.creditLimit) || 0);
+                  const utilization = limit > 0 ? (debt / limit) * 100 : 0;
+
+                  return (
+                    <div key={card.id}>
+                      <div className="mb-1.5 flex items-center justify-between text-xs">
+                        <span className="font-semibold">{card.name}</span>
+                        <span className="text-muted-foreground">
+                          {limit > 0
+                            ? `${utilization.toFixed(0)}% used`
+                            : "No limit set"}
+                        </span>
+                      </div>
+
+                      <Progress
+                        value={Math.min(100, utilization)}
+                        className={`h-2 ${
+                          utilization >= 70
+                            ? "[&>div]:bg-destructive"
+                            : utilization >= 30
+                              ? "[&>div]:bg-amber-500"
+                              : ""
+                        }`}
+                      />
+
+                      <p className="mt-1 text-2xs text-muted-foreground">
+                        {fmt(debt)} owing ·{" "}
+                        {fmt(availableCredit(card, transactions))} available
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      <Panel
-        title="Recent activity"
-        subtitle="Your latest transactions"
-        action={
-          <Link to="/transactions" className="secondary-button">
-            View all
-          </Link>
-        }
-      >
-        {recent.length === 0 ? (
-          <EmptyState
-            icon="fa-receipt"
-            title="Nothing logged yet"
-            message="Add your first transaction to see it here."
-          />
-        ) : (
-          <div className="divide-y divide-slate-100">
-            {recent.map((transaction) => (
-              <button
-                key={transaction.id}
-                type="button"
-                className="transaction-item w-full text-left"
-                onClick={() => onEditTransaction(transaction)}
-              >
-                <span className={`transaction-icon ${transaction.type}`}>
-                  <i
-                    className={`fa-solid ${
-                      transaction.type === "income"
-                        ? "fa-arrow-down"
-                        : transaction.type === "expense"
-                          ? "fa-arrow-up"
-                          : "fa-right-left"
-                    }`}
-                  />
-                </span>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">
-                    {transaction.type === "transfer"
-                      ? `${getAccountName(transaction.fromAccountId)} to ${getAccountName(transaction.toAccountId)}`
-                      : getCategoryName(transaction.categoryId)}
-                  </p>
-
-                  <p className="truncate text-[11px] text-slate-400">
-                    {formatDate(transaction.date)}
-                    {transaction.type !== "transfer"
-                      ? ` · ${getAccountName(transaction.accountId)}`
-                      : ""}
-                    {transaction.notes ? ` · ${transaction.notes}` : ""}
-                  </p>
-                </div>
-
-                <span
-                  className={`text-sm font-bold ${
-                    transaction.type === "income"
-                      ? "text-emerald-600"
-                      : transaction.type === "expense"
-                        ? "text-red-500"
-                        : "text-slate-500"
-                  }`}
-                >
-                  {transaction.type === "expense"
-                    ? "-"
-                    : transaction.type === "income"
-                      ? "+"
-                      : ""}
-                  {fmt(transaction.amount)}
-                </span>
-              </button>
-            ))}
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center gap-2">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Receipt className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold">
+                Recent activity
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Your latest transactions
+              </CardDescription>
+            </div>
           </div>
-        )}
-      </Panel>
+        </CardHeader>
+        <CardContent>
+          {recent.length === 0 ? (
+            <div className="flex min-h-55 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                <Receipt className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="mt-4 text-base font-semibold">
+                Nothing logged yet
+              </h3>
+              <p className="mt-1 max-w-xs text-sm text-muted-foreground">
+                Add your first transaction to see it here.
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {recent.map((transaction) => (
+                <button
+                  key={transaction.id}
+                  type="button"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-3 text-left transition-colors hover:bg-muted/50"
+                  onClick={() => onEditTransaction(transaction)}
+                >
+                  <span
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-base ${
+                      transaction.type === "income"
+                        ? "bg-emerald-500/10 text-emerald-500"
+                        : transaction.type === "expense"
+                          ? "bg-destructive/10 text-destructive"
+                          : "bg-blue-500/10 text-blue-500"
+                    }`}
+                  >
+                    {transaction.type === "income" ? (
+                      <ArrowDown className="size-4" />
+                    ) : transaction.type === "expense" ? (
+                      <ArrowUp className="size-4" />
+                    ) : (
+                      <ArrowLeftRight className="size-4" />
+                    )}
+                  </span>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">
+                      {transaction.type === "transfer"
+                        ? `${getAccountName(transaction.fromAccountId)} to ${getAccountName(transaction.toAccountId)}`
+                        : getCategoryName(transaction.categoryId)}
+                    </p>
+
+                    <p className="truncate text-2xs text-muted-foreground">
+                      {formatDate(transaction.date)}
+                      {transaction.type !== "transfer"
+                        ? ` · ${getAccountName(transaction.accountId)}`
+                        : ""}
+                      {transaction.notes ? ` · ${transaction.notes}` : ""}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`text-sm font-bold tabular-nums ${
+                      transaction.type === "income"
+                        ? "text-emerald-500"
+                        : transaction.type === "expense"
+                          ? "text-destructive"
+                          : "text-muted-foreground"
+                    }`}
+                  >
+                    {transaction.type === "expense"
+                      ? "-"
+                      : transaction.type === "income"
+                        ? "+"
+                        : ""}
+                    {fmt(transaction.amount)}
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -575,13 +767,13 @@ function CashFlowChart({ trend, currency }) {
           >
             <div className="flex h-full w-full items-end justify-center gap-1">
               <div
-                className="w-1/2 rounded-t-md bg-emerald-500/85"
+                className="w-1/2 rounded-t-md bg-emerald-500/85 transition-all"
                 style={{ height: `${Math.max(2, (item.income / max) * 100)}%` }}
                 title={`Income ${money(item.income, { currency })}`}
               />
 
               <div
-                className="w-1/2 rounded-t-md bg-red-400/85"
+                className="w-1/2 rounded-t-md bg-destructive/85 transition-all"
                 style={{
                   height: `${Math.max(2, (item.expenses / max) * 100)}%`,
                 }}
@@ -589,21 +781,21 @@ function CashFlowChart({ trend, currency }) {
               />
             </div>
 
-            <span className="text-[10px] font-medium text-slate-400">
+            <span className="text-3xs font-medium text-muted-foreground">
               {formatMonth(item.month).split(" ")[0]}
             </span>
           </div>
         ))}
       </div>
 
-      <div className="mt-3 flex items-center gap-4 text-[11px] text-slate-500">
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" />{" "}
+      <div className="mt-4 flex items-center justify-center gap-6 text-2xs text-muted-foreground border-t pt-3">
+        <span className="flex items-center gap-1.5 font-medium">
+          <span className="inline-block size-2.5 rounded-sm bg-emerald-500" />{" "}
           Income
         </span>
 
-        <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-400" />{" "}
+        <span className="flex items-center gap-1.5 font-medium">
+          <span className="inline-block size-2.5 rounded-sm bg-destructive" />{" "}
           Expenses
         </span>
       </div>

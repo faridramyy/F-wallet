@@ -85,8 +85,7 @@ export function AppProvider({ children }) {
     const apply = () => {
       const isDark = theme === "dark" || (theme === "system" && media.matches);
 
-      document.documentElement.classList.toggle("dark-mode", isDark);
-      document.body.classList.toggle("dark-mode", isDark);
+      document.documentElement.classList.toggle("dark", isDark);
     };
 
     apply();
