@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ArrowUpDown } from "lucide-react";
 
@@ -20,6 +20,9 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from "@/components/ui/select";
 import { accountBalance } from "../lib/calc";
 import { money, today } from "../lib/format";
@@ -51,6 +54,13 @@ export default function TransferModal({ transfer, onClose }) {
     setForm((current) => ({ ...current, [key]: event.target.value }));
   const setValue = (key) => (value) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  // Automatically prevent selecting the same account for From and To
+  useEffect(() => {
+    if (form.fromAccountId && form.fromAccountId === form.toAccountId) {
+      setForm((current) => ({ ...current, toAccountId: "" }));
+    }
+  }, [form.fromAccountId, form.toAccountId]);
 
   const swap = () =>
     setForm((current) => ({
@@ -118,6 +128,31 @@ export default function TransferModal({ transfer, onClose }) {
       : `${fmt(balance)} available`;
   };
 
+  // Group all accounts by type for the "From" select
+  const groupedFromAccounts = useMemo(() => {
+    return accounts.reduce((acc, account) => {
+      const type = account.type || "other";
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(account);
+      return acc;
+    }, {});
+  }, [accounts]);
+
+  // Group accounts by type for the "To" select (excluding fromAccountId)
+  const groupedToAccounts = useMemo(() => {
+    return accounts
+      .filter((account) => account.id !== form.fromAccountId)
+      .reduce((acc, account) => {
+        const type = account.type || "other";
+        if (!acc[type]) acc[type] = [];
+        acc[type].push(account);
+        return acc;
+      }, {});
+  }, [accounts, form.fromAccountId]);
+
+  const fromAccount = accounts.find((a) => a.id === form.fromAccountId);
+  const toAccount = accounts.find((a) => a.id === form.toAccountId);
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="sm:max-w-125">
@@ -139,15 +174,27 @@ export default function TransferModal({ transfer, onClose }) {
                 onValueChange={setValue("fromAccountId")}
               >
                 <SelectTrigger id="from-account" className="w-full">
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue placeholder="Select account">
+                    {fromAccount?.name}
+                  </SelectValue>
                 </SelectTrigger>
 
                 <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(groupedFromAccounts).map(
+                    ([groupType, items], index) => (
+                      <SelectGroup key={groupType}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupType} Accounts
+                        </SelectLabel>
+                        {items.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
 
@@ -175,14 +222,27 @@ export default function TransferModal({ transfer, onClose }) {
                 onValueChange={setValue("toAccountId")}
               >
                 <SelectTrigger id="to-account" className="w-full">
-                  <SelectValue placeholder="Select account" />
+                  <SelectValue placeholder="Select account">
+                    {toAccount?.name}
+                  </SelectValue>
                 </SelectTrigger>
+
                 <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(groupedToAccounts).map(
+                    ([groupType, items], index) => (
+                      <SelectGroup key={groupType}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupType} Accounts
+                        </SelectLabel>
+                        {items.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
 

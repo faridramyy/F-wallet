@@ -20,6 +20,9 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  SelectGroup,
+  SelectLabel,
+  SelectSeparator,
 } from "@/components/ui/select";
 import { calculatePay, DEFAULT_OVERTIME_MULTIPLIER } from "../lib/calc";
 import { money, today, formatHours } from "../lib/format";
@@ -75,10 +78,30 @@ export default function TransactionModal({ transaction, onClose }) {
   const setPayField = (key) => (event) =>
     setPay((current) => ({ ...current, [key]: event.target.value }));
 
+  // Group accounts by type
+  const groupedAccounts = useMemo(() => {
+    return accounts.reduce((acc, account) => {
+      const type = account.type || "other";
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(account);
+      return acc;
+    }, {});
+  }, [accounts]);
+
+  // Filter categories by form type and group by parent/group property if present
   const availableCategories = useMemo(
     () => categories.filter((category) => category.type === form.type),
     [categories, form.type],
   );
+
+  const groupedCategories = useMemo(() => {
+    return availableCategories.reduce((acc, category) => {
+      const group = category.group || category.type || "general";
+      if (!acc[group]) acc[group] = [];
+      acc[group].push(category);
+      return acc;
+    }, {});
+  }, [availableCategories]);
 
   const applyCategoryDefaults = (categoryId) => {
     const category = categories.find((item) => item.id === categoryId);
@@ -210,6 +233,9 @@ export default function TransactionModal({ transaction, onClose }) {
       toast.error("Failed to save transaction. Please try again.");
     }
   };
+
+  const selectedAccount = accounts.find((a) => a.id === form.accountId);
+  const selectedCategory = categories.find((c) => c.id === form.categoryId);
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -371,15 +397,27 @@ export default function TransactionModal({ transaction, onClose }) {
                 onValueChange={setValue("accountId")}
               >
                 <SelectTrigger id="account-select" className="w-full">
-                  <SelectValue placeholder="Select an account" />
+                  <SelectValue placeholder="Select an account">
+                    {selectedAccount?.name}
+                  </SelectValue>
                 </SelectTrigger>
 
                 <SelectContent>
-                  {accounts.map((account) => (
-                    <SelectItem key={account.id} value={account.id}>
-                      {account.name}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(groupedAccounts).map(
+                    ([groupType, items], index) => (
+                      <SelectGroup key={groupType}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupType} Accounts
+                        </SelectLabel>
+                        {items.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>
+                            {account.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -400,14 +438,26 @@ export default function TransactionModal({ transaction, onClose }) {
                         ? `No ${form.type} categories yet`
                         : "Select a category"
                     }
-                  />
+                  >
+                    {selectedCategory?.name}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
-                  {availableCategories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
+                  {Object.entries(groupedCategories).map(
+                    ([groupLabel, items], index) => (
+                      <SelectGroup key={groupLabel}>
+                        {index > 0 && <SelectSeparator />}
+                        <SelectLabel className="capitalize">
+                          {groupLabel}
+                        </SelectLabel>
+                        {items.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>
+                            {category.name}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
             </div>
