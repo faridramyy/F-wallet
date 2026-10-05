@@ -5,6 +5,7 @@ dist/
 .aws-sam/
 samconfig.toml
 *.log
+*.patch
 .DS_Store
 data.json
 todo.txt

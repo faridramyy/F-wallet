@@ -1,0 +1,98 @@
+/*
+  Toasts (Sonner)
+
+  Every toast is driven by two variables, set once per type:
+    --t-h  the hue (green, red, amber, blue)
+    --t-k  how much colour to apply (0 = neutral grey, 1 = full tint)
+  Background, border, text and accent are all derived from them with oklch,
+  so a new type needs two lines, and light/dark only differ in lightness.
+
+  Sonner's own base rules read --normal-bg / --normal-border / --normal-text,
+  so setting those on the toast re-colours everything it draws. These
+  selectors are more specific than Sonner's, so load order doesn't matter.
+*/
+[data-sonner-toast][data-styled="true"] {
+  --t-h: 250;
+  --t-k: 0;
+
+  --normal-bg: oklch(0.99 calc(0.03 * var(--t-k)) var(--t-h));
+  --normal-border: oklch(0.9 calc(0.09 * var(--t-k)) var(--t-h));
+  --normal-text: oklch(0.27 calc(0.06 * var(--t-k)) var(--t-h));
+  --t-accent: oklch(0.5 calc(0.15 * var(--t-k)) var(--t-h));
+  --t-on-accent: oklch(1 0 0);
+
+  padding: 14px 16px;
+  gap: 12px;
+  font-size: 13.5px;
+  box-shadow:
+    0 12px 28px -12px oklch(0.2 0.02 250 / 0.28),
+    0 2px 6px oklch(0.2 0.02 250 / 0.08);
+}
+
+.dark [data-sonner-toast][data-styled="true"] {
+  --normal-bg: oklch(0.27 calc(0.05 * var(--t-k)) var(--t-h));
+  --normal-border: oklch(0.42 calc(0.09 * var(--t-k)) var(--t-h));
+  --normal-text: oklch(0.96 calc(0.02 * var(--t-k)) var(--t-h));
+  --t-accent: oklch(0.78 calc(0.16 * var(--t-k)) var(--t-h));
+  --t-on-accent: oklch(0.2 0.02 var(--t-h));
+
+  box-shadow:
+    0 12px 28px -12px oklch(0 0 0 / 0.6),
+    0 2px 6px oklch(0 0 0 / 0.3);
+}
+
+[data-sonner-toast][data-type="success"] {
+  --t-h: 158;
+  --t-k: 1;
+}
+[data-sonner-toast][data-type="error"] {
+  --t-h: 25;
+  --t-k: 1;
+}
+[data-sonner-toast][data-type="warning"] {
+  --t-h: 78;
+  --t-k: 1;
+}
+[data-sonner-toast][data-type="info"] {
+  --t-h: 250;
+  --t-k: 1;
+}
+
+/* Icon: a soft round badge in the accent colour. */
+[data-sonner-toast][data-styled="true"] [data-icon] {
+  width: 28px;
+  height: 28px;
+  margin: 0;
+  justify-content: center;
+  border-radius: 9999px;
+  color: var(--t-accent);
+  background: color-mix(in oklab, var(--t-accent) 16%, transparent);
+}
+
+[data-sonner-toast][data-styled="true"] [data-title] {
+  font-weight: 600;
+}
+
+/* Sonner hardcodes the description to #3f3f3f, unreadable in dark mode. */
+[data-sonner-toast][data-styled="true"] [data-description] {
+  color: color-mix(in oklab, var(--normal-text) 72%, transparent);
+}
+
+/* Action button in the accent colour; Cancel is a quiet tinted version. */
+[data-sonner-toast][data-styled="true"] [data-button] {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: var(--t-accent);
+  color: var(--t-on-accent);
+}
+
+[data-sonner-toast][data-styled="true"] [data-cancel] {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  background: color-mix(in oklab, var(--t-accent) 14%, transparent);
+  color: var(--normal-text);
+}
