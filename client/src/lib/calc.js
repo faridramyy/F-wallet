@@ -265,3 +265,77 @@ export function savingsRate(income, expenses) {
 
   return clamp(((income - expenses) / income) * 100, -999, 100);
 }
+
+/*
+  Chart data helpers.
+
+  These stay pure (data in, rows out) so the chart components only draw
+  and the maths can be checked without rendering anything.
+*/
+
+// Net worth as it stood at the end of a month: only transactions dated on
+// or before that month count, so history is rebuilt from the same rules as
+// the headline number.
+export function netWorthAtMonthEnd(accounts, transactions, month) {
+  const upTo = transactions.filter(
+    (t) => String(t.date || "").slice(0, 7) <= month,
+  );
+
+  return round2(
+    normalAccountTotal(accounts, upTo) - creditCardDebt(accounts, upTo),
+  );
+}
+
+export function daysInMonth(month) {
+  const [year, monthNumber] = month.split("-").map(Number);
+
+  return new Date(year, monthNumber, 0).getDate();
+}
+
+/*
+  Running total of expenses for each day of a month. Days after lastDay
+  are null so a line chart stops at "today" instead of flat-lining.
+*/
+
+export function cumulativeSpendingByDay(
+  transactions,
+  month,
+  lastDay = daysInMonth(month),
+) {
+  const length = daysInMonth(month);
+  const daily = new Array(length).fill(0);
+
+  for (const t of transactions) {
+    if (t.type !== "expense" || !isSameMonth(t.date, month)) continue;
+
+    const day = Number(String(t.date).slice(8, 10));
+
+    if (day >= 1 && day <= length) daily[day - 1] += Number(t.amount) || 0;
+  }
+
+  let running = 0;
+
+  return daily.map((amount, index) => {
+    running += amount;
+
+    return index + 1 <= lastDay ? round2(running) : null;
+  });
+}
+
+export const OTHER_CATEGORY_ID = "__other";
+
+/*
+  Keep the biggest rows and fold the tail into one "Other" row so the
+  pieces always add up to the full total.
+  rows must already be sorted largest first.
+*/
+
+export function groupTopWithOther(rows, limit) {
+  if (rows.length <= limit) return rows;
+
+  const top = rows.slice(0, limit - 1);
+
+  const rest = rows.slice(limit - 1).reduce((sum, row) => sum + row.amount, 0);
+
+  return [...top, { categoryId: OTHER_CATEGORY_ID, amount: rest }];
+}

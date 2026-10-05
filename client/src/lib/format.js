@@ -19,6 +19,16 @@ export function money(amount, { currency = "CAD", showSign = false } = {}) {
   return formatted;
 }
 
+// Short form for chart axes: $1.2K instead of $1,200.00
+export function moneyCompact(amount, { currency = "CAD" } = {}) {
+  return new Intl.NumberFormat("en-CA", {
+    style: "currency",
+    currency,
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(Number(amount) || 0);
+}
+
 export function moneySigned(amount, currency) {
   return money(amount, { currency, showSign: true });
 }

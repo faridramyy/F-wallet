@@ -17,6 +17,8 @@ import {
   Receipt,
   ArrowLeftRight,
   TrendingDown,
+  Landmark,
+  Gauge,
 } from "lucide-react";
 
 import { useApp } from "../store";
@@ -24,7 +26,13 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { MonthPicker } from "@/components/MonthPicker";
 import { PageHeader } from "@/components/PageHeader";
 import { Progress } from "@/components/ui/progress";
-import { DonutChart, donutColor } from "@/components/Donut";
+import { DonutChart, donutColor, DONUT_OTHER_COLOR } from "@/components/Donut";
+import {
+  BudgetChart,
+  CashFlowChart,
+  NetWorthChart,
+  SpendingPaceChart,
+} from "@/components/charts";
 import {
   Card,
   CardContent,
@@ -45,6 +53,11 @@ import {
   categorySpending,
   savingsRate,
   isSameMonth,
+  netWorthAtMonthEnd,
+  cumulativeSpendingByDay,
+  daysInMonth,
+  groupTopWithOther,
+  OTHER_CATEGORY_ID,
 } from "../lib/calc";
 
 import {
@@ -55,6 +68,8 @@ import {
   formatMonthLong,
   currentMonth,
   lastMonths,
+  shiftMonth,
+  today,
 } from "../lib/format";
 
 export default function Dashboard({ onEditTransaction }) {
@@ -105,6 +120,11 @@ export default function Dashboard({ onEditTransaction }) {
     [transactions, month],
   );
 
+  const maxNet = Math.max(
+    1,
+    ...trend.map((entry) => Math.abs(entry.income - entry.expenses)),
+  );
+
   const budgets = useMemo(
     () =>
       categories
@@ -120,6 +140,41 @@ export default function Dashboard({ onEditTransaction }) {
         .sort((a, b) => b.spent / (b.budget || 1) - a.spent / (a.budget || 1)),
     [categories, transactions, month],
   );
+
+  const netWorthTrend = useMemo(
+    () =>
+      accounts.length === 0
+        ? []
+        : lastMonths(12, month).map((m) => ({
+            month: m,
+            netWorth: netWorthAtMonthEnd(accounts, transactions, m),
+          })),
+    [accounts, transactions, month],
+  );
+
+  const paceData = useMemo(() => {
+    const previousMonth = shiftMonth(month, -1);
+    const thisMonth = currentMonth();
+
+    // For the month in progress, stop the line at today.
+    const lastDay =
+      month === thisMonth
+        ? Number(today().slice(8, 10))
+        : month > thisMonth
+          ? 0
+          : daysInMonth(month);
+
+    const current = cumulativeSpendingByDay(transactions, month, lastDay);
+    const previous = cumulativeSpendingByDay(transactions, previousMonth);
+
+    const length = Math.max(current.length, previous.length);
+
+    return Array.from({ length }, (_, index) => ({
+      day: index + 1,
+      current: current[index] ?? null,
+      previous: previous[index] ?? null,
+    }));
+  }, [transactions, month]);
 
   const breakdown = useMemo(() => {
     const totals = new Map();
@@ -145,8 +200,23 @@ export default function Dashboard({ onEditTransaction }) {
 
     const total = rows.reduce((sum, row) => sum + row.amount, 0);
 
-    return { rows: rows.slice(0, 6), total };
+    return { rows: groupTopWithOther(rows, 6), total };
   }, [transactions, month]);
+
+  const donutData = breakdown.rows.map((row, index) => ({
+    id: row.categoryId,
+    label:
+      row.categoryId === OTHER_CATEGORY_ID
+        ? "Other"
+        : row.categoryId === "uncategorized"
+          ? "Uncategorized"
+          : getCategoryName(row.categoryId),
+    value: row.amount,
+    color:
+      row.categoryId === OTHER_CATEGORY_ID
+        ? DONUT_OTHER_COLOR
+        : donutColor(index),
+  }));
 
   const creditCards = accounts.filter((account) => account.type === "credit");
 
@@ -295,23 +365,25 @@ export default function Dashboard({ onEditTransaction }) {
             <div className="mt-4 flex h-14 items-end gap-1.5">
               {trend.map((item) => {
                 const net = item.income - item.expenses;
-                const max = Math.max(
-                  1,
-                  ...trend.map((entry) =>
-                    Math.abs(entry.income - entry.expenses),
-                  ),
-                );
+                const isEmpty = item.income === 0 && item.expenses === 0;
 
                 return (
                   <div
                     key={item.month}
                     className="flex-1 rounded-t-sm transition-all"
                     style={{
-                      height: `${Math.max(4, (Math.abs(net) / max) * 100)}%`,
-                      background:
-                        net >= 0 ? "var(--primary)" : "var(--destructive)",
+                      height: `${isEmpty ? 4 : Math.max(4, (Math.abs(net) / maxNet) * 100)}%`,
+                      background: isEmpty
+                        ? "var(--muted)"
+                        : net >= 0
+                          ? "var(--primary)"
+                          : "var(--destructive)",
                     }}
-                    title={`${formatMonth(item.month)}: ${fmtSigned(net)}`}
+                    title={
+                      isEmpty
+                        ? `${formatMonth(item.month)}: no activity`
+                        : `${formatMonth(item.month)}: ${fmtSigned(net)}`
+                    }
                   />
                 );
               })}
@@ -324,6 +396,54 @@ export default function Dashboard({ onEditTransaction }) {
                 {fmt(transfers)} moved between accounts this month
               </p>
             )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Net Worth & Spending Pace */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Landmark className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">Net worth</CardTitle>
+                <CardDescription className="text-xs">
+                  Month-end, last 12 months
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <NetWorthChart data={netWorthTrend} currency={currency} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-4">
+            <div className="flex items-center gap-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <Gauge className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-lg font-bold">
+                  Spending pace
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Running total vs last month
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <SpendingPaceChart
+              data={paceData}
+              currentLabel={formatMonth(month)}
+              previousLabel={formatMonth(shiftMonth(month, -1))}
+              currency={currency}
+            />
           </CardContent>
         </Card>
       </div>
@@ -363,44 +483,33 @@ export default function Dashboard({ onEditTransaction }) {
             ) : (
               <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
                 <DonutChart
-                  data={breakdown.rows.map((row) => ({
-                    id: row.categoryId,
-                    label:
-                      row.categoryId === "uncategorized"
-                        ? "Uncategorized"
-                        : getCategoryName(row.categoryId),
-                    value: row.amount,
-                  }))}
+                  data={donutData}
                   value={fmt(breakdown.total)}
                   label="Total"
                 />
 
                 <div className="w-full flex-1 space-y-2.5">
-                  {breakdown.rows.map((row, index) => {
+                  {donutData.map((slice) => {
                     const share =
                       breakdown.total > 0
-                        ? (row.amount / breakdown.total) * 100
+                        ? (slice.value / breakdown.total) * 100
                         : 0;
 
                     return (
                       <div
-                        key={row.categoryId}
+                        key={slice.id}
                         className="flex items-center justify-between gap-3 text-xs"
                       >
                         <span className="flex min-w-0 items-center gap-2 font-semibold">
                           <span
                             className="h-2.5 w-2.5 shrink-0 rounded-full"
-                            style={{ background: donutColor(index) }}
+                            style={{ background: slice.color }}
                           />
-                          <span className="truncate">
-                            {row.categoryId === "uncategorized"
-                              ? "Uncategorized"
-                              : getCategoryName(row.categoryId)}
-                          </span>
+                          <span className="truncate">{slice.label}</span>
                         </span>
 
                         <span className="shrink-0 text-muted-foreground tabular-nums">
-                          {fmt(row.amount)} · {share.toFixed(0)}%
+                          {fmt(slice.value)} · {share.toFixed(0)}%
                         </span>
                       </div>
                     );
@@ -420,7 +529,7 @@ export default function Dashboard({ onEditTransaction }) {
               <div>
                 <CardTitle className="text-lg font-bold">Budgets</CardTitle>
                 <CardDescription className="text-xs">
-                  Your monthly spending plan
+                  Spent vs monthly budget
                 </CardDescription>
               </div>
             </div>
@@ -437,47 +546,16 @@ export default function Dashboard({ onEditTransaction }) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3.5">
-                {budgets.slice(0, 5).map(({ category, spent, budget }) => {
-                  const remaining = budget - spent;
-                  const percentSpent = (spent / budget) * 100;
-
-                  return (
-                    <div key={category.id}>
-                      <div className="mb-1.5 flex items-center justify-between text-xs">
-                        <span className="font-semibold">{category.name}</span>
-
-                        <span
-                          className={`tabular-nums ${
-                            remaining < 0
-                              ? "font-semibold text-destructive"
-                              : "text-muted-foreground"
-                          }`}
-                        >
-                          {fmt(spent)} of {fmt(budget)}
-                        </span>
-                      </div>
-
-                      <Progress
-                        value={Math.min(100, percentSpent)}
-                        className={`h-2 ${
-                          percentSpent > 100
-                            ? "[&>div]:bg-destructive"
-                            : percentSpent >= 85
-                              ? "[&>div]:bg-amber-500"
-                              : ""
-                        }`}
-                      />
-
-                      <p className="mt-1 text-2xs text-muted-foreground">
-                        {remaining >= 0
-                          ? `${fmt(remaining)} left`
-                          : `${fmt(Math.abs(remaining))} over budget`}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
+              <BudgetChart
+                data={budgets
+                  .slice(0, 6)
+                  .map(({ category, spent, budget }) => ({
+                    name: category.name,
+                    spent,
+                    budget,
+                  }))}
+                currency={currency}
+              />
             )}
           </CardContent>
         </Card>
@@ -747,58 +825,6 @@ export default function Dashboard({ onEditTransaction }) {
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
-
-function CashFlowChart({ trend, currency }) {
-  const max = Math.max(
-    1,
-    ...trend.flatMap((item) => [item.income, item.expenses]),
-  );
-
-  return (
-    <div>
-      <div className="flex h-40 items-end gap-3">
-        {trend.map((item) => (
-          <div
-            key={item.month}
-            className="flex flex-1 flex-col items-center gap-1.5"
-          >
-            <div className="flex h-full w-full items-end justify-center gap-1">
-              <div
-                className="w-1/2 rounded-t-md bg-emerald-500/85 transition-all"
-                style={{ height: `${Math.max(2, (item.income / max) * 100)}%` }}
-                title={`Income ${money(item.income, { currency })}`}
-              />
-
-              <div
-                className="w-1/2 rounded-t-md bg-destructive/85 transition-all"
-                style={{
-                  height: `${Math.max(2, (item.expenses / max) * 100)}%`,
-                }}
-                title={`Expenses ${money(item.expenses, { currency })}`}
-              />
-            </div>
-
-            <span className="text-3xs font-medium text-muted-foreground">
-              {formatMonth(item.month).split(" ")[0]}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-4 flex items-center justify-center gap-6 text-2xs text-muted-foreground border-t pt-3">
-        <span className="flex items-center gap-1.5 font-medium">
-          <span className="inline-block size-2.5 rounded-sm bg-emerald-500" />{" "}
-          Income
-        </span>
-
-        <span className="flex items-center gap-1.5 font-medium">
-          <span className="inline-block size-2.5 rounded-sm bg-destructive" />{" "}
-          Expenses
-        </span>
-      </div>
     </div>
   );
 }

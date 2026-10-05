@@ -16,6 +16,9 @@ export const DONUT_COLORS = [
   "#64748b",
 ];
 
+// Neutral colour for the folded "Other" slice.
+export const DONUT_OTHER_COLOR = "#64748b";
+
 export function donutColor(index) {
   return DONUT_COLORS[index % DONUT_COLORS.length];
 }
