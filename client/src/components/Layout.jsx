@@ -160,19 +160,25 @@ export default function Layout({ children, onQuickAdd }) {
           </div>
         </header>
 
-        <main className="px-4 pb-32 pt-5 sm:px-6 lg:pb-24">{children}</main>
+        <main className="px-4 pb-36 pt-5 sm:px-6 lg:pb-24">{children}</main>
       </div>
 
       <button
         type="button"
         onClick={onQuickAdd}
         aria-label="Add transaction"
-        className="fixed bottom-[calc(74px+env(safe-area-inset-bottom)+14px)] right-4.5 z-45 flex size-14 items-center justify-center rounded-[18px] bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95 lg:bottom-7 lg:right-7"
+        className="fixed bottom-[calc(94px+env(safe-area-inset-bottom))] right-4.5 z-45 flex size-14 items-center justify-center rounded-[18px] bg-primary text-primary-foreground shadow-lg shadow-primary/25 transition-transform active:scale-95 lg:bottom-7 lg:right-7"
       >
         <Plus className="h-6 w-6" />
       </button>
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden">
+      {/* Mobile tab bar: a floating liquid-glass pill (see .glass-bar in
+          index.css). Inset from the edges and lifted by the safe-area inset
+          so it clears the iPhone home indicator. */}
+      <nav
+        aria-label="Primary"
+        className="glass-bar fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+12px)] z-40 grid grid-cols-5 gap-1 rounded-[30px] p-1.5 lg:hidden"
+      >
         {MOBILE_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           return (
@@ -181,15 +187,39 @@ export default function Layout({ children, onQuickAdd }) {
               to={item.to}
               className={({ isActive }) =>
                 cn(
-                  "flex min-h-15.5 flex-col items-center justify-center gap-0.5 text-muted-foreground",
-                  isActive && "text-foreground",
+                  "relative z-10 flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-[24px] transition-[color,transform] duration-200 active:scale-95 motion-reduce:transition-none",
+                  isActive
+                    ? "text-foreground"
+                    : "text-foreground/60 hover:text-foreground",
                 )
               }
             >
-              <span className="text-xl leading-none">
-                <Icon className="h-5 w-5" />
-              </span>
-              <small className="text-3xs font-semibold">{item.short}</small>
+              {({ isActive }) => (
+                <>
+                  {/* The selected "bubble". Always rendered and faded, so
+                      moving between tabs animates using only opacity and
+                      transform (cheap, no layout work). */}
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      "absolute inset-0 rounded-[24px] bg-white/60 shadow-[inset_0_1px_0_rgb(255_255_255/0.8),0_1px_4px_rgb(0_0_0/0.12)] transition-[opacity,transform] duration-300 ease-out motion-reduce:transition-none dark:bg-white/14 dark:shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_1px_4px_rgb(0_0_0/0.4)]",
+                      isActive ? "scale-100 opacity-100" : "scale-90 opacity-0",
+                    )}
+                  />
+
+                  <span className="relative leading-none">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <small
+                    className={cn(
+                      "relative text-3xs",
+                      isActive ? "font-bold" : "font-semibold",
+                    )}
+                  >
+                    {item.short}
+                  </small>
+                </>
+              )}
             </NavLink>
           );
         })}
