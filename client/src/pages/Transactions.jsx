@@ -7,7 +7,6 @@ import {
   subMonths,
   startOfYear,
 } from "date-fns";
-import { toast } from "sonner";
 import {
   Search,
   ArrowDownRight,
@@ -50,6 +49,16 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Transactions({ onEdit }) {
   const {
@@ -73,6 +82,7 @@ export default function Transactions({ onEdit }) {
 
   const [showModal, setShowModal] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
+  const [confirming, setConfirming] = useState(null);
 
   const fmt = (value) => money(value, { currency });
 
@@ -199,19 +209,6 @@ export default function Transactions({ onEdit }) {
     categoryFilter !== "all",
     Boolean(dateRange?.from || dateRange?.to),
   ].filter(Boolean).length;
-
-  const handleDelete = (transaction) => {
-    toast(`Delete ${transaction.type} of ${fmt(transaction.amount)}?`, {
-      description: "Balances will update immediately.",
-      action: {
-        label: "Delete",
-        onClick: () => {
-          deleteTransaction(transaction.id);
-          toast.success("Transaction deleted");
-        },
-      },
-    });
-  };
 
   const handleDatePreset = (preset) => {
     const now = new Date();
@@ -692,7 +689,7 @@ export default function Transactions({ onEdit }) {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(transaction)}
+                          onClick={() => setConfirming(transaction)}
                           className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                           aria-label="Delete"
                         >
@@ -710,6 +707,46 @@ export default function Transactions({ onEdit }) {
 
       {showModal && <TransactionModal onClose={() => setShowModal(false)} />}
       {showTransfer && <TransferModal onClose={() => setShowTransfer(false)} />}
+
+      <AlertDialog
+        open={Boolean(confirming)}
+        onOpenChange={(open) => !open && setConfirming(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground space-y-2">
+                {confirming && (
+                  <p>
+                    You are about to delete the{" "}
+                    <strong>
+                      {confirming.type} of {fmt(confirming.amount)}
+                    </strong>{" "}
+                    from {formatDate(confirming.date)}.
+                  </p>
+                )}
+                <p>Balances will update immediately.</p>
+                <p>This cannot be undone.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (confirming) {
+                  deleteTransaction(confirming.id);
+                  setConfirming(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
