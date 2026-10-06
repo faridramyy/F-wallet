@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 
 import { fold } from "../lib/format";
 import { Input } from "@/components/ui/input";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
-const MIN_CHARACTERS = 1; // Changed from 2 to allow single-character search
+const MIN_CHARACTERS = 1;
 const MAX_SUGGESTIONS = 5;
 
 export function matchSuggestions(options, term) {
@@ -19,8 +19,8 @@ export function matchSuggestions(options, term) {
     const label = typeof option === "string" ? option : option.name;
     const folded = fold(label);
 
-    // Removed: if (folded === needle) continue;
-    // Keeping exact matches allows suggestions to stay visible when full word is typed
+    // Exact matches are kept on purpose so the suggestion stays visible
+    // once the whole word has been typed.
 
     if (folded.startsWith(needle)) starts.push(option);
     else if (folded.includes(needle)) contains.push(option);

@@ -1,4 +1,3 @@
-import { useTheme } from "next-themes";
 import { Toaster as Sonner } from "sonner";
 import "./sonner.css";
 import {
@@ -9,9 +8,10 @@ import {
   Loader2Icon,
 } from "lucide-react";
 
-const Toaster = ({ ...props }) => {
-  const { theme = "system" } = useTheme();
-
+// theme is "light", "dark" or "system". The app owns the theme setting (see
+// store.jsx), so the caller passes it in rather than this reading it from a
+// theme provider the app does not use.
+const Toaster = ({ theme = "system", ...props }) => {
   return (
     <Sonner
       theme={theme}

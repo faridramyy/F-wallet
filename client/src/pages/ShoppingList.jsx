@@ -23,7 +23,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 const dangerIconButton =
   "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";

@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { calculatePay, DEFAULT_OVERTIME_MULTIPLIER } from "../lib/calc";
 import { money, today, formatHours } from "../lib/format";
+import { readStorage, writeStorage } from "../lib/storage";
 
 const LAST_ENTRY_MODE_KEY = "fwallet_last_entry_mode";
 
@@ -54,9 +55,7 @@ export default function TransactionModal({ transaction, onClose }) {
       return transaction.entryMode || (transaction.pay ? "hourly" : "fixed");
     }
 
-    return localStorage.getItem(LAST_ENTRY_MODE_KEY) === "hourly"
-      ? "hourly"
-      : "fixed";
+    return readStorage(LAST_ENTRY_MODE_KEY) === "hourly" ? "hourly" : "fixed";
   });
 
   const [pay, setPay] = useState({
@@ -141,11 +140,11 @@ export default function TransactionModal({ transaction, onClose }) {
     }));
   };
 
-  const usePayCalculator = form.type === "income" && entryMode === "hourly";
+  const isHourlyEntry = form.type === "income" && entryMode === "hourly";
 
   const payResult = useMemo(() => calculatePay(pay), [pay]);
 
-  const effectiveAmount = usePayCalculator
+  const effectiveAmount = isHourlyEntry
     ? payResult.total
     : Number(form.amount || 0);
 
@@ -159,7 +158,7 @@ export default function TransactionModal({ transaction, onClose }) {
     e.preventDefault();
 
     if (
-      !usePayCalculator &&
+      !isHourlyEntry &&
       form.amount !== "" &&
       !/^\d*\.?\d{0,2}$/.test(String(form.amount).trim())
     ) {
@@ -169,7 +168,7 @@ export default function TransactionModal({ transaction, onClose }) {
 
     if (!(effectiveAmount > 0)) {
       toast.error(
-        usePayCalculator
+        isHourlyEntry
           ? "Enter hours and an hourly rate greater than zero."
           : "Amount must be greater than zero.",
       );
@@ -198,8 +197,8 @@ export default function TransactionModal({ transaction, onClose }) {
       categoryId: form.categoryId,
       date: form.date,
       notes: form.notes.trim(),
-      entryMode: usePayCalculator ? "hourly" : "fixed",
-      pay: usePayCalculator
+      entryMode: isHourlyEntry ? "hourly" : "fixed",
+      pay: isHourlyEntry
         ? {
             hours: Number(pay.hours || 0),
             rate: Number(pay.rate || 0),
@@ -211,26 +210,19 @@ export default function TransactionModal({ transaction, onClose }) {
         : null,
     };
 
-    localStorage.setItem(
-      LAST_ENTRY_MODE_KEY,
-      usePayCalculator ? "hourly" : "fixed",
-    );
-
     setSaving(true);
 
-    try {
-      if (isEditing) {
-        await updateTransaction(transaction.id, payload);
-        toast.success("Transaction updated successfully.");
-      } else {
-        await createTransaction(payload);
-        toast.success("Transaction added successfully.");
-      }
+    const saved = isEditing
+      ? await updateTransaction(transaction.id, payload)
+      : await createTransaction(payload);
 
+    if (saved) {
+      // Remembered only after a successful save, so a failed attempt does
+      // not change what the form opens with next time.
+      writeStorage(LAST_ENTRY_MODE_KEY, isHourlyEntry ? "hourly" : "fixed");
       onClose();
-    } catch (submitError) {
+    } else {
       setSaving(false);
-      toast.error("Failed to save transaction. Please try again.");
     }
   };
 
@@ -299,7 +291,7 @@ export default function TransactionModal({ transaction, onClose }) {
               </div>
             )}
 
-            {usePayCalculator ? (
+            {isHourlyEntry ? (
               <>
                 <div className="space-y-2">
                   <Label htmlFor="pay-hours">Hours worked</Label>

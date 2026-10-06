@@ -404,27 +404,29 @@ export default function Transactions({ onEdit }) {
                 Date Range
               </Label>
               <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
-                    {dateRange?.from ? (
-                      dateRange.to ? (
-                        <>
-                          {format(dateRange.from, "LLL dd, y")} -{" "}
-                          {format(dateRange.to, "LLL dd, y")}
-                        </>
-                      ) : (
-                        format(dateRange.from, "LLL dd, y")
-                      )
+                <PopoverTrigger
+                  render={
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                    />
+                  }
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground" />
+                  {dateRange?.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                      </>
                     ) : (
-                      <span className="text-muted-foreground">
-                        Select date range
-                      </span>
-                    )}
-                  </Button>
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Select date range
+                    </span>
+                  )}
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="end">
                   <div className="flex flex-col border-b p-2 space-y-1">
@@ -467,7 +469,7 @@ export default function Transactions({ onEdit }) {
                     </div>
                   </div>
                   <Calendar
-                    initialFocus
+                    autoFocus
                     mode="range"
                     defaultMonth={dateRange?.from}
                     selected={dateRange}
@@ -715,26 +717,24 @@ export default function Transactions({ onEdit }) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete transaction?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-sm text-muted-foreground space-y-2">
-                {confirming && (
-                  <p>
-                    You are about to delete the{" "}
-                    <strong>
-                      {confirming.type} of {fmt(confirming.amount)}
-                    </strong>{" "}
-                    from {formatDate(confirming.date)}.
-                  </p>
-                )}
-                <p>Balances will update immediately.</p>
-                <p>This cannot be undone.</p>
-              </div>
+            <AlertDialogDescription render={<div />} className="space-y-2">
+              {confirming && (
+                <p>
+                  You are about to delete the{" "}
+                  <strong>
+                    {confirming.type} of {fmt(confirming.amount)}
+                  </strong>{" "}
+                  from {formatDate(confirming.date)}.
+                </p>
+              )}
+              <p>Balances will update immediately.</p>
+              <p>This cannot be undone.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
               onClick={() => {
                 if (confirming) {
                   deleteTransaction(confirming.id);

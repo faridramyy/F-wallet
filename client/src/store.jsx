@@ -7,10 +7,14 @@ import {
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 
 import { api, getToken, setToken, getRole, setRole, ApiError } from "./lib/api";
 
 const AppContext = createContext(null);
+
+const READ_ONLY_MESSAGE =
+  "This is a read only user. You do not have permission to make changes.";
 
 const EMPTY_STATE = {
   accounts: [],
@@ -27,40 +31,59 @@ export function AppProvider({ children }) {
   const [data, setData] = useState(EMPTY_STATE);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
-  const [toasts, setToasts] = useState([]);
 
-  const toastId = useRef(0);
+  /*
+    Ends the session and forgets everything loaded for it. Used for a
+    manual sign out and, via expireSession, when the server says 401.
+  */
 
-  const showToast = useCallback((message, tone = "success") => {
-    toastId.current += 1;
-
-    const id = toastId.current;
-
-    setToasts((current) => [...current, { id, message, tone }]);
-
-    setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 3200);
+  const logout = useCallback(() => {
+    setToken("");
+    setRole("");
+    setRoleState("owner");
+    setAuthenticated(false);
+    setData(EMPTY_STATE);
   }, []);
 
+  const expireSession = useCallback(() => {
+    logout();
+    toast.error("Your session expired. Please sign in again.");
+  }, [logout]);
+
+  /*
+    Every refresh gets a number. If a newer refresh has started by the time
+    an older one finishes, the older answer is dropped. Without this, two
+    quick changes start two requests, and whichever response arrives last
+    wins even when it is the older data.
+  */
+
+  const latestRefresh = useRef(0);
+
   const refresh = useCallback(async () => {
+    latestRefresh.current += 1;
+
+    const requestId = latestRefresh.current;
+    const isLatest = () => requestId === latestRefresh.current;
+
     setLoading(true);
     setLoadError("");
 
     try {
       const next = await api.getState();
 
-      setData({ ...EMPTY_STATE, ...next });
+      if (isLatest()) setData({ ...EMPTY_STATE, ...next });
     } catch (error) {
+      if (!isLatest()) return;
+
       if (error instanceof ApiError && error.status === 401) {
-        setAuthenticated(false);
+        expireSession();
       } else {
         setLoadError(error.message);
       }
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
-  }, []);
+  }, [expireSession]);
 
   useEffect(() => {
     if (authenticated) refresh();
@@ -106,20 +129,22 @@ export function AppProvider({ children }) {
     setAuthenticated(true);
   }, []);
 
-  const logout = useCallback(() => {
-    setToken("");
-    setRole("");
-    setRoleState("owner");
-    setAuthenticated(false);
-    setData(EMPTY_STATE);
-  }, []);
-
   /*
     Signing in from a share link. The token is already minted by the
     server, so there is no password step.
   */
 
   const loginWithToken = useCallback((token) => {
+    // Opening a share link in a browser where the owner is signed in would
+    // overwrite the owner's token and lock them out of their own account.
+    if (getToken() && getRole() !== "viewer") {
+      toast.info(
+        "You are already signed in, so the share link was not applied. Open it in a private window to preview the read-only view.",
+      );
+
+      return;
+    }
+
     setToken(token);
     setRole("viewer");
     setRoleState("viewer");
@@ -133,38 +158,44 @@ export function AppProvider({ children }) {
     quietly disagree.
   */
 
-  const READ_ONLY_MESSAGE =
-    "This is a read only user. You do not have permission to make changes.";
-
   /*
     Viewers are stopped here as well as on the server. Not for security,
     which the server handles, but so the error is instant instead of
     arriving after a round trip to a cold Lambda.
+
+    run() is the one place that reports results to the user. It never
+    throws: it shows a toast and returns true or false, so callers that do
+    not care (a delete button) cannot cause an unhandled rejection, and
+    callers that do care (a form) just check the result.
   */
 
   const run = useCallback(
     async (action, successMessage) => {
       if (role === "viewer") {
-        showToast(READ_ONLY_MESSAGE, "error");
+        toast.error(READ_ONLY_MESSAGE);
 
-        throw new ApiError(READ_ONLY_MESSAGE, 403);
+        return false;
       }
 
       try {
-        const result = await action();
-
-        await refresh();
-
-        if (successMessage) showToast(successMessage, "success");
-
-        return result;
+        await action();
       } catch (error) {
-        showToast(error.message || "Something went wrong.", "error");
+        if (error instanceof ApiError && error.status === 401) {
+          expireSession();
+        } else {
+          toast.error(error.message || "Something went wrong.");
+        }
 
-        throw error;
+        return false;
       }
+
+      if (successMessage) toast.success(successMessage);
+
+      await refresh();
+
+      return true;
     },
-    [refresh, showToast, role],
+    [refresh, expireSession, role],
   );
 
   const actions = useMemo(
@@ -239,8 +270,6 @@ export function AppProvider({ children }) {
       createShareLink: api.createShareLink,
       loading,
       loadError,
-      toasts,
-      showToast,
       refresh,
       login,
       logout,
@@ -254,8 +283,6 @@ export function AppProvider({ children }) {
       loginWithToken,
       loading,
       loadError,
-      toasts,
-      showToast,
       refresh,
       login,
       logout,

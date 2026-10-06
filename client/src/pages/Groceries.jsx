@@ -48,7 +48,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 const dangerIconButton =
   "text-muted-foreground hover:bg-destructive/10 hover:text-destructive";
@@ -145,20 +145,17 @@ export default function Groceries() {
       </div>
 
       <Sheet open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
-        <SheetTrigger asChild>
-          <button
-            type="button"
-            className="fixed right-0 top-1/2 z-40 flex origin-bottom-right -translate-y-1/2 -rotate-90 items-center gap-2 rounded-t-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            aria-label="Open shopping list"
-          >
-            <ListChecks className="size-4" />
-            <span>To buy</span>
-            {pendingCount > 0 && (
-              <span className="inline-flex size-5 items-center justify-center rounded-full bg-background text-2xs font-bold text-foreground">
-                {pendingCount}
-              </span>
-            )}
-          </button>
+        <SheetTrigger
+          aria-label="Open shopping list"
+          className="fixed right-0 top-1/2 z-40 flex origin-bottom-right -translate-y-1/2 -rotate-90 items-center gap-2 rounded-t-xl bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg transition-transform hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ListChecks className="size-4" />
+          <span>To buy</span>
+          {pendingCount > 0 && (
+            <span className="inline-flex size-5 items-center justify-center rounded-full bg-background text-2xs font-bold text-foreground">
+              {pendingCount}
+            </span>
+          )}
         </SheetTrigger>
 
         <SheetContent

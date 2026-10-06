@@ -91,28 +91,23 @@ export default function TransferModal({ transfer, onClose }) {
 
     setSaving(true);
 
-    try {
-      const payload = {
-        type: "transfer",
-        amount,
-        fromAccountId: form.fromAccountId,
-        toAccountId: form.toAccountId,
-        date: form.date,
-        notes: form.notes.trim(),
-      };
+    const payload = {
+      type: "transfer",
+      amount,
+      fromAccountId: form.fromAccountId,
+      toAccountId: form.toAccountId,
+      date: form.date,
+      notes: form.notes.trim(),
+    };
 
-      if (isEditing) {
-        await updateTransaction(transfer.id, payload);
-        toast.success("Transfer updated successfully.");
-      } else {
-        await createTransaction(payload);
-        toast.success("Transfer completed successfully.");
-      }
+    const saved = isEditing
+      ? await updateTransaction(transfer.id, payload)
+      : await createTransaction(payload);
 
+    if (saved) {
       onClose();
-    } catch (submitError) {
+    } else {
       setSaving(false);
-      toast.error("Failed to save transfer. Please try again.");
     }
   };
 

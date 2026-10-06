@@ -32,6 +32,14 @@ function LoadingScreen({ message }) {
   );
 }
 
+// Mounted once at the top so toasts also work on the login screen (for
+// example "Your session expired") and follow the theme setting.
+function AppToaster() {
+  const { settings } = useApp();
+
+  return <Toaster theme={settings.theme} />;
+}
+
 function Shell() {
   const {
     authenticated,
@@ -125,8 +133,6 @@ function Shell() {
             onClose={() => setEditingTransaction(null)}
           />
         ))}
-
-      <Toaster />
     </>
   );
 }
@@ -138,6 +144,8 @@ export default function App() {
         <HashRouter>
           <Shell />
         </HashRouter>
+
+        <AppToaster />
       </AppProvider>
     </ErrorBoundary>
   );

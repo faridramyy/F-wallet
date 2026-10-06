@@ -118,19 +118,16 @@ export default function AccountModal({ account, onClose }) {
 
     setSaving(true);
 
-    try {
-      if (isEditing) {
-        await updateAccount(account.id, payload);
-        toast.success("Account updated successfully.");
-      } else {
-        await createAccount(payload);
-        toast.success("Account created successfully.");
-      }
+    // The store shows the success or error toast; we only decide whether
+    // to close the dialog.
+    const saved = isEditing
+      ? await updateAccount(account.id, payload)
+      : await createAccount(payload);
 
+    if (saved) {
       onClose();
-    } catch (submitError) {
+    } else {
       setSaving(false);
-      toast.error("Failed to save account. Please try again.");
     }
   };
 

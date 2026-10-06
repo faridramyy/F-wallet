@@ -1,3 +1,4 @@
+import * as React from "react";
 import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva } from "class-variance-authority";
 import { cn } from "cn";
@@ -37,19 +38,21 @@ const buttonVariants = cva(
   },
 );
 
-function Button({
-  className,
-  variant = "default",
-  size = "default",
-  ...props
-}) {
+// forwardRef matters on React 18: Base UI hands a ref to whatever is passed
+// in render={<Button />} (popover anchoring, focus management), and a plain
+// function component cannot receive it.
+const Button = React.forwardRef(function Button(
+  { className, variant = "default", size = "default", ...props },
+  ref,
+) {
   return (
     <ButtonPrimitive
+      ref={ref}
       data-slot="button"
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
   );
-}
+});
 
 export { Button, buttonVariants };

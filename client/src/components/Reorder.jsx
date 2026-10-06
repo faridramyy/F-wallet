@@ -17,7 +17,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 /*
   Drag and drop, not up/down buttons.

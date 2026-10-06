@@ -77,31 +77,26 @@ export default function CategoryModal({ category, onClose }) {
 
     setSaving(true);
 
-    try {
-      const payload = {
-        name: form.name.trim(),
-        type: form.type,
-        monthlyBudget,
-        entryMode: form.entryMode,
-        defaultAmount: Number(form.defaultAmount || 0),
-        // Rates are only meaningful in hourly mode, so a category
-        // switched to fixed does not keep stale ones around.
-        hourlyRate: form.entryMode === "hourly" ? hourlyRate : 0,
-        overtimeRate: form.entryMode === "hourly" ? overtimeRate : 0,
-      };
+    const payload = {
+      name: form.name.trim(),
+      type: form.type,
+      monthlyBudget,
+      entryMode: form.entryMode,
+      defaultAmount: Number(form.defaultAmount || 0),
+      // Rates are only meaningful in hourly mode, so a category
+      // switched to fixed does not keep stale ones around.
+      hourlyRate: form.entryMode === "hourly" ? hourlyRate : 0,
+      overtimeRate: form.entryMode === "hourly" ? overtimeRate : 0,
+    };
 
-      if (isEditing) {
-        await updateCategory(category.id, payload);
-        toast.success("Category updated successfully.");
-      } else {
-        await createCategory(payload);
-        toast.success("Category created successfully.");
-      }
+    const saved = isEditing
+      ? await updateCategory(category.id, payload)
+      : await createCategory(payload);
 
+    if (saved) {
       onClose();
-    } catch (submitError) {
+    } else {
       setSaving(false);
-      toast.error("Failed to save category. Please try again.");
     }
   };
 

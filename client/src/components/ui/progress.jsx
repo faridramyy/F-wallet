@@ -1,7 +1,20 @@
 import { Progress as ProgressPrimitive } from "@base-ui/react/progress";
 import { cn } from "cn";
 
-function Progress({ className, children, value, ...props }) {
+/*
+  className styles the root. trackClassName and indicatorClassName reach the
+  two inner parts directly: with Base UI the track and the fill are nested
+  elements, so a selector like [&>div] on the root would hit the wrong one.
+*/
+
+function Progress({
+  className,
+  trackClassName,
+  indicatorClassName,
+  children,
+  value,
+  ...props
+}) {
   return (
     <ProgressPrimitive.Root
       value={value}
@@ -10,8 +23,8 @@ function Progress({ className, children, value, ...props }) {
       {...props}
     >
       {children}
-      <ProgressTrack>
-        <ProgressIndicator />
+      <ProgressTrack className={trackClassName}>
+        <ProgressIndicator className={indicatorClassName} />
       </ProgressTrack>
     </ProgressPrimitive.Root>
   );

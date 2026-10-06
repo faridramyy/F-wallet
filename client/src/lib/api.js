@@ -1,18 +1,16 @@
+import { readStorage, writeStorage } from "./storage";
+
 const BASE_URL = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "");
 
 const TOKEN_KEY = "fwallet_token";
 const ROLE_KEY = "fwallet_role";
 
 export function getToken() {
-  return localStorage.getItem(TOKEN_KEY) || "";
+  return readStorage(TOKEN_KEY) || "";
 }
 
 export function setToken(token) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
+  writeStorage(TOKEN_KEY, token);
 }
 
 /*
@@ -22,15 +20,11 @@ export function setToken(token) {
 */
 
 export function getRole() {
-  return localStorage.getItem(ROLE_KEY) || "owner";
+  return readStorage(ROLE_KEY) || "owner";
 }
 
 export function setRole(role) {
-  if (role) {
-    localStorage.setItem(ROLE_KEY, role);
-  } else {
-    localStorage.removeItem(ROLE_KEY);
-  }
+  writeStorage(ROLE_KEY, role);
 }
 
 export class ApiError extends Error {
@@ -144,10 +138,6 @@ export const api = {
     request("/api/settings", { method: "PUT", body: data }),
 
   exportData: () => request("/api/export"),
-  // ============================================================
-  // ADD to client/src/lib/api.js
-  // Inside the `export const api = { ... }` object
-  // ============================================================
 
   createShoppingItem: (data) =>
     request("/api/shopping", { method: "POST", body: data }),

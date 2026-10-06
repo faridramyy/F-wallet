@@ -1,4 +1,3 @@
-// src/pages/Dashboard.jsx
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -708,13 +707,14 @@ export default function Dashboard({ onEditTransaction }) {
 
                       <Progress
                         value={Math.min(100, utilization)}
-                        className={`h-2 ${
+                        trackClassName="h-2"
+                        indicatorClassName={
                           utilization >= 70
-                            ? "[&>div]:bg-destructive"
+                            ? "bg-destructive"
                             : utilization >= 30
-                              ? "[&>div]:bg-amber-500"
-                              : ""
-                        }`}
+                              ? "bg-amber-500"
+                              : undefined
+                        }
                       />
 
                       <p className="mt-1 text-2xs text-muted-foreground">

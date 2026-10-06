@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import { Eye, EyeOff, Loader2, Lock } from "lucide-react";
 
 import { useApp } from "../store";
@@ -18,20 +19,18 @@ export default function Login() {
   const { login } = useApp();
 
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
   const submit = async (event) => {
     event.preventDefault();
 
-    setError("");
     setBusy(true);
 
     try {
       await login(password);
     } catch (loginError) {
-      setError(loginError.message);
+      toast.error(loginError.message || "Could not sign in. Please try again.");
       setBusy(false);
     }
   };
@@ -83,10 +82,6 @@ export default function Login() {
                   )}
                 </Button>
               </div>
-
-              {error && (
-                <p className="text-xs font-medium text-destructive">{error}</p>
-              )}
             </div>
 
             <Button

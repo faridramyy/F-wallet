@@ -294,13 +294,14 @@ export default function Categories() {
                                 <div className="mt-1.5">
                                   <Progress
                                     value={Math.min(percentSpent, 100)}
-                                    className={`h-2 ${
+                                    trackClassName="h-2"
+                                    indicatorClassName={
                                       percentSpent > 100
-                                        ? "[&>div]:bg-destructive"
+                                        ? "bg-destructive"
                                         : percentSpent >= 85
-                                          ? "[&>div]:bg-amber-500"
-                                          : ""
-                                    }`}
+                                          ? "bg-amber-500"
+                                          : undefined
+                                    }
                                   />
                                 </div>
 
@@ -459,28 +460,26 @@ export default function Categories() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete category?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p>
-                  You are about to delete <strong>{confirming?.name}</strong>.
+            <AlertDialogDescription render={<div />} className="space-y-2">
+              <p>
+                You are about to delete <strong>{confirming?.name}</strong>.
+              </p>
+              {confirming && usageCount(confirming.id) > 0 ? (
+                <p className="font-semibold text-destructive">
+                  {usageCount(confirming.id)} transaction
+                  {usageCount(confirming.id) === 1 ? "" : "s"} use this category
+                  and will become uncategorized.
                 </p>
-                {confirming && usageCount(confirming.id) > 0 ? (
-                  <p className="font-semibold text-destructive">
-                    {usageCount(confirming.id)} transaction
-                    {usageCount(confirming.id) === 1 ? "" : "s"} use this
-                    category and will become uncategorized.
-                  </p>
-                ) : (
-                  <p>No transactions currently use this category.</p>
-                )}
-                <p>This cannot be undone.</p>
-              </div>
+              ) : (
+                <p>No transactions currently use this category.</p>
+              )}
+              <p>This cannot be undone.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
               onClick={() => {
                 if (confirming) {
                   deleteCategory(confirming.id);

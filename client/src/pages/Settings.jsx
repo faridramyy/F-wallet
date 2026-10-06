@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { toast } from "sonner";
 import {
   Download,
   Link as LinkIcon,
@@ -18,6 +19,7 @@ import {
 
 import { useApp } from "../store";
 import { api } from "../lib/api";
+import { today } from "../lib/format";
 import { PageHeader } from "../components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +52,6 @@ export default function Settings() {
     transactions,
     groceries,
     updateSettings,
-    showToast,
     logout,
     isViewer,
     createShareLink,
@@ -77,14 +78,14 @@ export default function Settings() {
 
       const link = document.createElement("a");
       link.href = url;
-      link.download = `f-wallet-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      link.download = `f-wallet-backup-${today()}.json`;
       link.click();
 
       URL.revokeObjectURL(url);
 
-      showToast("Backup downloaded.", "success");
+      toast.success("Backup downloaded.");
     } catch (error) {
-      showToast(error.message, "error");
+      toast.error(error.message);
     } finally {
       setExporting(false);
     }
@@ -98,7 +99,7 @@ export default function Settings() {
       const base = `${window.location.origin}${window.location.pathname}`;
       setShareLink(`${base}#/share/${result.token}`);
     } catch (error) {
-      showToast(error.message, "error");
+      toast.error(error.message);
     } finally {
       setSharing(false);
     }
@@ -108,13 +109,10 @@ export default function Settings() {
     try {
       await navigator.clipboard.writeText(shareLink);
       setCopied(true);
-      showToast("Link copied.", "success");
+      toast.success("Link copied.");
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      showToast(
-        "Could not copy. Select the link and copy it manually.",
-        "error",
-      );
+      toast.error("Could not copy. Select the link and copy it manually.");
     }
   };
 

@@ -68,28 +68,23 @@ export default function GroceryModal({ grocery, onClose }) {
 
     setSaving(true);
 
-    try {
-      const payload = {
-        item: form.item.trim(),
-        price,
-        store: form.store.trim() || "Unknown store",
-        priceType: form.priceType,
-        date: form.date || today(),
-        description: form.description.trim(),
-      };
+    const payload = {
+      item: form.item.trim(),
+      price,
+      store: form.store.trim() || "Unknown store",
+      priceType: form.priceType,
+      date: form.date || today(),
+      description: form.description.trim(),
+    };
 
-      if (isEditing) {
-        await updateGrocery(grocery.id, payload);
-        toast.success("Grocery price entry updated successfully.");
-      } else {
-        await createGrocery(payload);
-        toast.success("Grocery price entry logged successfully.");
-      }
+    const saved = isEditing
+      ? await updateGrocery(grocery.id, payload)
+      : await createGrocery(payload);
 
+    if (saved) {
       onClose();
-    } catch (submitError) {
+    } else {
       setSaving(false);
-      toast.error("Failed to save price entry. Please try again.");
     }
   };
 

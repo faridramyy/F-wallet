@@ -1,4 +1,4 @@
-// src/components/ui/donut-chart.jsx
+// src/components/Donut.jsx
 
 // A fixed palette for category colour-coding, independent of the
 // light/dark theme tokens — it needs many distinguishable hues, which

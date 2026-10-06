@@ -344,13 +344,14 @@ export default function Accounts() {
                                   <>
                                     <Progress
                                       value={Math.min(utilization, 100)}
-                                      className={`h-2 ${
+                                      trackClassName="h-2"
+                                      indicatorClassName={
                                         utilization >= 70
-                                          ? "[&>div]:bg-destructive"
+                                          ? "bg-destructive"
                                           : utilization >= 30
-                                            ? "[&>div]:bg-amber-500"
-                                            : ""
-                                      }`}
+                                            ? "bg-amber-500"
+                                            : undefined
+                                      }
                                     />
 
                                     <p className="mt-1 text-2xs text-muted-foreground">
@@ -415,29 +416,27 @@ export default function Accounts() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete account?</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="text-sm text-muted-foreground space-y-2">
-                <p>
-                  You are about to delete <strong>{confirming?.name}</strong>.
+            <AlertDialogDescription render={<div />} className="space-y-2">
+              <p>
+                You are about to delete <strong>{confirming?.name}</strong>.
+              </p>
+              {confirming && affectedCount(confirming.id) > 0 ? (
+                <p className="font-semibold text-destructive">
+                  This account has {affectedCount(confirming.id)} associated
+                  transaction
+                  {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it
+                  will also delete them.
                 </p>
-                {confirming && affectedCount(confirming.id) > 0 ? (
-                  <p className="font-semibold text-destructive">
-                    This account has {affectedCount(confirming.id)} associated
-                    transaction
-                    {affectedCount(confirming.id) === 1 ? "" : "s"}. Deleting it
-                    will also delete them.
-                  </p>
-                ) : (
-                  <p>This account has no associated transactions.</p>
-                )}
-                <p>This cannot be undone.</p>
-              </div>
+              ) : (
+                <p>This account has no associated transactions.</p>
+              )}
+              <p>This cannot be undone.</p>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              variant="destructive"
               onClick={() => {
                 if (confirming) {
                   deleteAccount(confirming.id);
