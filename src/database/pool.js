@@ -8,6 +8,10 @@ const pool = new AuroraDSQLPool({
   user: env.database.user,
   max: env.database.maxConnections,
   idleTimeoutMillis: 60000,
+
+  retry: {
+    maxRetries: 2,
+  },
 });
 
 export default pool;

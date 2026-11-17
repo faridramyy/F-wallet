@@ -1,4 +1,4 @@
-import pool from "../../database/pool.js";
+import query from "../../database/query.js";
 
 export const getHealth = (req, res) => {
   res.status(200).json({
@@ -10,7 +10,7 @@ export const getHealth = (req, res) => {
 
 export const getDatabaseHealth = async (req, res, next) => {
   try {
-    const result = await pool.query(`
+    const result = await query(`
       SELECT
         current_database() AS database,
         current_user AS user
