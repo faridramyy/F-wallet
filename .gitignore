@@ -1,1 +1,27 @@
+
+# macOS
 .DS_Store
+
+# Dependencies
+node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Build output
+dist/
+build/
+
+# Editor and IDE
+.vscode/
+.idea/
