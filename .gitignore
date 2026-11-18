@@ -14,14 +14,30 @@ node_modules/
 logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
 # Test coverage
 coverage/
 
 # Build output
 dist/
+dist-ssr/
 build/
+
+# Local environment files
+*.local
 
 # Editor and IDE
 .vscode/
 .idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Temporary files
+*.tmp
