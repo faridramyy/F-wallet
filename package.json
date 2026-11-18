@@ -13,7 +13,9 @@
     "dev:backend": "npm run dev --workspace backend",
     "build": "npm run build --workspace frontend",
     "lint": "npm run lint --workspace frontend",
-    "start": "npm run start --workspace backend"
+    "start": "npm run start --workspace backend",
+    "format:frontend": "npx prettier frontend --write",
+    "format:backend": "npx prettier backend --write"
   },
   "repository": {
     "type": "git",

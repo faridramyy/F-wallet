@@ -1,0 +1,42 @@
+import { CreditCard, Landmark, PiggyBank } from "lucide-react";
+import { Card, CardContent } from "../components/ui/card";
+import { accounts } from "../data/mockData";
+import { formatCurrency } from "../lib/formatters";
+
+const accountIcons = {
+  Checking: Landmark,
+  Savings: PiggyBank,
+  "Credit card": CreditCard,
+};
+
+export function AccountsPage() {
+  return (
+    <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {accounts.map((account) => {
+        const Icon = accountIcons[account.type] || CreditCard;
+        return (
+          <Card
+            key={account.name}
+            className="rounded-2xl border-slate-200 shadow-sm"
+          >
+            <CardContent className="p-6">
+              <div
+                className={`mb-5 flex size-12 items-center justify-center rounded-xl ${account.color}`}
+              >
+                <Icon size={22} />
+              </div>
+              <p className="font-semibold">{account.name}</p>
+              <p className="mt-1 text-xs text-slate-400">
+                {account.institution} · {account.type}
+              </p>
+              <p className="mt-5 text-2xl font-bold tabular-nums">
+                {account.balance < 0 ? "-" : ""}
+                {formatCurrency(account.balance)}
+              </p>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </section>
+  );
+}
