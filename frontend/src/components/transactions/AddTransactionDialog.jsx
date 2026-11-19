@@ -1,23 +1,5 @@
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "../ui/dialog";
-import { Button } from "../ui/button";
-import { Input } from "../ui/input";
-import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
-import { Landmark, ShoppingBag } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Landmark, ShoppingBag, X } from "lucide-react";
 
 const blankForm = () => ({
   name: "",
@@ -28,177 +10,219 @@ const blankForm = () => ({
   date: new Date().toISOString().slice(0, 10),
 });
 
-export function AddTransactionDialog({ open, onOpenChange, onSave }) {
+const inputClass =
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
+
+const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
+
+export function AddTransactionDialog({
+  open,
+  onOpenChange,
+  onSave,
+  transaction = null,
+}) {
   const [form, setForm] = useState(blankForm);
 
-  const update = (key, value) =>
-    setForm((current) => ({ ...current, [key]: value }));
+  const isEditing = Boolean(transaction);
+  const isIncome = form.type === "income";
 
-  const handleOpenChange = (nextOpen) => {
-    if (nextOpen) setForm(blankForm());
-    onOpenChange(nextOpen);
-  };
+  useEffect(() => {
+    if (!open) return;
 
-  const handleSubmit = (event) => {
+    if (transaction) {
+      setForm({
+        name: transaction.name || "",
+        amount: String(Math.abs(transaction.amount || 0)),
+        type:
+          transaction.type || (transaction.amount > 0 ? "income" : "expense"),
+        category: transaction.category || "Groceries",
+        account: transaction.account || "Everyday Checking",
+        date: transaction.date || new Date().toISOString().slice(0, 10),
+      });
+    } else {
+      setForm(blankForm());
+    }
+  }, [open, transaction]);
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  function handleClose() {
+    onOpenChange(false);
+  }
+
+  function handleSubmit(event) {
     event.preventDefault();
 
     const amount = Number(form.amount);
 
-    if (!form.name.trim() || !Number.isFinite(amount) || amount <= 0) return;
+    if (!form.name.trim() || !Number.isFinite(amount) || amount <= 0) {
+      return;
+    }
 
     onSave({
-      id: Date.now(),
+      ...(transaction || {}),
+      id: transaction?.id ?? Date.now(),
       name: form.name.trim(),
-      category: form.type === "income" ? "Income" : form.category,
+      category: isIncome ? "Income" : form.category,
       account: form.account,
       date: form.date,
-      amount: form.type === "income" ? amount : -amount,
+      amount: isIncome ? amount : -amount,
       type: form.type,
-      icon: form.type === "income" ? Landmark : ShoppingBag,
+      icon: isIncome ? Landmark : ShoppingBag,
     });
 
-    setForm(blankForm());
-    onOpenChange(false);
-  };
+    handleClose();
+  }
+
+  if (!open) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="rounded-xl border-border bg-card text-card-foreground sm:max-w-[480px]">
-        <DialogHeader>
-          <DialogTitle className="text-card-foreground">
-            Add transaction
-          </DialogTitle>
-          <DialogDescription className="text-muted-foreground">
-            Record income or an expense in your F-Wallet.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-xl">
+        {/* Header */}
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card p-5">
+          <div>
+            <h2 className="text-lg font-semibold">
+              {isEditing ? "Edit transaction" : "Add transaction"}
+            </h2>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="transaction-name">Description</Label>
-            <Input
-              id="transaction-name"
-              className="rounded-lg border-input bg-background text-foreground placeholder:text-muted-foreground"
-              placeholder="e.g. Grocery shopping"
-              value={form.name}
-              onChange={(e) => update("name", e.target.value)}
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isEditing
+                ? "Update your transaction information."
+                : "Record income or an expense in your F-Wallet."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close dialog"
+          >
+            <X size={19} />
+          </button>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-5 p-5">
+          <div>
+            <label className={labelClass}>Description</label>
+            <input
               required
+              maxLength={150}
+              className={inputClass}
+              value={form.name}
+              onChange={(event) => updateField("name", event.target.value)}
+              placeholder="e.g. Grocery shopping"
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label>Transaction type</Label>
-              <Select
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className={labelClass}>Transaction type</label>
+              <select
+                className={inputClass}
                 value={form.type}
-                onValueChange={(value) => update("type", value)}
+                onChange={(event) => updateField("type", event.target.value)}
               >
-                <SelectTrigger className="w-full rounded-lg border-input bg-background text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="expense">Expense</SelectItem>
-                  <SelectItem value="income">Income</SelectItem>
-                </SelectContent>
-              </Select>
+                <option value="expense">Expense</option>
+                <option value="income">Income</option>
+              </select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="transaction-amount">Amount (CAD)</Label>
-              <Input
-                id="transaction-amount"
-                className="rounded-lg border-input bg-background text-foreground placeholder:text-muted-foreground"
+            <div>
+              <label className={labelClass}>Amount (CAD)</label>
+              <input
+                required
                 type="number"
                 min="0.01"
                 step="0.01"
-                placeholder="0.00"
+                className={inputClass}
                 value={form.amount}
-                onChange={(e) => update("amount", e.target.value)}
-                required
+                onChange={(event) => updateField("amount", event.target.value)}
+                placeholder="0.00"
               />
             </div>
           </div>
 
-          {form.type === "expense" && (
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
+          {!isIncome && (
+            <div>
+              <label className={labelClass}>Category</label>
+              <select
+                className={inputClass}
                 value={form.category}
-                onValueChange={(value) => update("category", value)}
+                onChange={(event) =>
+                  updateField("category", event.target.value)
+                }
               >
-                <SelectTrigger className="w-full rounded-lg border-input bg-background text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[
-                    "Groceries",
-                    "Housing",
-                    "Transportation",
-                    "Dining",
-                    "Shopping",
-                    "Utilities",
-                    "Entertainment",
-                    "Other",
-                  ].map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                {[
+                  "Groceries",
+                  "Housing",
+                  "Transportation",
+                  "Dining",
+                  "Shopping",
+                  "Utilities",
+                  "Entertainment",
+                  "Other",
+                ].map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
             </div>
           )}
 
-          <div className="space-y-2">
-            <Label>Account</Label>
-            <Select
+          <div>
+            <label className={labelClass}>Account</label>
+            <select
+              className={inputClass}
               value={form.account}
-              onValueChange={(value) => update("account", value)}
+              onChange={(event) => updateField("account", event.target.value)}
             >
-              <SelectTrigger className="w-full rounded-lg border-input bg-background text-foreground">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Everyday Checking">
-                  Everyday Checking
-                </SelectItem>
-                <SelectItem value="High Interest Savings">
-                  High Interest Savings
-                </SelectItem>
-                <SelectItem value="Visa Credit Card">
-                  Visa Credit Card
-                </SelectItem>
-              </SelectContent>
-            </Select>
+              <option value="Everyday Checking">Everyday Checking</option>
+              <option value="High Interest Savings">
+                High Interest Savings
+              </option>
+              <option value="Visa Credit Card">Visa Credit Card</option>
+            </select>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="transaction-date">Date</Label>
-            <Input
-              id="transaction-date"
-              className="rounded-lg border-input bg-background text-foreground"
-              type="date"
-              value={form.date}
-              onChange={(e) => update("date", e.target.value)}
+          <div>
+            <label className={labelClass}>Transaction date</label>
+            <input
               required
+              type="date"
+              className={inputClass}
+              value={form.date}
+              onChange={(event) => updateField("date", event.target.value)}
             />
           </div>
 
-          <DialogFooter className="gap-2 pt-2">
-            <Button
+          {/* Footer */}
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
+            <button
               type="button"
-              variant="outline"
-              className="rounded-lg"
-              onClick={() => onOpenChange(false)}
+              onClick={handleClose}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
             >
               Cancel
-            </Button>
-            <Button type="submit" className="rounded-lg">
-              Save transaction
-            </Button>
-          </DialogFooter>
+            </button>
+
+            <button
+              type="submit"
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              {isEditing ? "Save changes" : "Add transaction"}
+            </button>
+          </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
