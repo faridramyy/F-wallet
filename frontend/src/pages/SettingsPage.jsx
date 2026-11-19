@@ -129,14 +129,7 @@ export function SettingsPage({ theme, onThemeChange }) {
   };
 
   return (
-    <div className="mx-auto max-w-[1100px] space-y-7 pb-8">
-      <div className="flex flex-col gap-2">
-        <p className="text-sm text-muted-foreground">
-          Manage your account preferences and customize your F-Wallet
-          experience.
-        </p>
-      </div>
-
+    <div className="space-y-7">
       <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
