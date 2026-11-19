@@ -5,7 +5,7 @@ import { TransactionList } from "../transactions/TransactionList";
 
 export function RecentTransactions({ transactions, onViewAll }) {
   return (
-    <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+    <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
           <CardTitle className="text-base">Recent transactions</CardTitle>
@@ -17,7 +17,7 @@ export function RecentTransactions({ transactions, onViewAll }) {
         <Button
           variant="ghost"
           size="sm"
-          className="text-primary"
+          className="rounded-lg text-primary"
           onClick={onViewAll}
         >
           View all <ArrowUpRight size={14} />

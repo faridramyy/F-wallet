@@ -57,7 +57,7 @@ const notificationOptions = [
 function SectionHeading({ icon: Icon, title, description }) {
   return (
     <div className="mb-6 flex items-start gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <Icon size={19} strokeWidth={1.8} />
       </div>
 
@@ -65,6 +65,7 @@ function SectionHeading({ icon: Icon, title, description }) {
         <h2 className="text-base font-semibold text-card-foreground">
           {title}
         </h2>
+
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -88,7 +89,7 @@ function Field({ label, description, children }) {
 }
 
 const inputClass =
-  "h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition focus:border-ring focus:ring-2 focus:ring-ring/20";
+  "h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:border-ring";
 
 function Toggle({ checked, onChange }) {
   return (
@@ -97,12 +98,12 @@ function Toggle({ checked, onChange }) {
       role="switch"
       aria-checked={checked}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
         checked ? "bg-primary" : "bg-muted"
       }`}
     >
       <span
-        className={`inline-block size-5 rounded-full bg-white shadow-sm transition-transform ${
+        className={`inline-block size-5 rounded-full bg-primary-foreground shadow-sm transition-transform ${
           checked ? "translate-x-[22px]" : "translate-x-0.5"
         }`}
       />
@@ -136,7 +137,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </p>
       </div>
 
-      <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
             icon={UserRound}
@@ -193,7 +194,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
             icon={Palette}
@@ -217,7 +218,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
             icon={Bell}
@@ -253,7 +254,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
-      <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
             icon={RefreshCw}

@@ -10,7 +10,7 @@ import { formatCurrency } from "../lib/formatters";
 
 export function BudgetsPage() {
   return (
-    <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200">
+    <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200">
       <CardHeader>
         <CardTitle className="text-base text-card-foreground">
           Monthly budgets
@@ -23,7 +23,12 @@ export function BudgetsPage() {
 
       <CardContent className="space-y-6">
         {budgets.map((budget) => {
-          const percentage = Math.round((budget.spent / budget.limit) * 100);
+          const percentage =
+            budget.limit > 0
+              ? Math.round((budget.spent / budget.limit) * 100)
+              : 0;
+
+          const progressValue = Math.min(100, Math.max(0, percentage));
 
           return (
             <div key={budget.name}>
@@ -38,7 +43,7 @@ export function BudgetsPage() {
                 </p>
               </div>
 
-              <Progress value={percentage} className="h-2 bg-muted" />
+              <Progress value={progressValue} className="h-2 bg-muted" />
 
               <p className="mt-1 text-xs text-muted-foreground">
                 {percentage}% used

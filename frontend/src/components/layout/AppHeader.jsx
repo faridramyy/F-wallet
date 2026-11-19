@@ -5,7 +5,7 @@ export function AppHeader({ title, onAddTransaction }) {
   const displayTitle = title === "Budgets" ? "Categories & Budgets" : title;
 
   return (
-    <header className="border-b border-border bg-background transition-colors duration-200">
+    <header className="border-b border-border bg-card text-card-foreground transition-colors duration-200">
       <div className="flex min-h-28 items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:px-10">
         <div>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">

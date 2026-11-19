@@ -18,13 +18,11 @@ export function AccountsPage() {
         return (
           <Card
             key={account.name}
-            className="rounded-2xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200"
+            className="rounded-xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200"
           >
             <CardContent className="p-6">
-              <div
-                className={`mb-5 flex size-12 items-center justify-center rounded-xl ${account.color}`}
-              >
-                <Icon size={22} />
+              <div className="mb-5 flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Icon size={22} strokeWidth={1.8} />
               </div>
 
               <p className="font-semibold text-card-foreground">
@@ -37,7 +35,7 @@ export function AccountsPage() {
 
               <p className="mt-5 text-2xl font-bold tabular-nums text-foreground">
                 {account.balance < 0 ? "-" : ""}
-                {formatCurrency(account.balance)}
+                {formatCurrency(Math.abs(account.balance))}
               </p>
             </CardContent>
           </Card>

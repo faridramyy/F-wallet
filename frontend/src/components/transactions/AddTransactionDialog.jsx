@@ -63,7 +63,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="border-border bg-card text-card-foreground sm:max-w-[480px]">
+      <DialogContent className="rounded-xl border-border bg-card text-card-foreground sm:max-w-[480px]">
         <DialogHeader>
           <DialogTitle className="text-card-foreground">
             Add transaction
@@ -78,6 +78,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
             <Label htmlFor="transaction-name">Description</Label>
             <Input
               id="transaction-name"
+              className="rounded-lg border-input bg-background text-foreground placeholder:text-muted-foreground"
               placeholder="e.g. Grocery shopping"
               value={form.name}
               onChange={(e) => update("name", e.target.value)}
@@ -92,7 +93,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
                 value={form.type}
                 onValueChange={(value) => update("type", value)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full rounded-lg border-input bg-background text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -106,6 +107,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               <Label htmlFor="transaction-amount">Amount (CAD)</Label>
               <Input
                 id="transaction-amount"
+                className="rounded-lg border-input bg-background text-foreground placeholder:text-muted-foreground"
                 type="number"
                 min="0.01"
                 step="0.01"
@@ -124,7 +126,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
                 value={form.category}
                 onValueChange={(value) => update("category", value)}
               >
-                <SelectTrigger className="w-full">
+                <SelectTrigger className="w-full rounded-lg border-input bg-background text-foreground">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -153,7 +155,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               value={form.account}
               onValueChange={(value) => update("account", value)}
             >
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full rounded-lg border-input bg-background text-foreground">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -174,6 +176,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
             <Label htmlFor="transaction-date">Date</Label>
             <Input
               id="transaction-date"
+              className="rounded-lg border-input bg-background text-foreground"
               type="date"
               value={form.date}
               onChange={(e) => update("date", e.target.value)}
@@ -181,15 +184,18 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
             />
           </div>
 
-          <DialogFooter className="pt-2">
+          <DialogFooter className="gap-2 pt-2">
             <Button
               type="button"
               variant="outline"
+              className="rounded-lg"
               onClick={() => onOpenChange(false)}
             >
               Cancel
             </Button>
-            <Button type="submit">Save transaction</Button>
+            <Button type="submit" className="rounded-lg">
+              Save transaction
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

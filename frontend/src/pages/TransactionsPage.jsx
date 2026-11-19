@@ -25,7 +25,7 @@ export function TransactionsPage({ transactions }) {
   );
 
   return (
-    <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200">
+    <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200">
       <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <CardTitle className="text-base text-card-foreground">
@@ -47,7 +47,7 @@ export function TransactionsPage({ transactions }) {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search transactions..."
-            className="border-input bg-background pl-9 text-foreground placeholder:text-muted-foreground"
+            className="rounded-lg border-input bg-background pl-9 text-foreground placeholder:text-muted-foreground"
           />
         </div>
       </CardHeader>

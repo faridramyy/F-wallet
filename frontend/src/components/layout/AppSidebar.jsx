@@ -4,7 +4,7 @@ import { NavigationItems } from "./NavigationItems";
 export function AppSidebar({ activePage, onNavigate, sidebarOpen }) {
   return (
     <aside
-      className={`fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar py-7 transition-all duration-200 md:flex md:flex-col ${
+      className={`fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar py-7 text-sidebar-foreground transition-all duration-200 md:flex md:flex-col ${
         sidebarOpen ? "md:w-62 md:px-5" : "md:w-19 md:px-3"
       }`}
     >

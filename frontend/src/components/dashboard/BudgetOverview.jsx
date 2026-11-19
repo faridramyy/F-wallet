@@ -6,7 +6,7 @@ import { formatCurrency } from "../../lib/formatters";
 
 export function BudgetOverview({ onManage }) {
   return (
-    <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
+    <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
       <CardHeader>
         <CardTitle className="text-base">Monthly budgets</CardTitle>
         <p className="text-xs text-muted-foreground">
@@ -48,7 +48,7 @@ export function BudgetOverview({ onManage }) {
 
         <Button
           variant="outline"
-          className="w-full rounded-xl"
+          className="w-full rounded-lg"
           onClick={onManage}
         >
           Manage budgets

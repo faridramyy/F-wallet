@@ -33,7 +33,7 @@ export function NavigationItems({ activePage, onNavigate, collapsed = false }) {
             } ${
               active
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             }`}
           >
             <Icon size={19} strokeWidth={1.9} />

@@ -1,4 +1,4 @@
-import { ArrowDownLeft, ArrowUpRight, ShoppingBag } from "lucide-react";
+import { ShoppingBag } from "lucide-react";
 import { formatCurrency } from "../../lib/formatters";
 
 export function TransactionItem({ transaction }) {
@@ -7,7 +7,7 @@ export function TransactionItem({ transaction }) {
 
   return (
     <div className="flex items-center gap-3 py-4 first:pt-1 last:pb-1">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
         <Icon size={18} />
       </div>
 
@@ -24,9 +24,7 @@ export function TransactionItem({ transaction }) {
       <div className="text-right">
         <p
           className={`text-sm font-semibold tabular-nums ${
-            positive
-              ? "text-emerald-600 dark:text-emerald-400"
-              : "text-foreground"
+            positive ? "text-chart-1" : "text-foreground"
           }`}
         >
           {positive ? "+" : "-"}

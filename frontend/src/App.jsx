@@ -14,11 +14,15 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { initialTransactions } from "./data/mockData";
 
+const VALID_THEMES = ["light", "dark", "system"];
+
 function getInitialTheme() {
   try {
-    return localStorage.getItem("fwallet-theme") || "light";
+    const savedTheme = localStorage.getItem("fwallet-theme");
+
+    return VALID_THEMES.includes(savedTheme) ? savedTheme : "system";
   } catch {
-    return "light";
+    return "system";
   }
 }
 
@@ -67,12 +71,16 @@ export default function App() {
     switch (activePage) {
       case "Transactions":
         return <TransactionsPage transactions={transactions} />;
+
       case "Accounts":
         return <AccountsPage />;
+
       case "Budgets":
         return <BudgetsPage />;
+
       case "Settings":
         return <SettingsPage theme={theme} onThemeChange={setTheme} />;
+
       default:
         return (
           <DashboardPage
@@ -80,7 +88,6 @@ export default function App() {
             onViewTransactions={() => setActivePage("Transactions")}
             onViewAccounts={() => setActivePage("Accounts")}
             onViewBudgets={() => setActivePage("Budgets")}
-            onAddTransaction={() => setAddDialogOpen(true)}
           />
         );
     }
@@ -102,7 +109,7 @@ export default function App() {
         onClick={() => setSidebarOpen((current) => !current)}
         aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
         aria-expanded={sidebarOpen}
-        className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-200 hover:bg-muted md:flex ${
+        className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-200 hover:bg-muted hover:text-foreground md:flex ${
           sidebarOpen ? "left-[248px]" : "left-[76px]"
         }`}
       >
