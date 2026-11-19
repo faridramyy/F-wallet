@@ -14,10 +14,11 @@ export function AccountsPage() {
     <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {accounts.map((account) => {
         const Icon = accountIcons[account.type] || CreditCard;
+
         return (
           <Card
             key={account.name}
-            className="rounded-2xl border-slate-200 shadow-sm"
+            className="rounded-2xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200"
           >
             <CardContent className="p-6">
               <div
@@ -25,11 +26,16 @@ export function AccountsPage() {
               >
                 <Icon size={22} />
               </div>
-              <p className="font-semibold">{account.name}</p>
-              <p className="mt-1 text-xs text-slate-400">
+
+              <p className="font-semibold text-card-foreground">
+                {account.name}
+              </p>
+
+              <p className="mt-1 text-xs text-muted-foreground">
                 {account.institution} · {account.type}
               </p>
-              <p className="mt-5 text-2xl font-bold tabular-nums">
+
+              <p className="mt-5 text-2xl font-bold tabular-nums text-foreground">
                 {account.balance < 0 ? "-" : ""}
                 {formatCurrency(account.balance)}
               </p>

@@ -27,12 +27,13 @@ export function NavigationItems({ activePage, onNavigate, collapsed = false }) {
             onClick={() => onNavigate(page)}
             title={collapsed ? label : undefined}
             aria-label={label}
+            aria-current={active ? "page" : undefined}
             className={`flex w-full items-center rounded-lg py-2.5 text-sm font-semibold transition-colors ${
               collapsed ? "justify-center px-0" : "justify-start gap-3 px-3"
             } ${
               active
-                ? "bg-[#f5f5f5] text-[#191919]"
-                : "border-transparent text-[#858585] hover:bg-[#f5f5f5] hover:text-[#191919]"
+                ? "bg-sidebar-accent text-sidebar-accent-foreground"
+                : "border-transparent text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             }`}
           >
             <Icon size={19} strokeWidth={1.9} />

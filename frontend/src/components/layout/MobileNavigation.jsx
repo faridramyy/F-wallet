@@ -20,7 +20,7 @@ export function MobileNavigation({ activePage, onNavigate }) {
       aria-label="Mobile navigation"
       className="fixed bottom-[calc(env(safe-area-inset-bottom)+16px)] left-1/2 z-50 w-[calc(100%-32px)] max-w-105 -translate-x-1/2 md:hidden"
     >
-      <div className="flex items-center justify-between gap-1 rounded-[28px] border border-white/70 bg-white/65 p-2 shadow-[0_8px_35px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150">
+      <div className="flex items-center justify-between gap-1 rounded-[28px] border border-white/70 bg-white/65 p-2 shadow-[0_8px_35px_rgba(0,0,0,0.12)] backdrop-blur-2xl backdrop-saturate-150 transition-colors duration-200 dark:border-white/10 dark:bg-[#202832]/75">
         {navigation.map(({ label, page, icon: Icon }) => {
           const active = activePage === page;
 
@@ -33,8 +33,8 @@ export function MobileNavigation({ activePage, onNavigate }) {
               aria-current={active ? "page" : undefined}
               className={`relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[20px] px-1 py-2.5 transition-all duration-300 ${
                 active
-                  ? "bg-white/90 text-[#191919] shadow-[0_2px_10px_rgba(0,0,0,0.08)]"
-                  : "text-[#858585] hover:bg-white/40 hover:text-[#191919]"
+                  ? "bg-white/90 text-[#191919] shadow-[0_2px_10px_rgba(0,0,0,0.08)] dark:bg-white/15 dark:text-white"
+                  : "text-[#858585] hover:bg-white/40 hover:text-[#191919] dark:text-white/60 dark:hover:bg-white/10 dark:hover:text-white"
               }`}
             >
               <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />

@@ -12,43 +12,52 @@ const accountIcons = {
 
 export function AccountsOverview({ onViewAll }) {
   return (
-    <Card className="rounded-2xl border-slate-200 shadow-sm">
+    <Card className="rounded-2xl border-border bg-card text-card-foreground shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <div>
           <CardTitle className="text-base">My accounts</CardTitle>
-          <p className="mt-1 text-xs text-slate-400">Your financial accounts</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Your financial accounts
+          </p>
         </div>
+
         <Button
           variant="ghost"
           size="sm"
-          className="text-emerald-700"
+          className="text-primary"
           onClick={onViewAll}
         >
           View all <ArrowUpRight size={14} />
         </Button>
       </CardHeader>
+
       <CardContent className="space-y-1">
         {accounts.map((account) => {
           const Icon = accountIcons[account.type] || CreditCard;
+
           return (
             <div
               key={account.name}
-              className="flex items-center gap-3 rounded-xl px-2 py-3 hover:bg-slate-50"
+              className="flex items-center gap-3 rounded-xl px-2 py-3 transition-colors hover:bg-muted/60"
             >
               <div
                 className={`flex size-11 items-center justify-center rounded-xl ${account.color}`}
               >
                 <Icon size={20} />
               </div>
+
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{account.name}</p>
-                <p className="mt-0.5 text-xs text-slate-400">
+                <p className="truncate text-sm font-semibold text-card-foreground">
+                  {account.name}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   {account.institution} · {account.type}
                 </p>
               </div>
-              <p className="text-sm font-semibold tabular-nums">
+
+              <p className="text-sm font-semibold tabular-nums text-card-foreground">
                 {account.balance < 0 ? "-" : ""}
-                {formatCurrency(account.balance)}
+                {formatCurrency(Math.abs(account.balance))}
               </p>
             </div>
           );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Menu } from "lucide-react";
 
 import { AppSidebar } from "./components/layout/AppSidebar";
@@ -14,11 +14,49 @@ import { SettingsPage } from "./pages/SettingsPage";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { initialTransactions } from "./data/mockData";
 
+function getInitialTheme() {
+  try {
+    return localStorage.getItem("fwallet-theme") || "light";
+  } catch {
+    return "light";
+  }
+}
+
 export default function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [transactions, setTransactions] = useState(initialTransactions);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [theme, setTheme] = useState(getInitialTheme);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const systemPreference = window.matchMedia("(prefers-color-scheme: dark)");
+
+    const applyTheme = () => {
+      const isDark =
+        theme === "dark" || (theme === "system" && systemPreference.matches);
+
+      root.classList.toggle("dark", isDark);
+      root.style.colorScheme = isDark ? "dark" : "light";
+    };
+
+    applyTheme();
+
+    try {
+      localStorage.setItem("fwallet-theme", theme);
+    } catch {
+      // Theme still works for the current session if storage is unavailable.
+    }
+
+    if (theme === "system") {
+      systemPreference.addEventListener("change", applyTheme);
+
+      return () => {
+        systemPreference.removeEventListener("change", applyTheme);
+      };
+    }
+  }, [theme]);
 
   const handleAddTransaction = (transaction) => {
     setTransactions((current) => [transaction, ...current]);
@@ -34,7 +72,7 @@ export default function App() {
       case "Budgets":
         return <BudgetsPage />;
       case "Settings":
-        return <SettingsPage />;
+        return <SettingsPage theme={theme} onThemeChange={setTheme} />;
       default:
         return (
           <DashboardPage
@@ -49,7 +87,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f7f7f7] text-[#191919]">
+    <div className="min-h-screen bg-background text-foreground">
       <AppSidebar
         activePage={activePage}
         onNavigate={setActivePage}
@@ -64,8 +102,8 @@ export default function App() {
         onClick={() => setSidebarOpen((current) => !current)}
         aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
         aria-expanded={sidebarOpen}
-        className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-[#e5e5e5] bg-white text-[#666666] shadow-sm transition-all duration-200 hover:bg-[#f5f5f5] md:flex ${
-          sidebarOpen ? "left-62" : "left-19"
+        className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-200 hover:bg-muted md:flex ${
+          sidebarOpen ? "left-[248px]" : "left-[76px]"
         }`}
       >
         <Menu size={16} />
@@ -73,7 +111,7 @@ export default function App() {
 
       <main
         className={`min-h-screen transition-all duration-200 ${
-          sidebarOpen ? "md:pl-62" : "md:pl-19"
+          sidebarOpen ? "md:pl-[248px]" : "md:pl-[76px]"
         }`}
       >
         <AppHeader

@@ -41,7 +41,9 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
     const amount = Number(form.amount);
+
     if (!form.name.trim() || !Number.isFinite(amount) || amount <= 0) return;
 
     onSave({
@@ -49,23 +51,28 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
       name: form.name.trim(),
       category: form.type === "income" ? "Income" : form.category,
       account: form.account,
-      date: "Just added",
+      date: form.date,
       amount: form.type === "income" ? amount : -amount,
       type: form.type,
       icon: form.type === "income" ? Landmark : ShoppingBag,
     });
+
     setForm(blankForm());
+    onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[480px]">
+      <DialogContent className="border-border bg-card text-card-foreground sm:max-w-[480px]">
         <DialogHeader>
-          <DialogTitle>Add transaction</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-card-foreground">
+            Add transaction
+          </DialogTitle>
+          <DialogDescription className="text-muted-foreground">
             Record income or an expense in your F-Wallet.
           </DialogDescription>
         </DialogHeader>
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="transaction-name">Description</Label>
@@ -77,6 +84,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               required
             />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label>Transaction type</Label>
@@ -93,6 +101,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
                 </SelectContent>
               </Select>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="transaction-amount">Amount (CAD)</Label>
               <Input
@@ -107,6 +116,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               />
             </div>
           </div>
+
           {form.type === "expense" && (
             <div className="space-y-2">
               <Label>Category</Label>
@@ -136,6 +146,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               </Select>
             </div>
           )}
+
           <div className="space-y-2">
             <Label>Account</Label>
             <Select
@@ -158,6 +169,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               </SelectContent>
             </Select>
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="transaction-date">Date</Label>
             <Input
@@ -168,6 +180,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
               required
             />
           </div>
+
           <DialogFooter className="pt-2">
             <Button
               type="button"
@@ -176,12 +189,7 @@ export function AddTransactionDialog({ open, onOpenChange, onSave }) {
             >
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="bg-emerald-600 text-white hover:bg-emerald-700"
-            >
-              Save transaction
-            </Button>
+            <Button type="submit">Save transaction</Button>
           </DialogFooter>
         </form>
       </DialogContent>
