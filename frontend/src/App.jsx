@@ -100,10 +100,13 @@ export default function App() {
   // Wait for Cognito to finish checking the authentication session.
   if (auth.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0b1220]">
+      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
         <div className="text-center">
-          <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-4 border-slate-600 border-t-emerald-500" />
-          <p className="text-sm text-slate-400">Loading F-Wallet...</p>
+          <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+
+          <p className="text-sm text-muted-foreground">
+            connecting F-Wallet with AWS cognito...
+          </p>
         </div>
       </div>
     );
