@@ -32,12 +32,15 @@ export function AccountsOverview({ onViewAll }) {
       </CardHeader>
 
       <CardContent className="space-y-1">
-        {accounts.map((account) => {
+        {accounts.map((account, index) => {
           const Icon = accountIcons[account.type] || CreditCard;
 
           return (
             <div
-              key={account.name}
+              key={
+                account.id ||
+                `${account.name}-${account.institution}-${account.type}-${index}`
+              }
               className="flex items-center gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-muted/60"
             >
               <div className="flex size-11 items-center justify-center rounded-lg bg-muted text-muted-foreground">

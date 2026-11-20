@@ -19,6 +19,12 @@ const env = {
     user: process.env.DB_USER || "f_wallet_app_dev",
     maxConnections: Number(process.env.DB_MAX_CONNECTIONS) || 3,
   },
+
+  cognito: {
+    region: process.env.COGNITO_REGION,
+    userPoolId: process.env.COGNITO_USER_POOL_ID,
+    clientId: process.env.COGNITO_CLIENT_ID,
+  },
 };
 
 export default env;

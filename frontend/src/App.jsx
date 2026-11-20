@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "react-oidc-context";
 import { Menu } from "lucide-react";
 
 import { AppSidebar } from "./components/layout/AppSidebar";
@@ -10,6 +11,7 @@ import { TransactionsPage } from "./pages/TransactionsPage";
 import { AccountsPage } from "./pages/AccountsPage";
 import { BudgetsPage } from "./pages/BudgetsPage";
 import { SettingsPage } from "./pages/SettingsPage";
+import LoginPage from "./pages/LoginPage";
 
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { initialTransactions } from "./data/mockData";
@@ -27,6 +29,8 @@ function getInitialTheme() {
 }
 
 export default function App() {
+  const auth = useAuth();
+
   const [activePage, setActivePage] = useState("Dashboard");
   const [transactions, setTransactions] = useState(initialTransactions);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
@@ -93,6 +97,24 @@ export default function App() {
     }
   };
 
+  // Wait for Cognito to finish checking the authentication session.
+  if (auth.isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0b1220]">
+        <div className="text-center">
+          <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-4 border-slate-600 border-t-emerald-500" />
+          <p className="text-sm text-slate-400">Loading F-Wallet...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show the login page when the user is not authenticated.
+  if (!auth.isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  // Existing authenticated F-Wallet application.
   return (
     <div className="min-h-screen bg-background text-foreground">
       <AppSidebar
@@ -103,7 +125,6 @@ export default function App() {
 
       <MobileNavigation activePage={activePage} onNavigate={setActivePage} />
 
-      {/* Sidebar toggle: tablet and desktop */}
       <button
         type="button"
         onClick={() => setSidebarOpen((current) => !current)}

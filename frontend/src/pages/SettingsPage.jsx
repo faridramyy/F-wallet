@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { UserRound, Palette, Bell, RefreshCw, Save } from "lucide-react";
+import { useAuth } from "react-oidc-context";
+import {
+  UserRound,
+  Palette,
+  Bell,
+  RefreshCw,
+  Save,
+  LogOut,
+} from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 
@@ -112,8 +120,11 @@ function Toggle({ checked, onChange }) {
 }
 
 export function SettingsPage({ theme, onThemeChange }) {
+  const auth = useAuth();
+
   const [settings, setSettings] = useState(initialSettings);
   const [saved, setSaved] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const updateSetting = (key, value) => {
     setSettings((current) => ({
@@ -128,8 +139,35 @@ export function SettingsPage({ theme, onThemeChange }) {
     setSaved(true);
   };
 
+  const handleSignOut = async () => {
+    try {
+      setSigningOut(true);
+
+      // Clear the local OIDC session
+      await auth.removeUser();
+
+      // Redirect to Cognito's logout endpoint
+      const logoutUrl = new URL(
+        "https://ca-central-1vntwkf99n.auth.ca-central-1.amazoncognito.com/logout",
+      );
+
+      logoutUrl.searchParams.set(
+        "client_id",
+        import.meta.env.VITE_COGNITO_CLIENT_ID,
+      );
+
+      logoutUrl.searchParams.set("logout_uri", `${window.location.origin}/`);
+
+      window.location.assign(logoutUrl.toString());
+    } catch (error) {
+      console.error("Sign-out failed:", error);
+      setSigningOut(false);
+    }
+  };
+
   return (
     <div className="space-y-7">
+      {/* Account preferences */}
       <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
@@ -187,6 +225,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
+      {/* Appearance */}
       <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
@@ -211,6 +250,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
+      {/* Notifications */}
       <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
@@ -247,6 +287,7 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
+      {/* Recurring transactions */}
       <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
         <CardHeader className="pb-2">
           <SectionHeading
@@ -284,7 +325,18 @@ export function SettingsPage({ theme, onThemeChange }) {
         </CardContent>
       </Card>
 
-      <div className="flex flex-col-reverse items-start justify-end gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
+      {/* Actions */}
+      <div className="flex flex-col-reverse items-start justify-between gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
+        <button
+          type="button"
+          onClick={handleSignOut}
+          disabled={signingOut || auth.isLoading}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 px-5 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+        >
+          <LogOut size={16} />
+          {signingOut ? "Signing out..." : "Sign out"}
+        </button>
+
         <button
           type="button"
           onClick={handleSave}
