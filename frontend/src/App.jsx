@@ -13,6 +13,7 @@ import { BudgetsPage } from "./pages/BudgetsPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 
+import { NotificationProvider } from "./components/providers/NotificationProvider";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { initialTransactions } from "./data/mockData";
 
@@ -119,47 +120,49 @@ export default function App() {
 
   // Existing authenticated F-Wallet application.
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <AppSidebar
-        activePage={activePage}
-        onNavigate={setActivePage}
-        sidebarOpen={sidebarOpen}
-      />
-
-      <MobileNavigation activePage={activePage} onNavigate={setActivePage} />
-
-      <button
-        type="button"
-        onClick={() => setSidebarOpen((current) => !current)}
-        aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-        aria-expanded={sidebarOpen}
-        className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-200 hover:bg-muted hover:text-foreground md:flex ${
-          sidebarOpen ? "left-[248px]" : "left-[76px]"
-        }`}
-      >
-        <Menu size={16} />
-      </button>
-
-      <main
-        className={`min-h-screen transition-all duration-200 ${
-          sidebarOpen ? "md:pl-[248px]" : "md:pl-[76px]"
-        }`}
-      >
-        <AppHeader
-          title={activePage}
-          onAddTransaction={() => setAddDialogOpen(true)}
+    <NotificationProvider>
+      <div className="min-h-screen bg-background text-foreground">
+        <AppSidebar
+          activePage={activePage}
+          onNavigate={setActivePage}
+          sidebarOpen={sidebarOpen}
         />
 
-        <div className="mx-auto w-full max-w-[1600px] p-5 pb-28 sm:p-8 sm:pb-28 md:pb-8 lg:p-10">
-          {renderPage()}
-        </div>
-      </main>
+        <MobileNavigation activePage={activePage} onNavigate={setActivePage} />
 
-      <AddTransactionDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onSave={handleAddTransaction}
-      />
-    </div>
+        <button
+          type="button"
+          onClick={() => setSidebarOpen((current) => !current)}
+          aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          aria-expanded={sidebarOpen}
+          className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-200 hover:bg-muted hover:text-foreground md:flex ${
+            sidebarOpen ? "left-[248px]" : "left-[76px]"
+          }`}
+        >
+          <Menu size={16} />
+        </button>
+
+        <main
+          className={`min-h-screen transition-all duration-200 ${
+            sidebarOpen ? "md:pl-[248px]" : "md:pl-[76px]"
+          }`}
+        >
+          <AppHeader
+            title={activePage}
+            onAddTransaction={() => setAddDialogOpen(true)}
+          />
+
+          <div className="mx-auto w-full max-w-[1600px] p-5 pb-28 sm:p-8 sm:pb-28 md:pb-8 lg:p-10">
+            {renderPage()}
+          </div>
+        </main>
+
+        <AddTransactionDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onSave={handleAddTransaction}
+        />
+      </div>
+    </NotificationProvider>
   );
 }
