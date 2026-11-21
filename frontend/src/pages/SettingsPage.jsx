@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import {
   UserRound,
@@ -10,21 +10,9 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent, CardHeader } from "../components/ui/card";
-
-const initialSettings = {
-  currency: "USD",
-  timezone: "America/New_York",
-  date_format: "YYYY-MM-DD",
-
-  notify_recurring_reminders: true,
-  notify_budget_thresholds: true,
-  notify_apple_pay_failures: true,
-  notify_unknown_cards: true,
-  notify_unmatched_accounts: true,
-  notify_monthly_reports: true,
-
-  recurring_generation_window_days: 30,
-};
+import { apiRequest } from "../lib/api";
+import { useNotifications } from "../components/providers/useNotifications";
+import SettingsSkeleton from "../skeletons/SettingsSkeleton";
 
 const notificationOptions = [
   {
@@ -73,7 +61,6 @@ function SectionHeading({ icon: Icon, title, description }) {
         <h2 className="text-base font-semibold text-card-foreground">
           {title}
         </h2>
-
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
     </div>
@@ -119,12 +106,63 @@ function Toggle({ checked, onChange }) {
   );
 }
 
-export function SettingsPage({ theme, onThemeChange }) {
+export function SettingsPage({ onThemeChange }) {
   const auth = useAuth();
+  const { toast } = useNotifications();
 
-  const [settings, setSettings] = useState(initialSettings);
+  const [settings, setSettings] = useState(null);
+  const [persistedSettings, setPersistedSettings] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true);
+      setLoadError(false);
+
+      const response = await apiRequest("/settings", auth);
+
+      const loadedSettings = response.data.settings;
+
+      setSettings(loadedSettings);
+      setPersistedSettings(loadedSettings);
+      onThemeChange(loadedSettings.theme);
+      setSaved(false);
+    } catch (error) {
+      console.error("Failed to load settings:", error);
+      setLoadError(true);
+      toast.error(error.message || "Failed to load your settings.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    apiRequest("/settings", auth)
+      .then((response) => {
+        const loadedSettings = response.data.settings;
+
+        setSettings(loadedSettings);
+        setPersistedSettings(loadedSettings);
+        onThemeChange(loadedSettings.theme);
+        setSaved(false);
+      })
+      .catch((error) => {
+        console.error("Failed to load settings:", error);
+        setLoadError(true);
+        toast.error(error.message || "Failed to load your settings.");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+
+    // Settings are loaded once when the page mounts.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateSetting = (key, value) => {
     setSettings((current) => ({
@@ -132,21 +170,61 @@ export function SettingsPage({ theme, onThemeChange }) {
       [key]: value,
     }));
 
+    if (key === "theme") {
+      onThemeChange(value);
+    }
+
     setSaved(false);
   };
 
-  const handleSave = () => {
-    setSaved(true);
+  const handleSave = async () => {
+    if (!settings || saving) return;
+
+    try {
+      setSaving(true);
+
+      const updates = Object.fromEntries(
+        Object.entries(settings).filter(
+          ([key]) => key !== "created_at" && key !== "updated_at",
+        ),
+      );
+
+      const response = await apiRequest("/settings", auth, {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      });
+
+      const updatedSettings = response.data.settings;
+
+      setSettings(updatedSettings);
+      setPersistedSettings(updatedSettings);
+      onThemeChange(updatedSettings.theme);
+      setSaved(true);
+
+      toast.success("Your settings have been saved.");
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+
+      if (persistedSettings) {
+        onThemeChange(persistedSettings.theme);
+        setSettings((current) => ({
+          ...current,
+          theme: persistedSettings.theme,
+        }));
+      }
+
+      toast.error(error.message || "Failed to save your settings.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSignOut = async () => {
     try {
       setSigningOut(true);
 
-      // Clear the local OIDC session
       await auth.removeUser();
 
-      // Redirect to Cognito's logout endpoint
       const logoutUrl = new URL(
         "https://ca-central-1vntwkf99n.auth.ca-central-1.amazoncognito.com/logout",
       );
@@ -161,9 +239,32 @@ export function SettingsPage({ theme, onThemeChange }) {
       window.location.assign(logoutUrl.toString());
     } catch (error) {
       console.error("Sign-out failed:", error);
+      toast.error("Sign-out failed. Please try again.");
       setSigningOut(false);
     }
   };
+
+  if (loading) {
+    return <SettingsSkeleton />;
+  }
+
+  if (loadError || !settings) {
+    return (
+      <div className="flex min-h-64 flex-col items-center justify-center gap-4">
+        <p className="text-sm text-muted-foreground">
+          We couldn't load your settings.
+        </p>
+
+        <button
+          type="button"
+          onClick={loadSettings}
+          className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-7">
@@ -238,8 +339,8 @@ export function SettingsPage({ theme, onThemeChange }) {
         <CardContent>
           <Field label="Application theme">
             <select
-              value={theme}
-              onChange={(e) => onThemeChange(e.target.value)}
+              value={settings.theme}
+              onChange={(e) => updateSetting("theme", e.target.value)}
               className={inputClass}
             >
               <option value="light">Light</option>
@@ -306,12 +407,12 @@ export function SettingsPage({ theme, onThemeChange }) {
               <input
                 type="number"
                 min="1"
-                max="365"
+                max="90"
                 value={settings.recurring_generation_window_days}
                 onChange={(e) =>
                   updateSetting(
                     "recurring_generation_window_days",
-                    Math.min(365, Math.max(1, Number(e.target.value))),
+                    Math.min(90, Math.max(1, Number(e.target.value))),
                   )
                 }
                 className={`${inputClass} pr-16`}
@@ -340,10 +441,11 @@ export function SettingsPage({ theme, onThemeChange }) {
         <button
           type="button"
           onClick={handleSave}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 sm:w-auto"
+          disabled={saving}
+          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
         >
           <Save size={16} />
-          {saved ? "Changes saved" : "Save changes"}
+          {saving ? "Saving..." : saved ? "Changes saved" : "Save changes"}
         </button>
       </div>
     </div>
