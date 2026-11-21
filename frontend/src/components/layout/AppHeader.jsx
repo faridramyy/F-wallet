@@ -17,14 +17,24 @@ export function AppHeader({ title, onAddTransaction }) {
           </h1>
         </div>
 
-        <Button
-          onClick={onAddTransaction}
-          className="h-10 shrink-0 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-5"
-        >
-          <Plus size={17} />
-          <span className="hidden sm:inline">Add new Transaction</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={onAddTransaction}
+            className="h-10 shrink-0 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 sm:px-5"
+          >
+            <Plus size={17} />
+            <span className="hidden sm:inline">Add new Transaction</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+
+          {/* The avatar displays X as the user's initial. */}
+          <div
+            aria-label="User avatar"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground ring-1 ring-border"
+          >
+            X
+          </div>
+        </div>
       </div>
     </header>
   );

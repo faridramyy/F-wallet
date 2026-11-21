@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import morgan from "morgan";
 
 import apiRoutes from "./routes/index.js";
@@ -7,17 +8,20 @@ import errorHandler from "./middleware/error-handler.js";
 
 const app = express();
 
-// Global middleware
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-ID-Token"],
+  }),
+);
+
 app.use(morgan("dev"));
 app.use(express.json());
 
-// API routes
 app.use("/api", apiRoutes);
 
-// Handle unknown routes
 app.use(notFound);
-
-// Centralized error handling (must be last)
 app.use(errorHandler);
 
 export default app;
