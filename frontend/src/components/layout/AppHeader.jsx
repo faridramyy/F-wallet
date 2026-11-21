@@ -1,8 +1,24 @@
 import { Plus } from "lucide-react";
+import { useAuth } from "react-oidc-context";
 import { Button } from "../ui/button";
 
 export function AppHeader({ title, onAddTransaction }) {
+  const auth = useAuth();
+
   const displayTitle = title === "Budgets" ? "Categories & Budgets" : title;
+
+  const profile = auth.user?.profile;
+
+  console.log(profile)
+
+  const userName =
+    profile?.given_name ||
+    profile?.name ||
+    profile?.email ||
+    profile?.preferred_username ||
+    "User";
+
+  const userInitial = userName.trim().charAt(0).toUpperCase();
 
   return (
     <header className="border-b border-border bg-card text-card-foreground transition-colors duration-200">
@@ -27,12 +43,12 @@ export function AppHeader({ title, onAddTransaction }) {
             <span className="sm:hidden">Add</span>
           </Button>
 
-          {/* The avatar displays X as the user's initial. */}
           <div
-            aria-label="User avatar"
+            aria-label={`User avatar: ${userName}`}
+            title={userName}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground ring-1 ring-border"
           >
-            X
+            {userInitial}
           </div>
         </div>
       </div>
