@@ -136,7 +136,7 @@ export default function App() {
           aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
           aria-expanded={sidebarOpen}
           className={`fixed top-8 z-40 hidden size-8 -translate-x-1/2 items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-all duration-200 hover:bg-muted hover:text-foreground md:flex ${
-            sidebarOpen ? "left-[248px]" : "left-[76px]"
+            sidebarOpen ? "left-62" : "left-19"
           }`}
         >
           <Menu size={16} />
@@ -144,7 +144,7 @@ export default function App() {
 
         <main
           className={`min-h-screen transition-all duration-200 ${
-            sidebarOpen ? "md:pl-[248px]" : "md:pl-[76px]"
+            sidebarOpen ? "md:pl-62" : "md:pl-19"
           }`}
         >
           <AppHeader

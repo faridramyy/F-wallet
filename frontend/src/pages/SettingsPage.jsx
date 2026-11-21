@@ -99,7 +99,7 @@ function Toggle({ checked, onChange }) {
     >
       <span
         className={`inline-block size-5 rounded-full bg-primary-foreground shadow-sm transition-transform ${
-          checked ? "translate-x-[22px]" : "translate-x-0.5"
+          checked ? "translate-x-5.5" : "translate-x-0.5"
         }`}
       />
     </button>

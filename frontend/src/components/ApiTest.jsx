@@ -34,7 +34,7 @@ export default function ApiTest() {
   };
 
   return (
-    <div className="fixed bottom-4 right-4 z-[100] w-[360px] rounded-xl border bg-card p-4 shadow-xl">
+    <div className="fixed bottom-4 right-4 z-100 w-90 rounded-xl border bg-card p-4 shadow-xl">
       <h2 className="mb-2 font-semibold">Temporary API Test</h2>
 
       <button
@@ -46,7 +46,7 @@ export default function ApiTest() {
         {loading ? "Testing..." : "Test GET /users/me"}
       </button>
 
-      <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs">
+      <pre className="mt-3 max-h-64 overflow-auto whitespace-pre-wrap wrap-break-word text-xs">
         {result}
       </pre>
     </div>
