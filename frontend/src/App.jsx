@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { Menu } from "lucide-react";
 
 import { AppSidebar } from "./components/layout/AppSidebar";
@@ -19,6 +26,14 @@ import { initialTransactions } from "./data/mockData";
 
 const VALID_THEMES = ["light", "dark", "system"];
 
+const PAGE_PATHS = {
+  Dashboard: "/dashboard",
+  Transactions: "/transactions",
+  Accounts: "/accounts",
+  Budgets: "/budgets",
+  Settings: "/settings",
+};
+
 function getInitialTheme() {
   try {
     const savedTheme = localStorage.getItem("fwallet-theme");
@@ -29,14 +44,24 @@ function getInitialTheme() {
   }
 }
 
+function getPageFromPath(pathname) {
+  return (
+    Object.entries(PAGE_PATHS).find(([, path]) => path === pathname)?.[0] ||
+    "Dashboard"
+  );
+}
+
 export default function App() {
   const auth = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-  const [activePage, setActivePage] = useState("Dashboard");
   const [transactions, setTransactions] = useState(initialTransactions);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [theme, setTheme] = useState(getInitialTheme);
+
+  const activePage = getPageFromPath(location.pathname);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -67,35 +92,17 @@ export default function App() {
     }
   }, [theme]);
 
+  const handleNavigate = (page) => {
+    const path = PAGE_PATHS[page];
+
+    if (path) {
+      navigate(path);
+    }
+  };
+
   const handleAddTransaction = (transaction) => {
     setTransactions((current) => [transaction, ...current]);
     setAddDialogOpen(false);
-  };
-
-  const renderPage = () => {
-    switch (activePage) {
-      case "Transactions":
-        return <TransactionsPage transactions={transactions} />;
-
-      case "Accounts":
-        return <AccountsPage />;
-
-      case "Budgets":
-        return <BudgetsPage />;
-
-      case "Settings":
-        return <SettingsPage theme={theme} onThemeChange={setTheme} />;
-
-      default:
-        return (
-          <DashboardPage
-            transactions={transactions}
-            onViewTransactions={() => setActivePage("Transactions")}
-            onViewAccounts={() => setActivePage("Accounts")}
-            onViewBudgets={() => setActivePage("Budgets")}
-          />
-        );
-    }
   };
 
   // Wait for Cognito to finish checking the authentication session.
@@ -124,11 +131,11 @@ export default function App() {
       <div className="min-h-screen bg-background text-foreground">
         <AppSidebar
           activePage={activePage}
-          onNavigate={setActivePage}
+          onNavigate={handleNavigate}
           sidebarOpen={sidebarOpen}
         />
 
-        <MobileNavigation activePage={activePage} onNavigate={setActivePage} />
+        <MobileNavigation activePage={activePage} onNavigate={handleNavigate} />
 
         <button
           type="button"
@@ -153,7 +160,39 @@ export default function App() {
           />
 
           <div className="mx-auto w-full max-w-[1600px] p-5 pb-28 sm:p-8 sm:pb-28 md:pb-8 lg:p-10">
-            {renderPage()}
+            <Routes>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+              <Route
+                path="/dashboard"
+                element={
+                  <DashboardPage
+                    transactions={transactions}
+                    onViewTransactions={() => handleNavigate("Transactions")}
+                    onViewAccounts={() => handleNavigate("Accounts")}
+                    onViewBudgets={() => handleNavigate("Budgets")}
+                  />
+                }
+              />
+
+              <Route
+                path="/transactions"
+                element={<TransactionsPage transactions={transactions} />}
+              />
+
+              <Route path="/accounts" element={<AccountsPage />} />
+
+              <Route path="/budgets" element={<BudgetsPage />} />
+
+              <Route
+                path="/settings"
+                element={
+                  <SettingsPage theme={theme} onThemeChange={setTheme} />
+                }
+              />
+
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
           </div>
         </main>
 
