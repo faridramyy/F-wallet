@@ -1,6 +1,6 @@
-export function formatCurrency(amount) {
+export function formatCurrency(amount, currency = "CAD") {
   return new Intl.NumberFormat("en-CA", {
     style: "currency",
-    currency: "CAD",
-  }).format(Math.abs(amount));
+    currency,
+  }).format(Number(amount) || 0);
 }

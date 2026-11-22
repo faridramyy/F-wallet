@@ -9,8 +9,6 @@ export function AppHeader({ title, onAddTransaction }) {
 
   const profile = auth.user?.profile;
 
-  console.log(profile)
-
   const userName =
     profile?.given_name ||
     profile?.name ||

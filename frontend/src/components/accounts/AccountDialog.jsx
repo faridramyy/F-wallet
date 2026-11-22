@@ -1,54 +1,137 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
-const initialForm = {
+const createInitialForm = (currency) => ({
   account_name: "",
   account_type: "checking",
   institution_name: "",
-  currency: "CAD",
+  currency,
+  opening_balance: "0.00",
   credit_limit: "",
   card_last_four: "",
   statement_closing_day: "",
   payment_due_day: "",
   include_in_net_worth: true,
   notes: "",
-};
+});
+
+function centsToInput(value) {
+  try {
+    const cents = BigInt(value ?? 0);
+    const sign = cents < 0 ? "-" : "";
+    const absolute = cents < 0 ? -cents : cents;
+
+    const dollars = absolute / 100n;
+    const remainder = String(absolute % 100n).padStart(2, "0");
+
+    return `${sign}${dollars}.${remainder}`;
+  } catch {
+    return "0.00";
+  }
+}
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
-export function AccountDialog({ open, onClose, onSave, currency = "CAD" }) {
-  const [form, setForm] = useState({
-    ...initialForm,
-    currency,
-  });
+export function AccountDialog({
+  open,
+  onClose,
+  onSave,
+  currency = "CAD",
+  account = null,
+}) {
+  const [form, setForm] = useState(() => createInitialForm(currency));
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+
+  useEffect(() => {
+    if (!open) return;
+
+    if (account) {
+      setForm({
+        account_name: account.account_name || "",
+        account_type: account.account_type || "checking",
+        institution_name: account.institution_name || "",
+        currency: account.currency || currency,
+        opening_balance: centsToInput(account.opening_balance_cents),
+        credit_limit:
+          account.credit_limit_cents == null
+            ? ""
+            : centsToInput(account.credit_limit_cents),
+        card_last_four: account.card_last_four || "",
+        statement_closing_day:
+          account.statement_closing_day == null
+            ? ""
+            : String(account.statement_closing_day),
+        payment_due_day:
+          account.payment_due_day == null
+            ? ""
+            : String(account.payment_due_day),
+        include_in_net_worth: account.include_in_net_worth ?? true,
+        notes: account.notes || "",
+      });
+    } else {
+      setForm(createInitialForm(currency));
+    }
+
+    setSaveError("");
+  }, [open, account, currency]);
 
   if (!open) return null;
 
   const isCreditCard = form.account_type === "credit_card";
+  const isEditing = Boolean(account);
 
   function updateField(field, value) {
     setForm((current) => ({ ...current, [field]: value }));
+    setSaveError("");
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    const now = new Date().toISOString();
+    if (saving) return;
 
-    const account = {
-      account_id: crypto.randomUUID(),
-      user_id: "",
+    const openingBalance = Number(form.opening_balance || 0);
+    const creditLimit = Number(form.credit_limit);
+
+    const openingBalanceCents = Math.round(openingBalance * 100);
+    const creditLimitCents = Math.round(creditLimit * 100);
+
+    if (
+      !Number.isFinite(openingBalance) ||
+      !Number.isSafeInteger(openingBalanceCents)
+    ) {
+      setSaveError("Please enter a valid opening balance.");
+      return;
+    }
+
+    if (
+      isCreditCard &&
+      form.credit_limit !== "" &&
+      (!Number.isFinite(creditLimit) ||
+        creditLimit < 0 ||
+        !Number.isSafeInteger(creditLimitCents))
+    ) {
+      setSaveError("Please enter a valid credit limit.");
+      return;
+    }
+
+    if (!form.account_name.trim()) {
+      setSaveError("Please enter an account name.");
+      return;
+    }
+
+    const accountData = {
       account_name: form.account_name.trim(),
       account_type: form.account_type,
       institution_name: form.institution_name.trim() || null,
       currency: form.currency,
+      opening_balance_cents: openingBalanceCents,
       credit_limit_cents:
-        isCreditCard && form.credit_limit
-          ? Math.round(Number(form.credit_limit) * 100)
-          : null,
+        isCreditCard && form.credit_limit !== "" ? creditLimitCents : null,
       card_last_four: isCreditCard ? form.card_last_four.trim() || null : null,
       statement_closing_day:
         isCreditCard && form.statement_closing_day
@@ -59,39 +142,50 @@ export function AccountDialog({ open, onClose, onSave, currency = "CAD" }) {
           ? Number(form.payment_due_day)
           : null,
       include_in_net_worth: form.include_in_net_worth,
-      is_archived: false,
-      archived_at: null,
       notes: form.notes.trim() || null,
-      created_at: now,
-      updated_at: now,
-      balance: 0,
     };
 
-    onSave(account);
-    setForm({ ...initialForm, currency });
-    onClose();
+    try {
+      setSaving(true);
+      setSaveError("");
+
+      await onSave(accountData);
+
+      setForm(createInitialForm(currency));
+      onClose();
+    } catch (error) {
+      setSaveError(error.message || "Unable to save this account.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
+        if (event.target === event.currentTarget && !saving) onClose();
       }}
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-xl">
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card px-6 py-4">
           <div>
-            <h2 className="text-lg font-semibold">Add account</h2>
+            <h2 className="text-lg font-semibold">
+              {isEditing ? "Edit account" : "Add account"}
+            </h2>
+
             <p className="mt-1 text-sm text-muted-foreground">
-              Add a bank account, savings account, or credit card.
+              {isEditing
+                ? "Update your account information."
+                : "Add a bank account, savings account, cash account, or credit card."}
             </p>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+            disabled={saving}
+            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
             aria-label="Close dialog"
           >
             <X size={19} />
@@ -127,6 +221,7 @@ export function AccountDialog({ open, onClose, onSave, currency = "CAD" }) {
                 >
                   <option value="checking">Checking</option>
                   <option value="savings">Savings</option>
+                  <option value="cash">Cash</option>
                   <option value="credit_card">Credit card</option>
                 </select>
               </div>
@@ -159,6 +254,25 @@ export function AccountDialog({ open, onClose, onSave, currency = "CAD" }) {
                 placeholder="e.g. TD Canada Trust"
                 className={inputClass}
               />
+            </div>
+
+            <div>
+              <label className={labelClass}>Opening balance</label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.opening_balance}
+                onChange={(event) =>
+                  updateField("opening_balance", event.target.value)
+                }
+                placeholder="0.00"
+                className={inputClass}
+              />
+
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                The balance of this account when you start tracking it. This is
+                not its live current balance.
+              </p>
             </div>
 
             {isCreditCard && (
@@ -259,6 +373,7 @@ export function AccountDialog({ open, onClose, onSave, currency = "CAD" }) {
                 }
                 className="mt-0.5 size-4 accent-primary"
               />
+
               <span>
                 <span className="block text-sm font-medium">
                   Include in net worth
@@ -268,23 +383,37 @@ export function AccountDialog({ open, onClose, onSave, currency = "CAD" }) {
                 </span>
               </span>
             </label>
+
+            {saveError && (
+              <p
+                role="alert"
+                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+              >
+                {saveError}
+              </p>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
             <button
               type="button"
               onClick={onClose}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted"
+              disabled={saving}
+              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
             >
               Cancel
             </button>
 
             <button
               type="submit"
-              disabled={!form.account_name.trim()}
+              disabled={!form.account_name.trim() || saving}
               className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Add account
+              {saving
+                ? "Saving..."
+                : isEditing
+                  ? "Save changes"
+                  : "Add account"}
             </button>
           </div>
         </form>
