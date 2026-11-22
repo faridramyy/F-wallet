@@ -12,7 +12,6 @@ import {
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
-import SettingsSkeleton from "../skeletons/SettingsSkeleton";
 
 const notificationOptions = [
   {
@@ -106,79 +105,36 @@ function Toggle({ checked, onChange }) {
   );
 }
 
-export function SettingsPage({ onThemeChange }) {
+export function SettingsPage({
+  settings: savedSettings,
+  onSaved,
+  onThemePreview,
+  onRetry,
+}) {
   const auth = useAuth();
   const { toast } = useNotifications();
 
-  const [settings, setSettings] = useState(null);
-  const [persistedSettings, setPersistedSettings] = useState(null);
-
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  // Editable draft. The saved settings live in App (loaded from the database).
+  const [settings, setSettings] = useState(savedSettings);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
 
-  const loadSettings = async () => {
-    try {
-      setLoading(true);
-      setLoadError(false);
-
-      const response = await apiRequest("/settings", auth);
-
-      const loadedSettings = response.data.settings;
-
-      setSettings(loadedSettings);
-      setPersistedSettings(loadedSettings);
-      onThemeChange(loadedSettings.theme);
-      setSaved(false);
-    } catch (error) {
-      console.error("Failed to load settings:", error);
-      setLoadError(true);
-      toast.error(error.message || "Failed to load your settings.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    apiRequest("/settings", auth)
-      .then((response) => {
-        const loadedSettings = response.data.settings;
-
-        setSettings(loadedSettings);
-        setPersistedSettings(loadedSettings);
-        onThemeChange(loadedSettings.theme);
-        setSaved(false);
-      })
-      .catch((error) => {
-        console.error("Failed to load settings:", error);
-        setLoadError(true);
-        toast.error(error.message || "Failed to load your settings.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-
-    // Settings are loaded once when the page mounts.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Discard an unsaved theme preview when leaving the page.
+  useEffect(() => () => onThemePreview(null), [onThemePreview]);
 
   const updateSetting = (key, value) => {
-    setSettings((current) => ({
-      ...current,
-      [key]: value,
-    }));
+    setSettings((current) => ({ ...current, [key]: value }));
 
     if (key === "theme") {
-      onThemeChange(value);
+      onThemePreview(value);
     }
 
     setSaved(false);
   };
 
   const handleSave = async () => {
-    if (!settings || saving) return;
+    if (saving) return;
 
     try {
       setSaving(true);
@@ -197,22 +153,13 @@ export function SettingsPage({ onThemeChange }) {
       const updatedSettings = response.data.settings;
 
       setSettings(updatedSettings);
-      setPersistedSettings(updatedSettings);
-      onThemeChange(updatedSettings.theme);
+      onSaved(updatedSettings);
+      onThemePreview(null);
       setSaved(true);
 
       toast.success("Your settings have been saved.");
     } catch (error) {
       console.error("Failed to save settings:", error);
-
-      if (persistedSettings) {
-        onThemeChange(persistedSettings.theme);
-        setSettings((current) => ({
-          ...current,
-          theme: persistedSettings.theme,
-        }));
-      }
-
       toast.error(error.message || "Failed to save your settings.");
     } finally {
       setSaving(false);
@@ -244,11 +191,7 @@ export function SettingsPage({ onThemeChange }) {
     }
   };
 
-  if (loading) {
-    return <SettingsSkeleton />;
-  }
-
-  if (loadError || !settings) {
+  if (!settings) {
     return (
       <div className="flex min-h-64 flex-col items-center justify-center gap-4">
         <p className="text-sm text-muted-foreground">
@@ -257,7 +200,7 @@ export function SettingsPage({ onThemeChange }) {
 
         <button
           type="button"
-          onClick={loadSettings}
+          onClick={onRetry}
           className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
         >
           Try again

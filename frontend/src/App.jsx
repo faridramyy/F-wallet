@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import {
   Navigate,
@@ -23,31 +23,19 @@ import LoginPage from "./pages/LoginPage";
 import { NotificationProvider } from "./components/providers/NotificationProvider";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { initialTransactions } from "./data/mockData";
+import { useSettings } from "./hooks/useSettings";
+import { useTheme } from "./hooks/useTheme";
+import { navigation } from "./lib/navigation";
 
-const VALID_THEMES = ["light", "dark", "system"];
-
-const PAGE_PATHS = {
-  Dashboard: "/dashboard",
-  Transactions: "/transactions",
-  Accounts: "/accounts",
-  Categories: "/categories",
-  Settings: "/settings",
-};
-
-function getInitialTheme() {
-  try {
-    const savedTheme = localStorage.getItem("fwallet-theme");
-
-    return VALID_THEMES.includes(savedTheme) ? savedTheme : "system";
-  } catch {
-    return "system";
-  }
-}
-
-function getPageFromPath(pathname) {
+function LoadingScreen({ message }) {
   return (
-    Object.entries(PAGE_PATHS).find(([, path]) => path === pathname)?.[0] ||
-    "Dashboard"
+    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+      <div className="text-center">
+        <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
+
+        <p className="text-sm text-muted-foreground">{message}</p>
+      </div>
+    </div>
   );
 }
 
@@ -55,87 +43,49 @@ export default function App() {
   const auth = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const {
+    settings,
+    setSettings,
+    loading: settingsLoading,
+    reload: reloadSettings,
+  } = useSettings();
 
   const [transactions, setTransactions] = useState(initialTransactions);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [theme, setTheme] = useState(getInitialTheme);
+  const [themePreview, setThemePreview] = useState(null);
 
-  const activePage = getPageFromPath(location.pathname);
+  // The theme comes from the database. An unsaved preview from the settings
+  // page wins until it is saved or discarded. Before sign-in: system default.
+  useTheme(themePreview ?? settings?.theme ?? "system");
 
-  useEffect(() => {
-    const root = document.documentElement;
-    const systemPreference = window.matchMedia("(prefers-color-scheme: dark)");
-
-    const applyTheme = () => {
-      const isDark =
-        theme === "dark" || (theme === "system" && systemPreference.matches);
-
-      root.classList.toggle("dark", isDark);
-      root.style.colorScheme = isDark ? "dark" : "light";
-    };
-
-    applyTheme();
-
-    try {
-      localStorage.setItem("fwallet-theme", theme);
-    } catch {
-      // Theme still works for the current session if storage is unavailable.
-    }
-
-    if (theme === "system") {
-      systemPreference.addEventListener("change", applyTheme);
-
-      return () => {
-        systemPreference.removeEventListener("change", applyTheme);
-      };
-    }
-  }, [theme]);
-
-  const handleNavigate = (page) => {
-    const path = PAGE_PATHS[page];
-
-    if (path) {
-      navigate(path);
-    }
-  };
+  const title =
+    navigation.find((item) => item.path === location.pathname)?.label ??
+    "Dashboard";
 
   const handleAddTransaction = (transaction) => {
     setTransactions((current) => [transaction, ...current]);
     setAddDialogOpen(false);
   };
 
-  // Wait for Cognito to finish checking the authentication session.
   if (auth.isLoading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
-        <div className="text-center">
-          <div className="mx-auto mb-4 size-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-
-          <p className="text-sm text-muted-foreground">
-            connecting F-Wallet with AWS cognito...
-          </p>
-        </div>
-      </div>
-    );
+    return <LoadingScreen message="Connecting to AWS Cognito..." />;
   }
 
-  // Show the login page when the user is not authenticated.
   if (!auth.isAuthenticated) {
     return <LoginPage />;
   }
 
-  // Existing authenticated F-Wallet application.
+  if (settingsLoading) {
+    return <LoadingScreen message="Loading your settings..." />;
+  }
+
   return (
     <NotificationProvider>
       <div className="min-h-screen bg-background text-foreground">
-        <AppSidebar
-          activePage={activePage}
-          onNavigate={handleNavigate}
-          sidebarOpen={sidebarOpen}
-        />
+        <AppSidebar sidebarOpen={sidebarOpen} />
 
-        <MobileNavigation activePage={activePage} onNavigate={handleNavigate} />
+        <MobileNavigation />
 
         <button
           type="button"
@@ -155,7 +105,7 @@ export default function App() {
           }`}
         >
           <AppHeader
-            title={activePage}
+            title={title}
             onAddTransaction={() => setAddDialogOpen(true)}
           />
 
@@ -166,9 +116,9 @@ export default function App() {
                 element={
                   <DashboardPage
                     transactions={transactions}
-                    onViewTransactions={() => handleNavigate("Transactions")}
-                    onViewAccounts={() => handleNavigate("Accounts")}
-                    onViewBudgets={() => handleNavigate("Categories")}
+                    onViewTransactions={() => navigate("/transactions")}
+                    onViewAccounts={() => navigate("/accounts")}
+                    onViewBudgets={() => navigate("/categories")}
                   />
                 }
               />
@@ -185,7 +135,12 @@ export default function App() {
               <Route
                 path="/settings"
                 element={
-                  <SettingsPage theme={theme} onThemeChange={setTheme} />
+                  <SettingsPage
+                    settings={settings}
+                    onSaved={setSettings}
+                    onThemePreview={setThemePreview}
+                    onRetry={reloadSettings}
+                  />
                 }
               />
 

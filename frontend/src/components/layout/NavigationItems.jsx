@@ -1,46 +1,30 @@
-import {
-  LayoutDashboard,
-  ArrowLeftRight,
-  CreditCard,
-  Tags,
-  Settings,
-} from "lucide-react";
+import { NavLink } from "react-router-dom";
 
-const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard, page: "Dashboarcd" },
-  { label: "Transactions", icon: ArrowLeftRight, page: "Transactions" },
-  { label: "Accounts", icon: CreditCard, page: "Accounts" },
-  { label: "Categories & Budgets", icon: Tags, page: "Categories" },
-  { label: "Settings", icon: Settings, page: "Settings" },
-];
+import { navigation } from "../../lib/navigation";
 
-export function NavigationItems({ activePage, onNavigate, collapsed = false }) {
+export function NavigationItems({ collapsed = false }) {
   return (
     <nav className="space-y-1.5">
-      {navigation.map(({ label, icon: Icon, page }) => {
-        const active = activePage === page;
-
-        return (
-          <button
-            key={page}
-            type="button"
-            onClick={() => onNavigate(page)}
-            title={collapsed ? label : undefined}
-            aria-label={label}
-            aria-current={active ? "page" : undefined}
-            className={`flex w-full items-center rounded-lg py-2.5 text-sm font-semibold transition-colors ${
+      {navigation.map(({ path, label, icon: Icon }) => (
+        <NavLink
+          key={path}
+          to={path}
+          title={collapsed ? label : undefined}
+          aria-label={label}
+          className={({ isActive }) =>
+            `flex w-full items-center rounded-lg py-2.5 text-sm font-semibold transition-colors ${
               collapsed ? "justify-center px-0" : "justify-start gap-3 px-3"
             } ${
-              active
+              isActive
                 ? "bg-sidebar-accent text-sidebar-accent-foreground"
                 : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            }`}
-          >
-            <Icon size={19} strokeWidth={1.9} />
-            {!collapsed && <span>{label}</span>}
-          </button>
-        );
-      })}
+            }`
+          }
+        >
+          <Icon size={19} strokeWidth={1.9} />
+          {!collapsed && <span className="whitespace-nowrap">{label}</span>}
+        </NavLink>
+      ))}
     </nav>
   );
 }

@@ -1,14 +1,20 @@
-import { SidebarBrand } from "./SidebarBrand";
+import { Logo } from "../Logo";
 import { NavigationItems } from "./NavigationItems";
 
-export function AppSidebar({ activePage, onNavigate, sidebarOpen }) {
+export function AppSidebar({ sidebarOpen }) {
   return (
     <aside
       className={`fixed inset-y-0 left-0 z-30 hidden border-r border-sidebar-border bg-sidebar py-7 text-sidebar-foreground transition-all duration-200 md:flex md:flex-col ${
         sidebarOpen ? "md:w-62 md:px-5" : "md:w-19 md:px-3"
       }`}
     >
-      <SidebarBrand collapsed={!sidebarOpen} />
+      <div
+        className={`flex items-center py-2 ${
+          sidebarOpen ? "px-2" : "justify-center"
+        }`}
+      >
+        <Logo collapsed={!sidebarOpen} />
+      </div>
 
       <div className="mt-12">
         {sidebarOpen && (
@@ -17,11 +23,7 @@ export function AppSidebar({ activePage, onNavigate, sidebarOpen }) {
           </p>
         )}
 
-        <NavigationItems
-          activePage={activePage}
-          onNavigate={onNavigate}
-          collapsed={!sidebarOpen}
-        />
+        <NavigationItems collapsed={!sidebarOpen} />
       </div>
     </aside>
   );

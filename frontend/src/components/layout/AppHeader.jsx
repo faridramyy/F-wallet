@@ -3,11 +3,7 @@ import { useAuth } from "react-oidc-context";
 import { Button } from "../ui/button";
 
 export function AppHeader({ title, onAddTransaction }) {
-  const auth = useAuth();
-
-  const displayTitle = title === "Budgets" ? "Categories & Budgets" : title;
-
-  const profile = auth.user?.profile;
+  const profile = useAuth().user?.profile;
 
   const userName =
     profile?.given_name ||
@@ -15,8 +11,6 @@ export function AppHeader({ title, onAddTransaction }) {
     profile?.email ||
     profile?.preferred_username ||
     "User";
-
-  const userInitial = userName.trim().charAt(0).toUpperCase();
 
   return (
     <header className="border-b border-border bg-card text-card-foreground transition-colors duration-200">
@@ -27,7 +21,7 @@ export function AppHeader({ title, onAddTransaction }) {
           </p>
 
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {displayTitle}
+            {title}
           </h1>
         </div>
 
@@ -46,7 +40,7 @@ export function AppHeader({ title, onAddTransaction }) {
             title={userName}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground ring-1 ring-border"
           >
-            {userInitial}
+            {userName.trim().charAt(0).toUpperCase()}
           </div>
         </div>
       </div>
