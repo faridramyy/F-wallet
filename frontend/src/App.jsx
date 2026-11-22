@@ -161,8 +161,6 @@ export default function App() {
 
           <div className="mx-auto w-full max-w-[1600px] p-5 pb-28 sm:p-8 sm:pb-28 md:pb-8 lg:p-10">
             <Routes>
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
               <Route
                 path="/dashboard"
                 element={

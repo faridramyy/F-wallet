@@ -20,6 +20,7 @@ import { CSS } from "@dnd-kit/utilities";
 import {
   Archive,
   ArchiveRestore,
+  CalendarDays,
   Plus,
   Tags,
   Wallet,
@@ -29,6 +30,9 @@ import {
 import { Button } from "../components/ui/button";
 import { CategoryCard } from "../components/categories/CategoryCard";
 import { CategoryDialog } from "../components/categories/CategoryDialog";
+import { BudgetDialog } from "../components/budgets/BudgetDialog";
+import { BudgetAllocationDialog } from "../components/budgets/BudgetAllocationDialog";
+import { BudgetCard } from "../components/budgets/BudgetCard";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
 
@@ -63,6 +67,7 @@ function SortableCategoryCard({
   const parent = categories.find(
     (item) => item.category_id === category.parent_category_id,
   );
+
   const account = accounts.find(
     (item) => item.account_id === category.default_account_id,
   );
@@ -90,15 +95,31 @@ export function CategoryPage() {
   const [categories, setCategories] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [archivedCategories, setArchivedCategories] = useState([]);
+
+  const [mainTab, setMainTab] = useState("categories");
   const [activeTab, setActiveTab] = useState("active");
   const [filter, setFilter] = useState("all");
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
   const [activeDragCategory, setActiveDragCategory] = useState(null);
+
+  const [budgets, setBudgets] = useState([]);
+  const [selectedYear, setSelectedYear] = useState(
+    String(new Date().getFullYear()),
+  );
+  const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
+  const [editingBudget, setEditingBudget] = useState(null);
+  const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
+  const [selectedBudget, setSelectedBudget] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [loadingArchived, setLoadingArchived] = useState(false);
+  const [loadingBudgets, setLoadingBudgets] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+
   const [error, setError] = useState("");
+  const [budgetError, setBudgetError] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -120,6 +141,7 @@ export function CategoryPage() {
       ]);
 
       setCategories(categoryResponse.data.categories || []);
+
       setAccounts(
         (accountResponse.data.accounts || []).filter(
           (account) => !account.is_archived,
@@ -145,21 +167,50 @@ export function CategoryPage() {
     }
   }, [auth, toast]);
 
+  const loadBudgets = useCallback(async () => {
+    setLoadingBudgets(true);
+    setBudgetError("");
+
+    try {
+      const response = await apiRequest(
+        `/budgets?year=${encodeURIComponent(selectedYear)}`,
+        auth,
+      );
+
+      setBudgets(response.data.budgets || []);
+    } catch (err) {
+      setBudgetError(err.message || "Unable to load budgets.");
+    } finally {
+      setLoadingBudgets(false);
+    }
+  }, [auth, selectedYear]);
+
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   useEffect(() => {
-    if (activeTab === "archived") {
+    if (mainTab === "categories" && activeTab === "archived") {
       loadArchivedCategories();
     }
-  }, [activeTab, loadArchivedCategories]);
+  }, [mainTab, activeTab, loadArchivedCategories]);
+
+  useEffect(() => {
+    if (mainTab === "budgets") {
+      loadBudgets();
+    }
+  }, [mainTab, loadBudgets]);
 
   const visibleCategories = useMemo(() => {
     if (filter === "all") return categories;
 
     return categories.filter((category) => category.category_type === filter);
   }, [categories, filter]);
+
+  const sortedBudgets = useMemo(
+    () => [...budgets].sort((a, b) => a.budget_month - b.budget_month),
+    [budgets],
+  );
 
   function openCreateDialog() {
     setEditingCategory(null);
@@ -239,6 +290,7 @@ export function CategoryPage() {
       setArchivedCategories((current) =>
         current.filter((item) => item.category_id !== category.category_id),
       );
+
       setCategories((current) => [...current, response.data.category]);
 
       toast.success("Category restored.");
@@ -251,6 +303,7 @@ export function CategoryPage() {
     const category = categories.find(
       (item) => item.category_id === event.active.id,
     );
+
     setActiveDragCategory(category || null);
   }
 
@@ -268,6 +321,7 @@ export function CategoryPage() {
     const oldIndex = categories.findIndex(
       (item) => item.category_id === active.id,
     );
+
     const newIndex = categories.findIndex(
       (item) => item.category_id === over.id,
     );
@@ -302,9 +356,93 @@ export function CategoryPage() {
     }
   }
 
+  function openCreateBudgetDialog() {
+    setEditingBudget(null);
+    setBudgetDialogOpen(true);
+  }
+
+  function openEditBudgetDialog(budget) {
+    setEditingBudget(budget);
+    setBudgetDialogOpen(true);
+  }
+
+  async function handleSaveBudget(data) {
+    if (editingBudget) {
+      await apiRequest(`/budgets/${editingBudget.budget_id}`, auth, {
+        method: "PATCH",
+        body: JSON.stringify(data),
+      });
+
+      toast.success("Budget updated.");
+    } else {
+      await apiRequest("/budgets", auth, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
+
+      toast.success("Monthly budget created.");
+    }
+
+    await loadBudgets();
+  }
+
+  async function handleDeleteBudget(budget) {
+    const monthLabel = new Date(
+      budget.budget_year,
+      budget.budget_month - 1,
+      1,
+    ).toLocaleDateString("en-CA", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const confirmed = await confirm({
+      title: "Delete monthly budget?",
+      description: `Are you sure you want to delete the budget for ${monthLabel}? Its category allocations will also be deleted.`,
+      confirmText: "Delete budget",
+      cancelText: "Cancel",
+      variant: "destructive",
+    });
+
+    if (!confirmed) return;
+
+    try {
+      await apiRequest(`/budgets/${budget.budget_id}`, auth, {
+        method: "DELETE",
+      });
+
+      setBudgets((current) =>
+        current.filter((item) => item.budget_id !== budget.budget_id),
+      );
+
+      toast.success("Budget deleted.");
+    } catch (err) {
+      toast.error(err.message || "Unable to delete budget.");
+    }
+  }
+
+  function openAllocationDialog(budget) {
+    setSelectedBudget(budget);
+    setAllocationDialogOpen(true);
+  }
+
+  async function handleSaveAllocations(allocations) {
+    if (!selectedBudget) return;
+
+    await apiRequest(`/budgets/${selectedBudget.budget_id}/allocations`, auth, {
+      method: "PUT",
+      body: JSON.stringify({ allocations }),
+    });
+
+    toast.success("Budget allocations saved.");
+
+    await loadBudgets();
+  }
+
   const incomeCount = categories.filter(
     (item) => item.category_type === "income",
   ).length;
+
   const expenseCount = categories.filter(
     (item) => item.category_type === "expense",
   ).length;
@@ -316,266 +454,397 @@ export function CategoryPage() {
           <h1 className="text-xl font-semibold text-foreground">
             Categories & Budgets
           </h1>
+
           <p className="mt-1 text-sm text-muted-foreground">
             Organize your income and expenses and manage your monthly budgets.
           </p>
         </div>
 
-        {activeTab === "active" && (
+        {mainTab === "categories" && activeTab === "active" && (
           <Button onClick={openCreateDialog} className="gap-2">
             <Plus className="size-4" />
             New category
           </Button>
         )}
-      </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Tags className="size-4" />
-            <span className="text-xs">Total categories</span>
-          </div>
-          <p className="mt-2 text-2xl font-semibold text-foreground">
-            {categories.length}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Income categories</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-600">
-            {incomeCount}
-          </p>
-        </div>
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <p className="text-xs text-muted-foreground">Expense categories</p>
-          <p className="mt-2 text-2xl font-semibold text-orange-600">
-            {expenseCount}
-          </p>
-        </div>
+        {mainTab === "budgets" && (
+          <Button onClick={openCreateBudgetDialog} className="gap-2">
+            <Plus className="size-4" />
+            New budget
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 border-b border-border">
         <button
           type="button"
-          onClick={() => setActiveTab("active")}
-          className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-            activeTab === "active"
+          onClick={() => setMainTab("categories")}
+          className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+            mainTab === "categories"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          Active categories
+          <Tags className="size-4" />
+          Categories
         </button>
 
         <button
           type="button"
-          onClick={() => setActiveTab("archived")}
+          onClick={() => setMainTab("budgets")}
           className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-            activeTab === "archived"
+            mainTab === "budgets"
               ? "border-primary text-foreground"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Archive className="size-4" />
-          Archived
+          <Wallet className="size-4" />
+          Budgets
         </button>
       </div>
 
-      {activeTab === "active" ? (
+      {mainTab === "categories" ? (
         <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: "all", label: "All" },
-                { value: "income", label: "Income" },
-                { value: "expense", label: "Expenses" },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  onClick={() => setFilter(item.value)}
-                  className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                    filter === item.value
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Tags className="size-4" />
+                <span className="text-xs">Total categories</span>
+              </div>
+
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {categories.length}
+              </p>
             </div>
 
-            {savingOrder && (
-              <span className="text-xs text-muted-foreground">
-                Saving order...
-              </span>
-            )}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">Income categories</p>
+
+              <p className="mt-2 text-2xl font-semibold text-emerald-600">
+                {incomeCount}
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card p-4">
+              <p className="text-xs text-muted-foreground">
+                Expense categories
+              </p>
+
+              <p className="mt-2 text-2xl font-semibold text-destructive">
+                {expenseCount}
+              </p>
+            </div>
           </div>
 
-          {loading ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              Loading categories...
-            </div>
-          ) : error ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center">
-              <p className="text-sm text-destructive">{error}</p>
-              <Button
-                variant="outline"
-                className="mt-4 gap-2"
-                onClick={loadData}
-              >
-                <RefreshCw className="size-4" />
-                Try again
-              </Button>
-            </div>
-          ) : visibleCategories.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-              <Tags className="mx-auto size-8 text-muted-foreground" />
-              <h3 className="mt-3 text-sm font-medium text-foreground">
-                {categories.length === 0
-                  ? "No categories yet"
-                  : "No categories in this filter"}
-              </h3>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {categories.length === 0
-                  ? "Create your first category to organize your transactions."
-                  : "Try selecting a different category type."}
-              </p>
-              {categories.length === 0 && (
-                <Button onClick={openCreateDialog} className="mt-4 gap-2">
-                  <Plus className="size-4" />
-                  Create category
-                </Button>
-              )}
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragCancel={handleDragCancel}
-              onDragEnd={handleDragEnd}
+          <div className="flex flex-wrap items-center gap-2 border-b border-border">
+            <button
+              type="button"
+              onClick={() => setActiveTab("active")}
+              className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                activeTab === "active"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <SortableContext
-                items={visibleCategories.map((item) => item.category_id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <div className="space-y-3">
-                  {visibleCategories.map((category) => (
-                    <SortableCategoryCard
-                      key={category.category_id}
-                      category={category}
-                      categories={categories}
-                      accounts={accounts}
-                      onEdit={openEditDialog}
-                      onArchive={handleArchiveCategory}
-                      disabled={savingOrder || filter !== "all"}
-                    />
+              Active categories
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab("archived")}
+              className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+                activeTab === "archived"
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Archive className="size-4" />
+              Archived
+            </button>
+          </div>
+
+          {activeTab === "active" ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: "all", label: "All" },
+                    { value: "income", label: "Income" },
+                    { value: "expense", label: "Expenses" },
+                  ].map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      onClick={() => setFilter(item.value)}
+                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
+                        filter === item.value
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
                   ))}
                 </div>
-              </SortableContext>
 
-              <DragOverlay>
-                {activeDragCategory ? (
-                  <div className="rotate-1 shadow-xl">
-                    <CategoryCard
-                      category={activeDragCategory}
-                      onEdit={() => {}}
-                      onArchive={() => {}}
-                      isDragging
-                    />
+                {savingOrder && (
+                  <span className="text-xs text-muted-foreground">
+                    Saving order...
+                  </span>
+                )}
+              </div>
+
+              {loading ? (
+                <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                  Loading categories...
+                </div>
+              ) : error ? (
+                <div className="rounded-xl border border-border bg-card p-8 text-center">
+                  <p className="text-sm text-destructive">{error}</p>
+
+                  <Button
+                    variant="outline"
+                    className="mt-4 gap-2"
+                    onClick={loadData}
+                  >
+                    <RefreshCw className="size-4" />
+                    Try again
+                  </Button>
+                </div>
+              ) : visibleCategories.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+                  <Tags className="mx-auto size-8 text-muted-foreground" />
+
+                  <h3 className="mt-3 text-sm font-medium text-foreground">
+                    {categories.length === 0
+                      ? "No categories yet"
+                      : "No categories in this filter"}
+                  </h3>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {categories.length === 0
+                      ? "Create your first category to organize your transactions."
+                      : "Try selecting a different category type."}
+                  </p>
+
+                  {categories.length === 0 && (
+                    <Button onClick={openCreateDialog} className="mt-4 gap-2">
+                      <Plus className="size-4" />
+                      Create category
+                    </Button>
+                  )}
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragStart={handleDragStart}
+                  onDragCancel={handleDragCancel}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={visibleCategories.map((item) => item.category_id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-3">
+                      {visibleCategories.map((category) => (
+                        <SortableCategoryCard
+                          key={category.category_id}
+                          category={category}
+                          categories={categories}
+                          accounts={accounts}
+                          onEdit={openEditDialog}
+                          onArchive={handleArchiveCategory}
+                          disabled={savingOrder || filter !== "all"}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+
+                  <DragOverlay>
+                    {activeDragCategory ? (
+                      <div className="rotate-1 shadow-xl">
+                        <CategoryCard
+                          category={activeDragCategory}
+                          onEdit={() => {}}
+                          onArchive={() => {}}
+                          isDragging
+                        />
+                      </div>
+                    ) : null}
+                  </DragOverlay>
+                </DndContext>
+              )}
+
+              {filter !== "all" && categories.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Switch to All to reorder categories.
+                </p>
+              )}
+            </>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm text-muted-foreground">
+                  Archived categories can be restored here.
+                </p>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={loadArchivedCategories}
+                  disabled={loadingArchived}
+                >
+                  <RefreshCw
+                    className={`size-3.5 ${
+                      loadingArchived ? "animate-spin" : ""
+                    }`}
+                  />
+                  Refresh
+                </Button>
+              </div>
+
+              {loadingArchived ? (
+                <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+                  Loading archived categories...
+                </div>
+              ) : archivedCategories.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+                  <Archive className="mx-auto size-8 text-muted-foreground" />
+
+                  <h3 className="mt-3 text-sm font-medium text-foreground">
+                    No archived categories
+                  </h3>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Categories you archive will appear here.
+                  </p>
+                </div>
+              ) : (
+                archivedCategories.map((category) => (
+                  <div
+                    key={category.category_id}
+                    className="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        {category.category_name}
+                      </p>
+
+                      <p className="mt-1 text-xs capitalize text-muted-foreground">
+                        {category.category_type}
+                        {category.archived_at
+                          ? ` · Archived ${new Date(
+                              category.archived_at,
+                            ).toLocaleDateString()}`
+                          : ""}
+                      </p>
+                    </div>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => handleRestoreCategory(category)}
+                    >
+                      <ArchiveRestore className="size-4" />
+                      Restore
+                    </Button>
                   </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          )}
-
-          {filter !== "all" && categories.length > 0 && (
-            <p className="text-xs text-muted-foreground">
-              Switch to All to reorder categories.
-            </p>
+                ))
+              )}
+            </div>
           )}
         </>
       ) : (
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Archived categories can be restored here.
-            </p>
+        <div className="space-y-5">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <label
+                htmlFor="budget-year"
+                className="mb-1.5 block text-sm font-medium text-foreground"
+              >
+                Budget year
+              </label>
+
+              <input
+                id="budget-year"
+                type="number"
+                min="2000"
+                max="9999"
+                value={selectedYear}
+                onChange={(event) => setSelectedYear(event.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary sm:w-40"
+              />
+            </div>
+
             <Button
               variant="outline"
-              size="sm"
               className="gap-2"
-              onClick={loadArchivedCategories}
-              disabled={loadingArchived}
+              onClick={loadBudgets}
+              disabled={loadingBudgets}
             >
               <RefreshCw
-                className={`size-3.5 ${loadingArchived ? "animate-spin" : ""}`}
+                className={`size-4 ${loadingBudgets ? "animate-spin" : ""}`}
               />
               Refresh
             </Button>
           </div>
 
-          {loadingArchived ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              Loading archived categories...
+          {budgetError && (
+            <div className="rounded-xl border border-border bg-card p-6 text-center">
+              <p className="text-sm text-destructive">{budgetError}</p>
+
+              <Button
+                variant="outline"
+                className="mt-4 gap-2"
+                onClick={loadBudgets}
+              >
+                <RefreshCw className="size-4" />
+                Try again
+              </Button>
             </div>
-          ) : archivedCategories.length === 0 ? (
+          )}
+
+          {loadingBudgets ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Loading budgets...
+            </div>
+          ) : !budgetError && sortedBudgets.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-              <Archive className="mx-auto size-8 text-muted-foreground" />
+              <CalendarDays className="mx-auto size-8 text-muted-foreground" />
+
               <h3 className="mt-3 text-sm font-medium text-foreground">
-                No archived categories
+                No budgets for {selectedYear}
               </h3>
+
               <p className="mt-1 text-xs text-muted-foreground">
-                Categories you archive will appear here.
+                Create a monthly budget to start planning your expenses.
               </p>
+
+              <Button onClick={openCreateBudgetDialog} className="mt-4 gap-2">
+                <Plus className="size-4" />
+                Create monthly budget
+              </Button>
             </div>
           ) : (
-            archivedCategories.map((category) => (
-              <div
-                key={category.category_id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {category.category_name}
-                  </p>
-                  <p className="mt-1 text-xs capitalize text-muted-foreground">
-                    {category.category_type}
-                    {category.archived_at
-                      ? ` · Archived ${new Date(category.archived_at).toLocaleDateString()}`
-                      : ""}
-                  </p>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => handleRestoreCategory(category)}
-                >
-                  <ArchiveRestore className="size-4" />
-                  Restore
-                </Button>
+            !budgetError && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {sortedBudgets.map((budget) => (
+                  <BudgetCard
+                    key={budget.budget_id}
+                    budget={budget}
+                    onEdit={openEditBudgetDialog}
+                    onManageAllocations={openAllocationDialog}
+                    onDelete={handleDeleteBudget}
+                  />
+                ))}
               </div>
-            ))
+            )
           )}
         </div>
       )}
-
-      <div className="rounded-xl border border-border bg-card p-4">
-        <div className="flex items-center gap-2">
-          <Wallet className="size-4 text-muted-foreground" />
-          <h2 className="text-sm font-medium text-foreground">
-            Monthly budgets
-          </h2>
-        </div>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Budget management will be added to this page after Categories is
-          connected and tested.
-        </p>
-      </div>
 
       <CategoryDialog
         open={dialogOpen}
@@ -584,6 +853,21 @@ export function CategoryPage() {
         accounts={accounts}
         onClose={() => setDialogOpen(false)}
         onSave={handleSaveCategory}
+      />
+
+      <BudgetDialog
+        open={budgetDialogOpen}
+        budget={editingBudget}
+        onClose={() => setBudgetDialogOpen(false)}
+        onSave={handleSaveBudget}
+      />
+
+      <BudgetAllocationDialog
+        open={allocationDialogOpen}
+        budget={selectedBudget}
+        categories={categories}
+        onClose={() => setAllocationDialogOpen(false)}
+        onSave={handleSaveAllocations}
       />
     </div>
   );
