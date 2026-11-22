@@ -2,7 +2,7 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   CreditCard,
-  ChartNoAxesCombined,
+  Tags,
   Settings,
 } from "lucide-react";
 
@@ -10,7 +10,7 @@ const navigation = [
   { label: "Home", page: "Dashboard", icon: LayoutDashboard },
   { label: "Activity", page: "Transactions", icon: ArrowLeftRight },
   { label: "Accounts", page: "Accounts", icon: CreditCard },
-  { label: "Budgets", page: "Budgets", icon: ChartNoAxesCombined },
+  { label: "Categories", page: "Categories", icon: Tags },
   { label: "Settings", page: "Settings", icon: Settings },
 ];
 
@@ -38,7 +38,6 @@ export function MobileNavigation({ activePage, onNavigate }) {
               }`}
             >
               <Icon size={21} strokeWidth={active ? 2.3 : 1.8} />
-
               <span className="text-[10px] font-semibold leading-none">
                 {label}
               </span>

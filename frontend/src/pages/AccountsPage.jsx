@@ -271,7 +271,11 @@ export function AccountsPage() {
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              Accounts
+              {loading
+                ? "Loading your accounts..."
+                : `${activeAccounts.length} active ${
+                    activeAccounts.length === 1 ? "account" : "accounts"
+                  }`}
             </h1>
 
             <p className="mt-1 text-sm text-muted-foreground">
@@ -290,27 +294,6 @@ export function AccountsPage() {
         </div>
 
         <section className="space-y-4">
-          <div>
-            <h2 className="text-base font-semibold text-foreground">
-              Your accounts
-            </h2>
-
-            <p className="mt-1 text-sm text-muted-foreground">
-              {loading
-                ? "Loading your accounts..."
-                : `${activeAccounts.length} active ${
-                    activeAccounts.length === 1 ? "account" : "accounts"
-                  }`}
-            </p>
-
-            {!loading && activeAccounts.length > 1 && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Drag an account using its grip handle to rearrange your cards.
-                {savingOrder && " Saving your changes..."}
-              </p>
-            )}
-          </div>
-
           {loading ? (
             <AccountsSkeleton />
           ) : loadError ? (

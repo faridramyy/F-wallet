@@ -16,7 +16,7 @@ import { MobileNavigation } from "./components/layout/MobileNavigation";
 import { DashboardPage } from "./pages/DashboardPage";
 import { TransactionsPage } from "./pages/TransactionsPage";
 import { AccountsPage } from "./pages/AccountsPage";
-import { BudgetsPage } from "./pages/BudgetsPage";
+import { CategoryPage } from "./pages/CategoryPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 
@@ -30,7 +30,7 @@ const PAGE_PATHS = {
   Dashboard: "/dashboard",
   Transactions: "/transactions",
   Accounts: "/accounts",
-  Budgets: "/budgets",
+  Categories: "/categories",
   Settings: "/settings",
 };
 
@@ -170,7 +170,7 @@ export default function App() {
                     transactions={transactions}
                     onViewTransactions={() => handleNavigate("Transactions")}
                     onViewAccounts={() => handleNavigate("Accounts")}
-                    onViewBudgets={() => handleNavigate("Budgets")}
+                    onViewBudgets={() => handleNavigate("Categories")}
                   />
                 }
               />
@@ -182,7 +182,7 @@ export default function App() {
 
               <Route path="/accounts" element={<AccountsPage />} />
 
-              <Route path="/budgets" element={<BudgetsPage />} />
+              <Route path="/categories" element={<CategoryPage />} />
 
               <Route
                 path="/settings"

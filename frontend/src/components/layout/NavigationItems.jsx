@@ -2,15 +2,15 @@ import {
   LayoutDashboard,
   ArrowLeftRight,
   CreditCard,
-  ChartNoAxesCombined,
+  Tags,
   Settings,
 } from "lucide-react";
 
 const navigation = [
-  { label: "Dashboard", icon: LayoutDashboard, page: "Dashboard" },
+  { label: "Dashboard", icon: LayoutDashboard, page: "Dashboarcd" },
   { label: "Transactions", icon: ArrowLeftRight, page: "Transactions" },
   { label: "Accounts", icon: CreditCard, page: "Accounts" },
-  { label: "Categories & Budgets", icon: ChartNoAxesCombined, page: "Budgets" },
+  { label: "Categories & Budgets", icon: Tags, page: "Categories" },
   { label: "Settings", icon: Settings, page: "Settings" },
 ];
 
@@ -37,7 +37,6 @@ export function NavigationItems({ activePage, onNavigate, collapsed = false }) {
             }`}
           >
             <Icon size={19} strokeWidth={1.9} />
-
             {!collapsed && <span>{label}</span>}
           </button>
         );

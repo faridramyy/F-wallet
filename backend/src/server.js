@@ -37,6 +37,10 @@ const shutdown = (signal) => {
   });
 };
 
+// Listen for operating system termination signals and trigger a graceful shutdown.
+// SIGTERM: Sent by the operating system or hosting platform when the application
+// is requested to terminate.
+// SIGINT: Usually sent when the user presses Ctrl + C in the terminal.
 process.on("SIGTERM", () => shutdown("SIGTERM"));
 process.on("SIGINT", () => shutdown("SIGINT"));
 

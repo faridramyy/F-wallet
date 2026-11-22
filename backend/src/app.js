@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import morgan from "morgan";
+import env from "./config/env.js";
 
 import apiRoutes from "./routes/index.js";
 import notFound from "./middleware/not-found.js";
@@ -10,8 +11,8 @@ const app = express();
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
-    methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    origin: env.corsOrigin,
+    methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization", "X-ID-Token"],
   }),
 );
