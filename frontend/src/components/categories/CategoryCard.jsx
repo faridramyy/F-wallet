@@ -20,6 +20,11 @@ export function CategoryCard({
 }) {
   const isIncome = category.category_type === "income";
 
+  // Colors come from the theme tokens in index.css.
+  const tone = isIncome
+    ? "bg-chart-1/10 text-chart-1"
+    : "bg-chart-5/10 text-chart-5";
+
   return (
     <div
       ref={containerRef}
@@ -39,11 +44,7 @@ export function CategoryCard({
       </button>
 
       <div
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${
-          isIncome
-            ? "bg-emerald-500/10 text-emerald-600"
-            : "bg-orange-500/10 text-orange-600"
-        }`}
+        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}
       >
         {isIncome ? (
           <ArrowDownLeft className="size-5" />
@@ -59,11 +60,7 @@ export function CategoryCard({
           </p>
 
           <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-              isIncome
-                ? "bg-emerald-500/10 text-emerald-600"
-                : "bg-orange-500/10 text-orange-600"
-            }`}
+            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tone}`}
           >
             {isIncome ? "Income" : "Expense"}
           </span>

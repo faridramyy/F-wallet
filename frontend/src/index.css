@@ -46,6 +46,9 @@
   --input: oklch(0.91 0 0);
   --ring: oklch(0.65 0 0);
 
+  /* Modal backdrop */
+  --overlay: oklch(0 0 0 / 50%);
+
   /* Charts */
   --chart-1: oklch(0.62 0.15 160);
   --chart-2: oklch(0.62 0.13 235);
@@ -101,6 +104,9 @@
   --input: oklch(1 0 0 / 15%);
   --ring: oklch(0.65 0 0);
 
+  /* Modal backdrop */
+  --overlay: oklch(0 0 0 / 60%);
+
   /* Charts */
   --chart-1: oklch(0.68 0.14 160);
   --chart-2: oklch(0.68 0.13 235);
@@ -139,6 +145,7 @@
   --color-chart-5: var(--chart-5);
 
   --color-ring: var(--ring);
+  --color-overlay: var(--overlay);
   --color-input: var(--input);
   --color-border: var(--border);
   --color-destructive: var(--destructive);

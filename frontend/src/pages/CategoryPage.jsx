@@ -520,7 +520,7 @@ export function CategoryPage() {
             <div className="rounded-xl border border-border bg-card p-4">
               <p className="text-xs text-muted-foreground">Income categories</p>
 
-              <p className="mt-2 text-2xl font-semibold text-emerald-600">
+              <p className="mt-2 text-2xl font-semibold text-chart-1">
                 {incomeCount}
               </p>
             </div>
@@ -530,7 +530,7 @@ export function CategoryPage() {
                 Expense categories
               </p>
 
-              <p className="mt-2 text-2xl font-semibold text-destructive">
+              <p className="mt-2 text-2xl font-semibold text-chart-5">
                 {expenseCount}
               </p>
             </div>
