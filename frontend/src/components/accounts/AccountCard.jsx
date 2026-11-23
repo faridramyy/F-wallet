@@ -56,8 +56,18 @@ export function AccountCard({
 
   const isNegative = isCreditCard ? amount > 0 : amount < 0;
 
+  // Calculate credit utilization percentage.
+  const creditUtilization =
+    isCreditCard && creditLimit !== null && creditLimit > 0 && amount !== null
+      ? (amount / creditLimit) * 100
+      : null;
+
   const caption = isCreditCard
-    ? `Owed${creditLimit > 0 ? ` · limit ${formatCurrency(creditLimit, account.currency)}` : ""}`
+    ? `Owed${
+        creditLimit > 0
+          ? ` · limit ${formatCurrency(creditLimit, account.currency)}`
+          : ""
+      }`
     : "Opening balance";
 
   const details =
@@ -128,6 +138,49 @@ export function AccountCard({
         >
           {amountText}
         </p>
+
+        {/* Credit card utilization progress bar */}
+        {isCreditCard && creditUtilization !== null && (
+          <div className="mt-2 space-y-1.5">
+            <div className="flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+              <span className="shrink-0">
+                {creditUtilization.toFixed(0)}% used
+              </span>
+
+              <span className="truncate text-right">
+                {formatCurrency(
+                  Math.max(creditLimit - amount, 0),
+                  account.currency,
+                )}{" "}
+                available
+              </span>
+            </div>
+
+            <div
+              className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
+              role="progressbar"
+              aria-label="Credit utilization"
+              aria-valuenow={Math.round(creditUtilization)}
+              aria-valuemin={0}
+              aria-valuemax={100}
+            >
+              <div
+                className="h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(creditUtilization, 100)}%`,
+                  background:
+                    creditUtilization > 100
+                      ? "red"
+                      : creditUtilization <= 70
+                        ? "white"
+                        : creditUtilization <= 90
+                          ? "linear-gradient(to right, white, yellow)"
+                          : "linear-gradient(to right, yellow, red)",
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         <p className="hidden truncate text-[10px] text-muted-foreground sm:block">
           {caption}
