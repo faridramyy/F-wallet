@@ -33,6 +33,7 @@ export function CategoryCard({
         isDragging ? "opacity-50 shadow-lg" : "hover:bg-muted/40"
       }`}
     >
+      {/* Drag handle */}
       <button
         ref={dragHandleRef}
         type="button"
@@ -43,6 +44,7 @@ export function CategoryCard({
         <GripVertical className="size-4" />
       </button>
 
+      {/* Category icon */}
       <div
         className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}
       >
@@ -53,28 +55,26 @@ export function CategoryCard({
         )}
       </div>
 
+      {/* Category information */}
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-sm font-medium text-foreground">
             {category.category_name}
           </p>
-
-          <span
-            className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${tone}`}
-          >
-            {isIncome ? "Income" : "Expense"}
-          </span>
         </div>
 
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {parentName && <span>Under {parentName}</span>}
+
           {accountName && <span>Default: {accountName}</span>}
+
           {category.notes && (
             <span className="max-w-full truncate">{category.notes}</span>
           )}
         </div>
       </div>
 
+      {/* Actions */}
       <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"

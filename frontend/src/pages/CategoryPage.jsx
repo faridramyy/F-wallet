@@ -22,7 +22,6 @@ import {
   ArchiveRestore,
   CalendarDays,
   Plus,
-  Tags,
   Wallet,
   RefreshCw,
 } from "lucide-react";
@@ -35,6 +34,73 @@ import { BudgetAllocationDialog } from "../components/budgets/BudgetAllocationDi
 import { BudgetCard } from "../components/budgets/BudgetCard";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
+
+// Sort categories by their database display_order.
+function sortByDisplayOrder(a, b) {
+  return (
+    (a.display_order ?? 0) - (b.display_order ?? 0) ||
+    a.category_name.localeCompare(b.category_name)
+  );
+}
+
+// Build a hierarchical category list.
+// Children are displayed directly underneath their parent.
+function getOrderedCategories(categories, categoryType) {
+  const filtered = categories.filter(
+    (category) => category.category_type === categoryType,
+  );
+
+  const categoryIds = new Set(filtered.map((category) => category.category_id));
+
+  const childrenMap = new Map();
+
+  filtered.forEach((category) => {
+    const parentId =
+      category.parent_category_id &&
+      categoryIds.has(category.parent_category_id)
+        ? category.parent_category_id
+        : null;
+
+    if (!childrenMap.has(parentId)) {
+      childrenMap.set(parentId, []);
+    }
+
+    childrenMap.get(parentId).push(category);
+  });
+
+  childrenMap.forEach((children) => children.sort(sortByDisplayOrder));
+
+  const result = [];
+  const visited = new Set();
+
+  function addCategory(category, depth = 0) {
+    if (visited.has(category.category_id)) return;
+
+    visited.add(category.category_id);
+
+    result.push({
+      ...category,
+      depth,
+    });
+
+    const children = childrenMap.get(category.category_id) || [];
+
+    children.forEach((child) => {
+      addCategory(child, depth + 1);
+    });
+  }
+
+  const roots = childrenMap.get(null) || [];
+
+  roots.forEach((category) => addCategory(category));
+
+  // Include any remaining categories defensively.
+  [...filtered].sort(sortByDisplayOrder).forEach((category) => {
+    addCategory(category);
+  });
+
+  return result;
+}
 
 function SortableCategoryCard({
   category,
@@ -62,6 +128,7 @@ function SortableCategoryCard({
     transition,
     position: "relative",
     zIndex: isDragging ? 1 : undefined,
+    marginLeft: `${category.depth * 24}px`,
   };
 
   const parent = categories.find(
@@ -98,7 +165,9 @@ export function CategoryPage() {
 
   const [mainTab, setMainTab] = useState("categories");
   const [activeTab, setActiveTab] = useState("active");
-  const [filter, setFilter] = useState("all");
+
+  // Expenses are displayed by default.
+  const [filter, setFilter] = useState("expense");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
@@ -201,11 +270,11 @@ export function CategoryPage() {
     }
   }, [mainTab, loadBudgets]);
 
-  const visibleCategories = useMemo(() => {
-    if (filter === "all") return categories;
-
-    return categories.filter((category) => category.category_type === filter);
-  }, [categories, filter]);
+  // Display categories in database order and maintain hierarchy.
+  const visibleCategories = useMemo(
+    () => getOrderedCategories(categories, filter),
+    [categories, filter],
+  );
 
   const sortedBudgets = useMemo(
     () => [...budgets].sort((a, b) => a.budget_month - b.budget_month),
@@ -318,18 +387,30 @@ export function CategoryPage() {
 
     if (!over || active.id === over.id || savingOrder) return;
 
-    const oldIndex = categories.findIndex(
+    const oldIndex = visibleCategories.findIndex(
       (item) => item.category_id === active.id,
     );
 
-    const newIndex = categories.findIndex(
+    const newIndex = visibleCategories.findIndex(
       (item) => item.category_id === over.id,
     );
 
     if (oldIndex === -1 || newIndex === -1) return;
 
     const previousCategories = categories;
-    const reorderedCategories = arrayMove(categories, oldIndex, newIndex);
+
+    const reorderedVisible = arrayMove(visibleCategories, oldIndex, newIndex);
+
+    // Keep the other category type's order unchanged.
+    const reorderedIds = new Set(
+      reorderedVisible.map((item) => item.category_id),
+    );
+
+    let cursor = 0;
+
+    const reorderedCategories = categories.map((item) =>
+      reorderedIds.has(item.category_id) ? reorderedVisible[cursor++] : item,
+    );
 
     setCategories(reorderedCategories);
     setSavingOrder(true);
@@ -449,6 +530,7 @@ export function CategoryPage() {
 
   return (
     <div className="space-y-6">
+      {/* Page header */}
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-xl font-semibold text-foreground">
@@ -475,6 +557,7 @@ export function CategoryPage() {
         )}
       </div>
 
+      {/* Main tabs */}
       <div className="flex flex-wrap items-center gap-2 border-b border-border">
         <button
           type="button"
@@ -485,7 +568,6 @@ export function CategoryPage() {
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Tags className="size-4" />
           Categories
         </button>
 
@@ -505,12 +587,10 @@ export function CategoryPage() {
 
       {mainTab === "categories" ? (
         <>
+          {/* Category statistics */}
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Tags className="size-4" />
-                <span className="text-xs">Total categories</span>
-              </div>
+              <p className="text-xs text-muted-foreground">Total categories</p>
 
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {categories.length}
@@ -536,6 +616,7 @@ export function CategoryPage() {
             </div>
           </div>
 
+          {/* Active / archived tabs */}
           <div className="flex flex-wrap items-center gap-2 border-b border-border">
             <button
               type="button"
@@ -565,12 +646,12 @@ export function CategoryPage() {
 
           {activeTab === "active" ? (
             <>
+              {/* Category type filters */}
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap gap-2">
                   {[
-                    { value: "all", label: "All" },
-                    { value: "income", label: "Income" },
                     { value: "expense", label: "Expenses" },
+                    { value: "income", label: "Income" },
                   ].map((item) => (
                     <button
                       key={item.value}
@@ -613,26 +694,22 @@ export function CategoryPage() {
                 </div>
               ) : visibleCategories.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-                  <Tags className="mx-auto size-8 text-muted-foreground" />
-
-                  <h3 className="mt-3 text-sm font-medium text-foreground">
+                  <h3 className="text-sm font-medium text-foreground">
                     {categories.length === 0
                       ? "No categories yet"
-                      : "No categories in this filter"}
+                      : `No ${filter} categories yet`}
                   </h3>
 
                   <p className="mt-1 text-xs text-muted-foreground">
                     {categories.length === 0
                       ? "Create your first category to organize your transactions."
-                      : "Try selecting a different category type."}
+                      : `Create a new ${filter} category to get started.`}
                   </p>
 
-                  {categories.length === 0 && (
-                    <Button onClick={openCreateDialog} className="mt-4 gap-2">
-                      <Plus className="size-4" />
-                      Create category
-                    </Button>
-                  )}
+                  <Button onClick={openCreateDialog} className="mt-4 gap-2">
+                    <Plus className="size-4" />
+                    Create category
+                  </Button>
                 </div>
               ) : (
                 <DndContext
@@ -655,7 +732,7 @@ export function CategoryPage() {
                           accounts={accounts}
                           onEdit={openEditDialog}
                           onArchive={handleArchiveCategory}
-                          disabled={savingOrder || filter !== "all"}
+                          disabled={savingOrder}
                         />
                       ))}
                     </div>
@@ -674,12 +751,6 @@ export function CategoryPage() {
                     ) : null}
                   </DragOverlay>
                 </DndContext>
-              )}
-
-              {filter !== "all" && categories.length > 0 && (
-                <p className="text-xs text-muted-foreground">
-                  Switch to All to reorder categories.
-                </p>
               )}
             </>
           ) : (
@@ -758,6 +829,7 @@ export function CategoryPage() {
           )}
         </>
       ) : (
+        /* Budgets */
         <div className="space-y-5">
           <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
             <div>
@@ -846,6 +918,7 @@ export function CategoryPage() {
         </div>
       )}
 
+      {/* Dialogs */}
       <CategoryDialog
         open={dialogOpen}
         category={editingCategory}
