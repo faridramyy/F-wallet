@@ -22,8 +22,8 @@ import LoginPage from "./pages/LoginPage";
 
 import { NotificationProvider } from "./components/providers/NotificationProvider";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
-import { initialTransactions } from "./data/mockData";
 import { useSettings } from "./hooks/useSettings";
+import { useTransactions } from "./hooks/useTransactions";
 import { useTheme } from "./hooks/useTheme";
 import { navigation } from "./lib/navigation";
 
@@ -50,8 +50,25 @@ export default function App() {
     reload: reloadSettings,
   } = useSettings();
 
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const {
+    transactions,
+    accounts,
+    categories,
+    loading: transactionsLoading,
+    loadingMore,
+    hasMore,
+    error: transactionsError,
+    reload: reloadTransactions,
+    loadMore,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
+  } = useTransactions();
+
+  // The one dialog is used for both adding and editing. `editingTransaction`
+  // is null when adding.
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [themePreview, setThemePreview] = useState(null);
 
@@ -63,9 +80,23 @@ export default function App() {
     navigation.find((item) => item.path === location.pathname)?.label ??
     "Dashboard";
 
-  const handleAddTransaction = (transaction) => {
-    setTransactions((current) => [transaction, ...current]);
-    setAddDialogOpen(false);
+  const openAddDialog = () => {
+    setEditingTransaction(null);
+    setAddDialogOpen(true);
+  };
+
+  const openEditDialog = (transaction) => {
+    setEditingTransaction(transaction);
+    setAddDialogOpen(true);
+  };
+
+  // Errors are thrown on purpose: the dialog catches them and shows them.
+  const handleSaveTransaction = async (data) => {
+    if (editingTransaction) {
+      await updateTransaction(editingTransaction.transaction_id, data);
+    } else {
+      await createTransaction(data);
+    }
   };
 
   if (auth.isLoading) {
@@ -104,10 +135,7 @@ export default function App() {
             sidebarOpen ? "md:pl-62" : "md:pl-19"
           }`}
         >
-          <AppHeader
-            title={title}
-            onAddTransaction={() => setAddDialogOpen(true)}
-          />
+          <AppHeader title={title} onAddTransaction={openAddDialog} />
 
           <div className="mx-auto w-full max-w-[1600px] p-5 pb-28 sm:p-8 sm:pb-28 md:pb-8 lg:p-10">
             <Routes>
@@ -125,7 +153,19 @@ export default function App() {
 
               <Route
                 path="/transactions"
-                element={<TransactionsPage transactions={transactions} />}
+                element={
+                  <TransactionsPage
+                    transactions={transactions}
+                    loading={transactionsLoading}
+                    loadingMore={loadingMore}
+                    hasMore={hasMore}
+                    error={transactionsError}
+                    onRetry={reloadTransactions}
+                    onLoadMore={loadMore}
+                    onEdit={openEditDialog}
+                    onDelete={deleteTransaction}
+                  />
+                }
               />
 
               <Route path="/accounts" element={<AccountsPage />} />
@@ -152,7 +192,10 @@ export default function App() {
         <AddTransactionDialog
           open={addDialogOpen}
           onOpenChange={setAddDialogOpen}
-          onSave={handleAddTransaction}
+          onSave={handleSaveTransaction}
+          transaction={editingTransaction}
+          accounts={accounts}
+          categories={categories}
         />
       </div>
     </NotificationProvider>

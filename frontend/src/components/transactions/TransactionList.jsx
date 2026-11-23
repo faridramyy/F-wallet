@@ -1,45 +1,28 @@
 import { TransactionItem } from "./TransactionItem";
 import { formatCurrency } from "../../lib/formatters";
 
-function getTransactionDate(transaction) {
-  const date = transaction.date;
+// transaction_date is a plain "YYYY-MM-DD" string from the API. Build the Date
+// from its parts in LOCAL time. new Date("2026-11-22") would be parsed as UTC
+// midnight and show as Nov 21 for anyone west of UTC.
+function formatDateLabel(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
 
-  if (!date) return "Undated";
-
-  const parsed = new Date(date);
-
-  if (Number.isNaN(parsed.getTime())) {
-    return String(date);
-  }
-
-  return parsed.toLocaleDateString("en-CA", {
+  return new Date(year, month - 1, day).toLocaleDateString("en-CA", {
     month: "long",
     day: "numeric",
     year: "numeric",
   });
 }
 
-function getDateKey(transaction) {
-  if (!transaction.date) return "undated";
+// Net effect on the day's total, in cents. Transfers move money between your
+// own accounts, so they are left out of income/expense totals.
+function getSignedCents(transaction) {
+  const cents = transaction.amount_cents;
 
-  const parsed = new Date(transaction.date);
+  if (transaction.transaction_type === "income") return cents;
+  if (transaction.transaction_type === "refund") return cents;
+  if (transaction.transaction_type === "expense") return -cents;
 
-  if (Number.isNaN(parsed.getTime())) {
-    return String(transaction.date);
-  }
-
-  return parsed.toISOString().slice(0, 10);
-}
-
-function getSignedAmount(transaction) {
-  const amount = Math.abs(transaction.amount || 0);
-  const type =
-    transaction.type || (transaction.amount > 0 ? "income" : "expense");
-
-  if (type === "income") return amount;
-  if (type === "expense") return -amount;
-
-  // Transfers are excluded from daily income/expense totals.
   return 0;
 }
 
@@ -59,27 +42,23 @@ export function TransactionList({ transactions = [], onEdit, onDelete }) {
 
   const groupedTransactions = Object.values(
     transactions.reduce((groups, transaction) => {
-      const key = getDateKey(transaction);
+      const key = transaction.transaction_date;
 
       if (!groups[key]) {
         groups[key] = {
           key,
-          date: getTransactionDate(transaction),
+          label: formatDateLabel(key),
           transactions: [],
-          netTotal: 0,
+          netCents: 0,
         };
       }
 
       groups[key].transactions.push(transaction);
-      groups[key].netTotal += getSignedAmount(transaction);
+      groups[key].netCents += getSignedCents(transaction);
 
       return groups;
     }, {}),
-  ).sort((a, b) => {
-    if (a.key === "undated") return 1;
-    if (b.key === "undated") return -1;
-    return b.key.localeCompare(a.key);
-  });
+  ).sort((a, b) => b.key.localeCompare(a.key));
 
   return (
     <div className="space-y-6">
@@ -87,20 +66,20 @@ export function TransactionList({ transactions = [], onEdit, onDelete }) {
         <section key={group.key}>
           <div className="mb-2 flex items-center justify-between gap-3 px-1">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {group.date}
+              {group.label}
             </h3>
 
             <p
               className={`text-xs font-semibold tabular-nums ${
-                group.netTotal > 0
+                group.netCents > 0
                   ? "text-chart-1"
-                  : group.netTotal < 0
+                  : group.netCents < 0
                     ? "text-destructive"
                     : "text-muted-foreground"
               }`}
             >
-              {group.netTotal > 0 ? "+" : ""}
-              {formatCurrency(group.netTotal)}
+              {group.netCents > 0 ? "+" : ""}
+              {formatCurrency(group.netCents / 100)}
             </p>
           </div>
 
@@ -108,7 +87,7 @@ export function TransactionList({ transactions = [], onEdit, onDelete }) {
             <div className="divide-y divide-border">
               {group.transactions.map((transaction) => (
                 <TransactionItem
-                  key={transaction.id}
+                  key={transaction.transaction_id}
                   transaction={transaction}
                   onEdit={onEdit}
                   onDelete={onDelete}

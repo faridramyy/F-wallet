@@ -1,13 +1,19 @@
 import { useEffect, useState } from "react";
-import { Landmark, ShoppingBag, X } from "lucide-react";
+import { X } from "lucide-react";
 
-const blankForm = () => ({
-  name: "",
+import { useNotifications } from "../providers/useNotifications";
+
+const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
+
+const blankForm = (accounts) => ({
+  transaction_type: "expense",
   amount: "",
-  type: "expense",
-  category: "Groceries",
-  account: "Everyday Checking",
-  date: new Date().toISOString().slice(0, 10),
+  account_id: accounts[0]?.account_id ?? "",
+  category_id: "",
+  transaction_date: today(),
+  description: "",
+  merchant: "",
+  notes: "",
 });
 
 const inputClass =
@@ -15,71 +21,153 @@ const inputClass =
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
+// "12.5" -> 1250. Never do Math.round(Number(text) * 100): in floating point
+// 1.005 * 100 is 100.49999999999999, which would silently lose a cent.
+// Working on the text avoids floating point completely.
+function dollarsToCents(text) {
+  const trimmed = String(text).trim();
+
+  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
+
+  const [whole, fraction = ""] = trimmed.split(".");
+
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+}
+
+function centsToDollars(cents) {
+  return (cents / 100).toFixed(2);
+}
+
 export function AddTransactionDialog({
   open,
   onOpenChange,
   onSave,
   transaction = null,
+  accounts = [],
+  categories = [],
 }) {
-  const [form, setForm] = useState(blankForm);
+  const { toast } = useNotifications();
+
+  const [form, setForm] = useState(() => blankForm(accounts));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
 
   const isEditing = Boolean(transaction);
-  const isIncome = form.type === "income";
 
   useEffect(() => {
     if (!open) return;
 
-    if (transaction) {
-      setForm({
-        name: transaction.name || "",
-        amount: String(Math.abs(transaction.amount || 0)),
-        type:
-          transaction.type || (transaction.amount > 0 ? "income" : "expense"),
-        category: transaction.category || "Groceries",
-        account: transaction.account || "Everyday Checking",
-        date: transaction.date || new Date().toISOString().slice(0, 10),
-      });
-    } else {
-      setForm(blankForm());
-    }
+    setForm(
+      transaction
+        ? {
+            transaction_type: transaction.transaction_type,
+            amount: centsToDollars(transaction.amount_cents),
+            account_id: transaction.account_id ?? "",
+            category_id: transaction.category_id ?? "",
+            transaction_date: transaction.transaction_date,
+            description: transaction.description ?? "",
+            merchant: transaction.merchant ?? "",
+            notes: transaction.notes ?? "",
+          }
+        : blankForm(accounts),
+    );
+    setError("");
+    // `accounts` is intentionally left out: it is only used to pick the
+    // default account when the dialog opens.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, transaction]);
 
+  if (!open) return null;
+
+  // Income transactions can only use income categories, and vice versa.
+  const categoryOptions = categories.filter(
+    (category) => category.category_type === form.transaction_type,
+  );
+
+  // If the transaction's category was archived later, it is no longer in the
+  // active list. Keep it visible so the select does not silently go blank.
+  const hasCurrentCategory =
+    !form.category_id ||
+    categoryOptions.some(
+      (category) => category.category_id === form.category_id,
+    );
+
   function updateField(field, value) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
+    setForm((current) => ({ ...current, [field]: value }));
+    setError("");
   }
 
   function handleClose() {
     onOpenChange(false);
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    const amount = Number(form.amount);
+    const amountCents = dollarsToCents(form.amount);
 
-    if (!form.name.trim() || !Number.isFinite(amount) || amount <= 0) {
+    if (amountCents === null || amountCents <= 0) {
+      setError("Enter a valid amount, for example 12.50.");
       return;
     }
 
-    onSave({
-      ...(transaction || {}),
-      id: transaction?.id ?? Date.now(),
-      name: form.name.trim(),
-      category: isIncome ? "Income" : form.category,
-      account: form.account,
-      date: form.date,
-      amount: isIncome ? amount : -amount,
-      type: form.type,
-      icon: isIncome ? Landmark : ShoppingBag,
-    });
+    if (!form.account_id) {
+      setError("Choose an account.");
+      return;
+    }
 
-    handleClose();
+    const payload = {
+      transaction_type: form.transaction_type,
+      account_id: form.account_id,
+      category_id: form.category_id || null,
+      amount_cents: amountCents,
+      transaction_date: form.transaction_date,
+      description: form.description.trim() || null,
+      merchant: form.merchant.trim() || null,
+      notes: form.notes.trim() || null,
+    };
+
+    // When editing, send only what changed (this is what PATCH is for). It
+    // also means an untouched archived category is never re-validated.
+    let body = payload;
+
+    if (isEditing) {
+      const original = {
+        transaction_type: transaction.transaction_type,
+        account_id: transaction.account_id,
+        category_id: transaction.category_id ?? null,
+        amount_cents: transaction.amount_cents,
+        transaction_date: transaction.transaction_date,
+        description: transaction.description ?? null,
+        merchant: transaction.merchant ?? null,
+        notes: transaction.notes ?? null,
+      };
+
+      body = Object.fromEntries(
+        Object.entries(payload).filter(
+          ([key, value]) => value !== original[key],
+        ),
+      );
+
+      if (Object.keys(body).length === 0) {
+        handleClose();
+        return;
+      }
+    }
+
+    setSaving(true);
+    setError("");
+
+    try {
+      await onSave(body);
+      toast.success(isEditing ? "Transaction updated." : "Transaction added.");
+      handleClose();
+    } catch (err) {
+      setError(err.message || "Unable to save transaction.");
+    } finally {
+      setSaving(false);
+    }
   }
-
-  if (!open) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -110,25 +198,27 @@ export function AddTransactionDialog({
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5 p-5">
-          <div>
-            <label className={labelClass}>Description</label>
-            <input
-              required
-              maxLength={150}
-              className={inputClass}
-              value={form.name}
-              onChange={(event) => updateField("name", event.target.value)}
-              placeholder="e.g. Grocery shopping"
-            />
-          </div>
+          {accounts.length === 0 && (
+            <p className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
+              You need an account before you can add a transaction. Create one
+              on the Accounts page first.
+            </p>
+          )}
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Transaction type</label>
+              <label htmlFor="transaction_type" className={labelClass}>
+                Transaction type
+              </label>
               <select
+                id="transaction_type"
                 className={inputClass}
-                value={form.type}
-                onChange={(event) => updateField("type", event.target.value)}
+                value={form.transaction_type}
+                onChange={(event) => {
+                  updateField("transaction_type", event.target.value);
+                  // The old category belongs to the other type.
+                  updateField("category_id", "");
+                }}
               >
                 <option value="expense">Expense</option>
                 <option value="income">Income</option>
@@ -136,12 +226,13 @@ export function AddTransactionDialog({
             </div>
 
             <div>
-              <label className={labelClass}>Amount (CAD)</label>
+              <label htmlFor="amount" className={labelClass}>
+                Amount
+              </label>
               <input
+                id="amount"
                 required
-                type="number"
-                min="0.01"
-                step="0.01"
+                inputMode="decimal"
                 className={inputClass}
                 value={form.amount}
                 onChange={(event) => updateField("amount", event.target.value)}
@@ -150,59 +241,128 @@ export function AddTransactionDialog({
             </div>
           </div>
 
-          {!isIncome && (
+          <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className={labelClass}>Category</label>
+              <label htmlFor="account_id" className={labelClass}>
+                Account
+              </label>
               <select
+                id="account_id"
                 className={inputClass}
-                value={form.category}
+                value={form.account_id}
                 onChange={(event) =>
-                  updateField("category", event.target.value)
+                  updateField("account_id", event.target.value)
                 }
               >
-                {[
-                  "Groceries",
-                  "Housing",
-                  "Transportation",
-                  "Dining",
-                  "Shopping",
-                  "Utilities",
-                  "Entertainment",
-                  "Other",
-                ].map((category) => (
-                  <option key={category} value={category}>
-                    {category}
+                {accounts.map((account) => (
+                  <option key={account.account_id} value={account.account_id}>
+                    {account.account_name}
                   </option>
                 ))}
               </select>
             </div>
-          )}
 
-          <div>
-            <label className={labelClass}>Account</label>
-            <select
-              className={inputClass}
-              value={form.account}
-              onChange={(event) => updateField("account", event.target.value)}
-            >
-              <option value="Everyday Checking">Everyday Checking</option>
-              <option value="High Interest Savings">
-                High Interest Savings
-              </option>
-              <option value="Visa Credit Card">Visa Credit Card</option>
-            </select>
+            <div>
+              <label htmlFor="category_id" className={labelClass}>
+                Category
+              </label>
+              <select
+                id="category_id"
+                className={inputClass}
+                value={form.category_id}
+                onChange={(event) =>
+                  updateField("category_id", event.target.value)
+                }
+              >
+                <option value="">Uncategorized</option>
+
+                {!hasCurrentCategory && (
+                  <option value={form.category_id}>
+                    {transaction?.category_name ?? "Archived category"}
+                  </option>
+                )}
+
+                {categoryOptions.map((category) => (
+                  <option
+                    key={category.category_id}
+                    value={category.category_id}
+                  >
+                    {category.category_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="transaction_date" className={labelClass}>
+                Transaction date
+              </label>
+              <input
+                id="transaction_date"
+                required
+                type="date"
+                className={inputClass}
+                value={form.transaction_date}
+                onChange={(event) =>
+                  updateField("transaction_date", event.target.value)
+                }
+              />
+            </div>
+
+            <div>
+              <label htmlFor="merchant" className={labelClass}>
+                Merchant
+              </label>
+              <input
+                id="merchant"
+                maxLength={150}
+                className={inputClass}
+                value={form.merchant}
+                onChange={(event) =>
+                  updateField("merchant", event.target.value)
+                }
+                placeholder="e.g. Metro"
+              />
+            </div>
           </div>
 
           <div>
-            <label className={labelClass}>Transaction date</label>
+            <label htmlFor="description" className={labelClass}>
+              Description
+            </label>
             <input
-              required
-              type="date"
+              id="description"
+              maxLength={255}
               className={inputClass}
-              value={form.date}
-              onChange={(event) => updateField("date", event.target.value)}
+              value={form.description}
+              onChange={(event) =>
+                updateField("description", event.target.value)
+              }
+              placeholder="e.g. Grocery shopping"
             />
           </div>
+
+          <div>
+            <label htmlFor="notes" className={labelClass}>
+              Notes
+            </label>
+            <textarea
+              id="notes"
+              rows={2}
+              className={inputClass}
+              value={form.notes}
+              onChange={(event) => updateField("notes", event.target.value)}
+              placeholder="Optional notes"
+            />
+          </div>
+
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
 
           {/* Footer */}
           <div className="flex justify-end gap-2 border-t border-border pt-4">
@@ -216,9 +376,14 @@ export function AddTransactionDialog({
 
             <button
               type="submit"
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              disabled={saving || accounts.length === 0}
+              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
             >
-              {isEditing ? "Save changes" : "Add transaction"}
+              {saving
+                ? "Saving..."
+                : isEditing
+                  ? "Save changes"
+                  : "Add transaction"}
             </button>
           </div>
         </form>
