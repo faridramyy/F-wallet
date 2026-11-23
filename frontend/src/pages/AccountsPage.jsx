@@ -90,7 +90,7 @@ export function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingArchived, setLoadingArchived] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [error, setError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -103,18 +103,19 @@ export function AccountsPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setLoadFailed(false);
 
     try {
       const response = await apiRequest("/accounts", auth);
 
       setAccounts(response.data.accounts || []);
     } catch (err) {
-      setError(err.message || "Unable to load accounts.");
+      setLoadFailed(true);
+      toast.error(err.message || "Unable to load accounts.");
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, toast]);
 
   const loadArchivedAccounts = useCallback(async () => {
     setLoadingArchived(true);
@@ -157,7 +158,8 @@ export function AccountsPage() {
     setEditingAccount(null);
   }
 
-  // Errors are thrown so the dialog can show them next to the form.
+  // The AccountDialog handles success and error notifications.
+  // Errors are rethrown so the dialog can handle them.
   async function handleSaveAccount(data) {
     if (editingAccount) {
       const response = await apiRequest(
@@ -176,8 +178,6 @@ export function AccountsPage() {
             : item,
         ),
       );
-
-      toast.success("Account updated.");
     } else {
       const response = await apiRequest("/accounts", auth, {
         method: "POST",
@@ -185,7 +185,6 @@ export function AccountsPage() {
       });
 
       setAccounts((current) => [...current, response.data.account]);
-      toast.success("Account created.");
     }
   }
 
@@ -272,6 +271,7 @@ export function AccountsPage() {
       ...reorderedActive,
       ...accounts.filter((item) => item.is_archived),
     ]);
+
     setSavingOrder(true);
 
     try {
@@ -289,7 +289,9 @@ export function AccountsPage() {
       toast.success("Account order saved.");
     } catch (err) {
       console.error("Failed to save account order:", err);
+
       setAccounts(previousAccounts);
+
       toast.error(err.message || "Failed to save account order.");
     } finally {
       setSavingOrder(false);
@@ -378,9 +380,11 @@ export function AccountsPage() {
             <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
               Loading accounts...
             </div>
-          ) : error ? (
+          ) : loadFailed ? (
             <div className="rounded-xl border border-border bg-card p-8 text-center">
-              <p className="text-sm text-destructive">{error}</p>
+              <p className="text-sm text-muted-foreground">
+                Accounts could not be loaded.
+              </p>
 
               <Button
                 variant="outline"

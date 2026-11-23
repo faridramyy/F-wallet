@@ -6,6 +6,8 @@ import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 
+import { useNotifications } from "../providers/useNotifications";
+
 const createInitialForm = (currency) => ({
   account_name: "",
   account_type: "checking",
@@ -24,7 +26,7 @@ function centsToInput(value) {
   try {
     const cents = BigInt(value ?? 0);
     const sign = cents < 0 ? "-" : "";
-    const absolute = cents < 0 ? -cents : cents;
+    const absolute = cents < 0n ? -cents : cents;
 
     const dollars = absolute / 100n;
     const remainder = String(absolute % 100n).padStart(2, "0");
@@ -35,7 +37,6 @@ function centsToInput(value) {
   }
 }
 
-// Same select styling as the category dialog.
 const selectClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground";
 
@@ -49,6 +50,33 @@ function Field({ id, label, hint, children }) {
   );
 }
 
+function getAccountForm(account, currency) {
+  return account
+    ? {
+        account_name: account.account_name || "",
+        account_type: account.account_type || "checking",
+        institution_name: account.institution_name || "",
+        currency: account.currency || currency,
+        opening_balance: centsToInput(account.opening_balance_cents),
+        credit_limit:
+          account.credit_limit_cents == null
+            ? ""
+            : centsToInput(account.credit_limit_cents),
+        card_last_four: account.card_last_four || "",
+        statement_closing_day:
+          account.statement_closing_day == null
+            ? ""
+            : String(account.statement_closing_day),
+        payment_due_day:
+          account.payment_due_day == null
+            ? ""
+            : String(account.payment_due_day),
+        include_in_net_worth: account.include_in_net_worth ?? true,
+        notes: account.notes || "",
+      }
+    : createInitialForm(currency);
+}
+
 export function AccountDialog({
   open,
   onClose,
@@ -56,40 +84,16 @@ export function AccountDialog({
   currency = "CAD",
   account = null,
 }) {
+  const { toast, confirm } = useNotifications();
+
   const [form, setForm] = useState(() => createInitialForm(currency));
+
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
 
-    setForm(
-      account
-        ? {
-            account_name: account.account_name || "",
-            account_type: account.account_type || "checking",
-            institution_name: account.institution_name || "",
-            currency: account.currency || currency,
-            opening_balance: centsToInput(account.opening_balance_cents),
-            credit_limit:
-              account.credit_limit_cents == null
-                ? ""
-                : centsToInput(account.credit_limit_cents),
-            card_last_four: account.card_last_four || "",
-            statement_closing_day:
-              account.statement_closing_day == null
-                ? ""
-                : String(account.statement_closing_day),
-            payment_due_day:
-              account.payment_due_day == null
-                ? ""
-                : String(account.payment_due_day),
-            include_in_net_worth: account.include_in_net_worth ?? true,
-            notes: account.notes || "",
-          }
-        : createInitialForm(currency),
-    );
-    setError("");
+    setForm(getAccountForm(account, currency));
   }, [open, account, currency]);
 
   if (!open) return null;
@@ -98,8 +102,35 @@ export function AccountDialog({
   const isEditing = Boolean(account);
 
   const updateField = (name, value) => {
-    setForm((current) => ({ ...current, [name]: value }));
-    setError("");
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
+  const handleClose = async () => {
+    if (saving) return;
+
+    const initialForm = getAccountForm(account, currency);
+
+    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
+
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Discard changes?",
+      description: "You have unsaved changes. Are you sure you want to close?",
+      confirmText: "Discard changes",
+      cancelText: "Keep editing",
+      variant: "destructive",
+    });
+
+    if (confirmed) {
+      onClose();
+    }
   };
 
   const handleSubmit = async (event) => {
@@ -108,7 +139,7 @@ export function AccountDialog({
     if (saving) return;
 
     if (!form.account_name.trim()) {
-      setError("Enter an account name.");
+      toast.error("Enter an account name.");
       return;
     }
 
@@ -119,7 +150,7 @@ export function AccountDialog({
       !Number.isFinite(openingBalance) ||
       !Number.isSafeInteger(openingBalanceCents)
     ) {
-      setError("Enter a valid opening balance.");
+      toast.error("Enter a valid opening balance.");
       return;
     }
 
@@ -133,12 +164,11 @@ export function AccountDialog({
         creditLimit < 0 ||
         !Number.isSafeInteger(creditLimitCents))
     ) {
-      setError("Enter a valid credit limit.");
+      toast.error("Enter a valid credit limit.");
       return;
     }
 
     setSaving(true);
-    setError("");
 
     try {
       await onSave({
@@ -147,25 +177,37 @@ export function AccountDialog({
         institution_name: form.institution_name.trim() || null,
         currency: form.currency,
         opening_balance_cents: openingBalanceCents,
+
         credit_limit_cents:
           isCreditCard && form.credit_limit !== "" ? creditLimitCents : null,
+
         card_last_four: isCreditCard
           ? form.card_last_four.trim() || null
           : null,
+
         statement_closing_day:
           isCreditCard && form.statement_closing_day
             ? Number(form.statement_closing_day)
             : null,
+
         payment_due_day:
           isCreditCard && form.payment_due_day
             ? Number(form.payment_due_day)
             : null,
+
         include_in_net_worth: form.include_in_net_worth,
         notes: form.notes.trim() || null,
       });
+
+      toast.success(
+        isEditing
+          ? "Account updated successfully."
+          : "Account created successfully.",
+      );
+
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save account.");
+      toast.error(err.message || "Unable to save account.");
     } finally {
       setSaving(false);
     }
@@ -175,7 +217,9 @@ export function AccountDialog({
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
       onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) onClose();
+        if (event.target === event.currentTarget && !saving) {
+          handleClose();
+        }
       }}
     >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card shadow-xl">
@@ -184,13 +228,15 @@ export function AccountDialog({
             <h2 className="text-lg font-semibold text-foreground">
               {isEditing ? "Edit account" : "New account"}
             </h2>
+
             <p className="mt-1 text-xs text-muted-foreground">
               Add a bank account, savings account, cash account, or credit card.
             </p>
           </div>
+
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={saving}
             className="rounded-lg p-2 text-muted-foreground hover:bg-muted disabled:opacity-50"
             aria-label="Close dialog"
@@ -282,6 +328,7 @@ export function AccountDialog({
                 <p className="text-sm font-semibold text-foreground">
                   Credit card details
                 </p>
+
                 <p className="mt-1 text-xs text-muted-foreground">
                   Add the card details used to track its credit limit and
                   billing cycle.
@@ -376,27 +423,23 @@ export function AccountDialog({
               <span className="block text-sm font-medium text-foreground">
                 Include in net worth
               </span>
+
               <span className="mt-1 block text-xs text-muted-foreground">
                 Include this account when calculating your total net worth.
               </span>
             </span>
           </label>
 
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
-
           <div className="flex justify-end gap-2 border-t border-border pt-4">
             <Button
               type="button"
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={saving}
             >
               Cancel
             </Button>
+
             <Button
               type="submit"
               disabled={!form.account_name.trim() || saving}

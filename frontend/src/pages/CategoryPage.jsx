@@ -95,9 +95,9 @@ function getOrderedCategories(categories, categoryType) {
   roots.forEach((category) => addCategory(category));
 
   // Include any remaining categories defensively.
-  [...filtered].sort(sortByDisplayOrder).forEach((category) => {
-    addCategory(category);
-  });
+  [...filtered]
+    .sort(sortByDisplayOrder)
+    .forEach((category) => addCategory(category));
 
   return result;
 }
@@ -177,8 +177,10 @@ export function CategoryPage() {
   const [selectedYear, setSelectedYear] = useState(
     String(new Date().getFullYear()),
   );
+
   const [budgetDialogOpen, setBudgetDialogOpen] = useState(false);
   const [editingBudget, setEditingBudget] = useState(null);
+
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState(null);
 
@@ -187,8 +189,8 @@ export function CategoryPage() {
   const [loadingBudgets, setLoadingBudgets] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
 
-  const [error, setError] = useState("");
-  const [budgetError, setBudgetError] = useState("");
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [budgetLoadFailed, setBudgetLoadFailed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -201,7 +203,7 @@ export function CategoryPage() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    setError("");
+    setLoadFailed(false);
 
     try {
       const [categoryResponse, accountResponse] = await Promise.all([
@@ -217,17 +219,19 @@ export function CategoryPage() {
         ),
       );
     } catch (err) {
-      setError(err.message || "Unable to load categories.");
+      setLoadFailed(true);
+      toast.error(err.message || "Unable to load categories.");
     } finally {
       setLoading(false);
     }
-  }, [auth]);
+  }, [auth, toast]);
 
   const loadArchivedCategories = useCallback(async () => {
     setLoadingArchived(true);
 
     try {
       const response = await apiRequest("/categories/archived", auth);
+
       setArchivedCategories(response.data.categories || []);
     } catch (err) {
       toast.error(err.message || "Unable to load archived categories.");
@@ -238,7 +242,7 @@ export function CategoryPage() {
 
   const loadBudgets = useCallback(async () => {
     setLoadingBudgets(true);
-    setBudgetError("");
+    setBudgetLoadFailed(false);
 
     try {
       const response = await apiRequest(
@@ -248,11 +252,12 @@ export function CategoryPage() {
 
       setBudgets(response.data.budgets || []);
     } catch (err) {
-      setBudgetError(err.message || "Unable to load budgets.");
+      setBudgetLoadFailed(true);
+      toast.error(err.message || "Unable to load budgets.");
     } finally {
       setLoadingBudgets(false);
     }
-  }, [auth, selectedYear]);
+  }, [auth, selectedYear, toast]);
 
   useEffect(() => {
     loadData();
@@ -291,6 +296,7 @@ export function CategoryPage() {
     setDialogOpen(true);
   }
 
+  // CategoryDialog handles its own success and error notifications.
   async function handleSaveCategory(data) {
     if (editingCategory) {
       const response = await apiRequest(
@@ -309,8 +315,6 @@ export function CategoryPage() {
             : item,
         ),
       );
-
-      toast.success("Category updated.");
     } else {
       const response = await apiRequest("/categories", auth, {
         method: "POST",
@@ -318,7 +322,6 @@ export function CategoryPage() {
       });
 
       setCategories((current) => [...current, response.data.category]);
-      toast.success("Category created.");
     }
   }
 
@@ -430,7 +433,9 @@ export function CategoryPage() {
       toast.success("Category order saved.");
     } catch (err) {
       console.error("Failed to save category order:", err);
+
       setCategories(previousCategories);
+
       toast.error(err.message || "Failed to save category order.");
     } finally {
       setSavingOrder(false);
@@ -447,21 +452,18 @@ export function CategoryPage() {
     setBudgetDialogOpen(true);
   }
 
+  // BudgetDialog handles its own success and error notifications.
   async function handleSaveBudget(data) {
     if (editingBudget) {
       await apiRequest(`/budgets/${editingBudget.budget_id}`, auth, {
         method: "PATCH",
         body: JSON.stringify(data),
       });
-
-      toast.success("Budget updated.");
     } else {
       await apiRequest("/budgets", auth, {
         method: "POST",
         body: JSON.stringify(data),
       });
-
-      toast.success("Monthly budget created.");
     }
 
     await loadBudgets();
@@ -507,6 +509,7 @@ export function CategoryPage() {
     setAllocationDialogOpen(true);
   }
 
+  // BudgetAllocationDialog handles its own success and error notifications.
   async function handleSaveAllocations(allocations) {
     if (!selectedBudget) return;
 
@@ -514,8 +517,6 @@ export function CategoryPage() {
       method: "PUT",
       body: JSON.stringify({ allocations }),
     });
-
-    toast.success("Budget allocations saved.");
 
     await loadBudgets();
   }
@@ -679,9 +680,11 @@ export function CategoryPage() {
                 <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
                   Loading categories...
                 </div>
-              ) : error ? (
+              ) : loadFailed ? (
                 <div className="rounded-xl border border-border bg-card p-8 text-center">
-                  <p className="text-sm text-destructive">{error}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Categories could not be loaded.
+                  </p>
 
                   <Button
                     variant="outline"
@@ -864,9 +867,11 @@ export function CategoryPage() {
             </Button>
           </div>
 
-          {budgetError && (
+          {budgetLoadFailed && (
             <div className="rounded-xl border border-border bg-card p-6 text-center">
-              <p className="text-sm text-destructive">{budgetError}</p>
+              <p className="text-sm text-muted-foreground">
+                Budgets could not be loaded.
+              </p>
 
               <Button
                 variant="outline"
@@ -883,7 +888,7 @@ export function CategoryPage() {
             <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
               Loading budgets...
             </div>
-          ) : !budgetError && sortedBudgets.length === 0 ? (
+          ) : !budgetLoadFailed && sortedBudgets.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
               <CalendarDays className="mx-auto size-8 text-muted-foreground" />
 
@@ -901,7 +906,7 @@ export function CategoryPage() {
               </Button>
             </div>
           ) : (
-            !budgetError && (
+            !budgetLoadFailed && (
               <div className="grid gap-4 md:grid-cols-2">
                 {sortedBudgets.map((budget) => (
                   <BudgetCard

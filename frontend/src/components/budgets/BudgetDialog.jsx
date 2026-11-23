@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
+import { useNotifications } from "../providers/useNotifications";
+
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
@@ -15,36 +17,34 @@ function getCurrentPeriod() {
   };
 }
 
-export function BudgetDialog({ open, budget = null, onClose, onSave }) {
-  const [form, setForm] = useState({
-    budget_year: String(getCurrentPeriod().budget_year),
-    budget_month: String(getCurrentPeriod().budget_month),
-    name: "",
-  });
+function getInitialForm(budget) {
+  if (budget) {
+    return {
+      budget_year: String(budget.budget_year),
+      budget_month: String(budget.budget_month),
+      name: budget.name || "",
+    };
+  }
 
+  const period = getCurrentPeriod();
+
+  return {
+    budget_year: String(period.budget_year),
+    budget_month: String(period.budget_month),
+    name: "",
+  };
+}
+
+export function BudgetDialog({ open, budget = null, onClose, onSave }) {
+  const { toast, confirm } = useNotifications();
+
+  const [form, setForm] = useState(() => getInitialForm(budget));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
 
-    if (budget) {
-      setForm({
-        budget_year: String(budget.budget_year),
-        budget_month: String(budget.budget_month),
-        name: budget.name || "",
-      });
-    } else {
-      const period = getCurrentPeriod();
-
-      setForm({
-        budget_year: String(period.budget_year),
-        budget_month: String(period.budget_month),
-        name: "",
-      });
-    }
-
-    setError("");
+    setForm(getInitialForm(budget));
   }, [open, budget]);
 
   if (!open) return null;
@@ -52,8 +52,36 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
   const isEditing = Boolean(budget);
 
   function updateField(field, value) {
-    setForm((current) => ({ ...current, [field]: value }));
-    setError("");
+    setForm((current) => ({
+      ...current,
+      [field]: value,
+    }));
+  }
+
+  async function handleClose() {
+    if (saving) return;
+
+    const initialForm = getInitialForm(budget);
+
+    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
+
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Discard changes?",
+      description:
+        "You have unsaved budget changes. Are you sure you want to close?",
+      confirmText: "Discard changes",
+      cancelText: "Keep editing",
+      variant: "destructive",
+    });
+
+    if (confirmed) {
+      onClose();
+    }
   }
 
   async function handleSubmit(event) {
@@ -65,18 +93,17 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
     const month = Number(form.budget_month);
 
     if (!Number.isInteger(year) || year < 2000 || year > 9999) {
-      setError("Enter a valid year between 2000 and 9999.");
+      toast.error("Enter a valid year between 2000 and 9999.");
       return;
     }
 
     if (!Number.isInteger(month) || month < 1 || month > 12) {
-      setError("Select a valid month.");
+      toast.error("Select a valid month.");
       return;
     }
 
     try {
       setSaving(true);
-      setError("");
 
       await onSave({
         budget_year: year,
@@ -84,9 +111,15 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
         name: form.name.trim() || null,
       });
 
+      toast.success(
+        isEditing
+          ? "Budget updated successfully."
+          : "Budget created successfully.",
+      );
+
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save budget.");
+      toast.error(err.message || "Unable to save budget.");
     } finally {
       setSaving(false);
     }
@@ -108,13 +141,21 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !saving) {
+          handleClose();
+        }
+      }}
+    >
       <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">
               {isEditing ? "Edit budget" : "Create monthly budget"}
             </h2>
+
             <p className="mt-1 text-sm text-muted-foreground">
               Set up a budget for a specific month.
             </p>
@@ -122,7 +163,7 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
 
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={saving}
             className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
             aria-label="Close dialog"
@@ -136,6 +177,7 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelClass}>Month</label>
+
                 <select
                   value={form.budget_month}
                   onChange={(event) =>
@@ -153,6 +195,7 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
 
               <div>
                 <label className={labelClass}>Year</label>
+
                 <input
                   type="number"
                   min="2000"
@@ -169,6 +212,7 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
 
             <div>
               <label className={labelClass}>Budget name (optional)</label>
+
               <input
                 type="text"
                 maxLength={100}
@@ -178,21 +222,12 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
                 className={inputClass}
               />
             </div>
-
-            {error && (
-              <p
-                role="alert"
-                className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-              >
-                {error}
-              </p>
-            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleClose}
               disabled={saving}
               className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
             >

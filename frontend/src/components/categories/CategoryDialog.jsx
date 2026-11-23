@@ -1,9 +1,12 @@
 import { useEffect, useState } from "react";
 import { X } from "lucide-react";
+
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
+
+import { useNotifications } from "../providers/useNotifications";
 
 const EMPTY_FORM = {
   category_name: "",
@@ -13,6 +16,18 @@ const EMPTY_FORM = {
   notes: "",
 };
 
+function getInitialForm(category) {
+  return category
+    ? {
+        category_name: category.category_name ?? "",
+        category_type: category.category_type ?? "expense",
+        parent_category_id: category.parent_category_id ?? "",
+        default_account_id: category.default_account_id ?? "",
+        notes: category.notes ?? "",
+      }
+    : { ...EMPTY_FORM };
+}
+
 export function CategoryDialog({
   open,
   category,
@@ -21,28 +36,20 @@ export function CategoryDialog({
   onClose,
   onSave,
 }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+  const { toast, confirm } = useNotifications();
+
+  const [form, setForm] = useState(() => getInitialForm(category));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!open) return;
 
-    setForm(
-      category
-        ? {
-            category_name: category.category_name ?? "",
-            category_type: category.category_type ?? "expense",
-            parent_category_id: category.parent_category_id ?? "",
-            default_account_id: category.default_account_id ?? "",
-            notes: category.notes ?? "",
-          }
-        : EMPTY_FORM,
-    );
-    setError("");
+    setForm(getInitialForm(category));
   }, [open, category]);
 
   if (!open) return null;
+
+  const isEditing = Boolean(category);
 
   const eligibleParents = categories.filter(
     (item) =>
@@ -51,20 +58,49 @@ export function CategoryDialog({
   );
 
   const updateField = (name, value) => {
-    setForm((current) => ({ ...current, [name]: value }));
-    setError("");
+    setForm((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
+  const handleClose = async () => {
+    if (saving) return;
+
+    const initialForm = getInitialForm(category);
+
+    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
+
+    if (!hasChanges) {
+      onClose();
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Discard changes?",
+      description:
+        "You have unsaved category changes. Are you sure you want to close?",
+      confirmText: "Discard changes",
+      cancelText: "Keep editing",
+      variant: "destructive",
+    });
+
+    if (confirmed) {
+      onClose();
+    }
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
 
+    if (saving) return;
+
     if (!form.category_name.trim()) {
-      setError("Enter a category name.");
+      toast.error("Enter a category name.");
       return;
     }
 
     setSaving(true);
-    setError("");
 
     try {
       await onSave({
@@ -74,30 +110,47 @@ export function CategoryDialog({
         default_account_id: form.default_account_id || null,
         notes: form.notes.trim() || null,
       });
+
+      toast.success(
+        isEditing
+          ? "Category updated successfully."
+          : "Category created successfully.",
+      );
+
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save category.");
+      toast.error(err.message || "Unable to save category.");
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !saving) {
+          handleClose();
+        }
+      }}
+    >
       <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
         <div className="flex items-center justify-between border-b border-border p-5">
           <div>
             <h2 className="text-lg font-semibold text-foreground">
-              {category ? "Edit category" : "New category"}
+              {isEditing ? "Edit category" : "New category"}
             </h2>
+
             <p className="mt-1 text-xs text-muted-foreground">
               Organize your income and expenses.
             </p>
           </div>
+
           <button
             type="button"
-            onClick={onClose}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted"
+            onClick={handleClose}
+            disabled={saving}
+            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted disabled:opacity-50"
             aria-label="Close dialog"
           >
             <X className="size-4" />
@@ -107,6 +160,7 @@ export function CategoryDialog({
         <form onSubmit={handleSubmit} className="space-y-4 p-5">
           <div className="space-y-2">
             <Label htmlFor="category_name">Category name</Label>
+
             <Input
               id="category_name"
               value={form.category_name}
@@ -121,12 +175,16 @@ export function CategoryDialog({
 
           <div className="space-y-2">
             <Label htmlFor="category_type">Category type</Label>
+
             <select
               id="category_type"
               value={form.category_type}
               onChange={(event) => {
-                updateField("category_type", event.target.value);
-                updateField("parent_category_id", "");
+                setForm((current) => ({
+                  ...current,
+                  category_type: event.target.value,
+                  parent_category_id: "",
+                }));
               }}
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
             >
@@ -137,6 +195,7 @@ export function CategoryDialog({
 
           <div className="space-y-2">
             <Label htmlFor="parent_category_id">Parent category</Label>
+
             <select
               id="parent_category_id"
               value={form.parent_category_id}
@@ -146,6 +205,7 @@ export function CategoryDialog({
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
             >
               <option value="">No parent (top-level)</option>
+
               {eligibleParents.map((item) => (
                 <option key={item.category_id} value={item.category_id}>
                   {item.category_name}
@@ -156,6 +216,7 @@ export function CategoryDialog({
 
           <div className="space-y-2">
             <Label htmlFor="default_account_id">Default account</Label>
+
             <select
               id="default_account_id"
               value={form.default_account_id}
@@ -165,6 +226,7 @@ export function CategoryDialog({
               className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
             >
               <option value="">No default account</option>
+
               {accounts.map((account) => (
                 <option key={account.account_id} value={account.account_id}>
                   {account.account_name}
@@ -175,6 +237,7 @@ export function CategoryDialog({
 
           <div className="space-y-2">
             <Label htmlFor="category_notes">Notes</Label>
+
             <Textarea
               id="category_notes"
               value={form.notes}
@@ -184,20 +247,20 @@ export function CategoryDialog({
             />
           </div>
 
-          {error && (
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-          )}
-
           <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button type="button" variant="outline" onClick={onClose}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              disabled={saving}
+            >
               Cancel
             </Button>
+
             <Button type="submit" disabled={saving}>
               {saving
                 ? "Saving..."
-                : category
+                : isEditing
                   ? "Save changes"
                   : "Create category"}
             </Button>
