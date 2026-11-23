@@ -1,23 +1,27 @@
-import { Card, CardContent } from "../ui/card";
-
-export function AccountSummary({ label, value, description, icon: Icon }) {
+// Stat tile. Same look as the tiles on the categories page.
+export function AccountSummary({
+  label,
+  value,
+  description,
+  icon: Icon,
+  valueClassName = "text-foreground",
+}) {
   return (
-    <Card className="rounded-xl border-border bg-card shadow-sm">
-      <CardContent className="flex items-start justify-between gap-4 p-5">
-        <div className="min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 text-muted-foreground">
+        {Icon && <Icon className="size-4" />}
+        <span className="text-xs">{label}</span>
+      </div>
 
-          <p className="mt-2 text-2xl font-bold tracking-tight tabular-nums text-foreground">
-            {value}
-          </p>
+      <p
+        className={`mt-2 text-2xl font-semibold tabular-nums ${valueClassName}`}
+      >
+        {value}
+      </p>
 
-          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
-        </div>
-
-        <div className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-          <Icon size={21} strokeWidth={1.8} />
-        </div>
-      </CardContent>
-    </Card>
+      {description && (
+        <p className="mt-1 text-xs text-muted-foreground">{description}</p>
+      )}
+    </div>
   );
 }

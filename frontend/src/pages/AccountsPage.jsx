@@ -17,15 +17,30 @@ import {
   useSortable,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Plus, Wallet } from "lucide-react";
+import {
+  Archive,
+  ArchiveRestore,
+  CreditCard,
+  Plus,
+  RefreshCw,
+  Wallet,
+} from "lucide-react";
 
+import { Button } from "../components/ui/button";
 import { AccountCard } from "../components/accounts/AccountCard";
 import { AccountDialog } from "../components/accounts/AccountDialog";
-import { AccountsSkeleton } from "../skeletons/AccountsSkeleton";
+import { AccountSummary } from "../components/accounts/AccountSummary";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
 
-function SortableAccountCard({ account, onEdit, onDelete, disabled }) {
+const TYPE_LABELS = {
+  checking: "Checking",
+  savings: "Savings",
+  credit_card: "Credit card",
+  cash: "Cash",
+};
+
+function SortableAccountCard({ account, onEdit, onArchive, disabled }) {
   const {
     attributes,
     listeners,
@@ -47,19 +62,16 @@ function SortableAccountCard({ account, onEdit, onDelete, disabled }) {
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <AccountCard
-        account={account}
-        onEdit={onEdit}
-        onDelete={onDelete}
-        isDragging={isDragging}
-        dragHandleProps={{
-          ...attributes,
-          ...listeners,
-          ref: setActivatorNodeRef,
-        }}
-      />
-    </div>
+    <AccountCard
+      account={account}
+      onEdit={onEdit}
+      onArchive={onArchive}
+      containerRef={setNodeRef}
+      dragHandleRef={setActivatorNodeRef}
+      dragHandleProps={{ ...attributes, ...listeners }}
+      style={style}
+      isDragging={isDragging}
+    />
   );
 }
 
@@ -68,106 +80,119 @@ export function AccountsPage() {
   const { toast, confirm } = useNotifications();
 
   const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
+  const [archivedAccounts, setArchivedAccounts] = useState([]);
+  const [activeTab, setActiveTab] = useState("active");
+
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [selectedAccount, setSelectedAccount] = useState(null);
+  const [editingAccount, setEditingAccount] = useState(null);
   const [activeDragAccount, setActiveDragAccount] = useState(null);
+
+  const [loading, setLoading] = useState(true);
+  const [loadingArchived, setLoadingArchived] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [error, setError] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
+      activationConstraint: { distance: 6 },
     }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
 
-  const loadAccounts = useCallback(async () => {
-    try {
-      setLoading(true);
-      setLoadError(false);
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    setError("");
 
+    try {
       const response = await apiRequest("/accounts", auth);
 
       setAccounts(response.data.accounts || []);
-    } catch (error) {
-      console.error("Failed to load accounts:", error);
-      setLoadError(true);
-      toast.error(error.message || "Failed to load your accounts.");
+    } catch (err) {
+      setError(err.message || "Unable to load accounts.");
     } finally {
       setLoading(false);
+    }
+  }, [auth]);
+
+  const loadArchivedAccounts = useCallback(async () => {
+    setLoadingArchived(true);
+
+    try {
+      const response = await apiRequest("/accounts/archived", auth);
+
+      setArchivedAccounts(response.data.accounts || []);
+    } catch (err) {
+      toast.error(err.message || "Unable to load archived accounts.");
+    } finally {
+      setLoadingArchived(false);
     }
   }, [auth, toast]);
 
   useEffect(() => {
-    loadAccounts();
-  }, [loadAccounts]);
+    loadData();
+  }, [loadData]);
 
-  function handleAddClick() {
-    setSelectedAccount(null);
+  useEffect(() => {
+    if (activeTab === "archived") {
+      loadArchivedAccounts();
+    }
+  }, [activeTab, loadArchivedAccounts]);
+
+  const activeAccounts = accounts.filter((account) => !account.is_archived);
+
+  function openCreateDialog() {
+    setEditingAccount(null);
     setDialogOpen(true);
   }
 
-  function handleEditClick(account) {
-    setSelectedAccount(account);
+  function openEditDialog(account) {
+    setEditingAccount(account);
     setDialogOpen(true);
   }
 
-  function handleCloseDialog() {
+  function closeDialog() {
     setDialogOpen(false);
-    setSelectedAccount(null);
+    setEditingAccount(null);
   }
 
-  async function handleSaveAccount(accountData) {
-    try {
-      if (selectedAccount) {
-        const response = await apiRequest(
-          `/accounts/${selectedAccount.account_id}`,
-          auth,
-          {
-            method: "PATCH",
-            body: JSON.stringify(accountData),
-          },
-        );
+  // Errors are thrown so the dialog can show them next to the form.
+  async function handleSaveAccount(data) {
+    if (editingAccount) {
+      const response = await apiRequest(
+        `/accounts/${editingAccount.account_id}`,
+        auth,
+        {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        },
+      );
 
-        const updatedAccount = response.data.account;
+      setAccounts((current) =>
+        current.map((item) =>
+          item.account_id === editingAccount.account_id
+            ? response.data.account
+            : item,
+        ),
+      );
 
-        setAccounts((current) =>
-          current.map((account) =>
-            account.account_id === updatedAccount.account_id
-              ? updatedAccount
-              : account,
-          ),
-        );
+      toast.success("Account updated.");
+    } else {
+      const response = await apiRequest("/accounts", auth, {
+        method: "POST",
+        body: JSON.stringify(data),
+      });
 
-        toast.success("Account updated successfully.");
-      } else {
-        const response = await apiRequest("/accounts", auth, {
-          method: "POST",
-          body: JSON.stringify(accountData),
-        });
-
-        const createdAccount = response.data.account;
-
-        setAccounts((current) => [...current, createdAccount]);
-
-        toast.success("Account created successfully.");
-      }
-    } catch (error) {
-      console.error("Failed to save account:", error);
-      toast.error(error.message || "Failed to save account.");
-      throw error;
+      setAccounts((current) => [...current, response.data.account]);
+      toast.success("Account created.");
     }
   }
 
-  async function handleDeleteAccount(account) {
+  async function handleArchiveAccount(account) {
     const confirmed = await confirm({
       title: "Archive account?",
-      description: `Are you sure you want to archive "${account.account_name}"? The account will be removed from your active accounts.`,
+      description: `Are you sure you want to archive "${account.account_name}"? It will no longer appear in your active accounts, and you can restore it from the Archived tab.`,
       confirmText: "Archive account",
       cancelText: "Cancel",
       variant: "destructive",
@@ -184,10 +209,29 @@ export function AccountsPage() {
         current.filter((item) => item.account_id !== account.account_id),
       );
 
-      toast.success("Account archived successfully.");
-    } catch (error) {
-      console.error("Failed to archive account:", error);
-      toast.error(error.message || "Failed to archive account.");
+      toast.success("Account archived.");
+    } catch (err) {
+      toast.error(err.message || "Unable to archive account.");
+    }
+  }
+
+  async function handleRestoreAccount(account) {
+    try {
+      const response = await apiRequest(
+        `/accounts/${account.account_id}/restore`,
+        auth,
+        { method: "POST" },
+      );
+
+      setArchivedAccounts((current) =>
+        current.filter((item) => item.account_id !== account.account_id),
+      );
+
+      setAccounts((current) => [...current, response.data.account]);
+
+      toast.success("Account restored.");
+    } catch (err) {
+      toast.error(err.message || "Unable to restore account.");
     }
   }
 
@@ -208,44 +252,33 @@ export function AccountsPage() {
 
     const { active, over } = event;
 
-    if (!over || active.id === over.id || savingOrder) {
-      return;
-    }
-
-    const activeAccounts = accounts.filter((account) => !account.is_archived);
+    if (!over || active.id === over.id || savingOrder) return;
 
     const oldIndex = activeAccounts.findIndex(
-      (account) => account.account_id === active.id,
+      (item) => item.account_id === active.id,
     );
 
     const newIndex = activeAccounts.findIndex(
-      (account) => account.account_id === over.id,
+      (item) => item.account_id === over.id,
     );
 
     if (oldIndex === -1 || newIndex === -1) return;
 
-    const reorderedActiveAccounts = arrayMove(
-      activeAccounts,
-      oldIndex,
-      newIndex,
-    );
-
-    const archivedAccounts = accounts.filter((account) => account.is_archived);
-
-    const reorderedAccounts = [...reorderedActiveAccounts, ...archivedAccounts];
-
     const previousAccounts = accounts;
+    const reorderedActive = arrayMove(activeAccounts, oldIndex, newIndex);
 
-    setAccounts(reorderedAccounts);
+    // Archived accounts keep their place at the end of the list.
+    setAccounts([
+      ...reorderedActive,
+      ...accounts.filter((item) => item.is_archived),
+    ]);
     setSavingOrder(true);
 
     try {
       const response = await apiRequest("/accounts/order", auth, {
         method: "PATCH",
         body: JSON.stringify({
-          account_ids: reorderedActiveAccounts.map(
-            (account) => account.account_id,
-          ),
+          account_ids: reorderedActive.map((item) => item.account_id),
         }),
       });
 
@@ -254,63 +287,128 @@ export function AccountsPage() {
       }
 
       toast.success("Account order saved.");
-    } catch (error) {
-      console.error("Failed to save account order:", error);
+    } catch (err) {
+      console.error("Failed to save account order:", err);
       setAccounts(previousAccounts);
-      toast.error(error.message || "Failed to save account order.");
+      toast.error(err.message || "Failed to save account order.");
     } finally {
       setSavingOrder(false);
     }
   }
 
-  const activeAccounts = accounts.filter((account) => !account.is_archived);
+  const creditCardCount = activeAccounts.filter(
+    (item) => item.account_type === "credit_card",
+  ).length;
+
+  const netWorthCount = activeAccounts.filter(
+    (item) => item.include_in_net_worth,
+  ).length;
 
   return (
-    <>
-      <div className="space-y-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">
-              {loading
-                ? "Loading your accounts..."
-                : `${activeAccounts.length} active ${
-                    activeAccounts.length === 1 ? "account" : "accounts"
-                  }`}
-            </h1>
+    <div className="space-y-6">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="text-xl font-semibold text-foreground">Accounts</h1>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Manage your bank accounts, savings, cash, and credit cards.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleAddClick}
-            className="inline-flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-sm transition hover:opacity-90"
-          >
-            <Plus size={17} />
-            Add account
-          </button>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage your bank accounts, savings, cash, and credit cards.
+          </p>
         </div>
 
-        <section className="space-y-4">
+        {activeTab === "active" && (
+          <Button onClick={openCreateDialog} className="gap-2">
+            <Plus className="size-4" />
+            New account
+          </Button>
+        )}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <AccountSummary
+          icon={Wallet}
+          label="Total accounts"
+          value={activeAccounts.length}
+        />
+
+        <AccountSummary
+          icon={CreditCard}
+          label="Credit cards"
+          value={creditCardCount}
+        />
+
+        <AccountSummary label="Included in net worth" value={netWorthCount} />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-b border-border">
+        <button
+          type="button"
+          onClick={() => setActiveTab("active")}
+          className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+            activeTab === "active"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          Active accounts
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setActiveTab("archived")}
+          className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
+            activeTab === "archived"
+              ? "border-primary text-foreground"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Archive className="size-4" />
+          Archived
+        </button>
+      </div>
+
+      {activeTab === "active" ? (
+        <>
+          {savingOrder && (
+            <span className="text-xs text-muted-foreground">
+              Saving order...
+            </span>
+          )}
+
           {loading ? (
-            <AccountsSkeleton />
-          ) : loadError ? (
-            <div className="flex min-h-56 flex-col items-center justify-center gap-4 rounded-xl border border-dashed border-border bg-card px-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                We couldn't load your accounts.
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Loading accounts...
+            </div>
+          ) : error ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center">
+              <p className="text-sm text-destructive">{error}</p>
+
+              <Button
+                variant="outline"
+                className="mt-4 gap-2"
+                onClick={loadData}
+              >
+                <RefreshCw className="size-4" />
+                Try again
+              </Button>
+            </div>
+          ) : activeAccounts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+              <Wallet className="mx-auto size-8 text-muted-foreground" />
+
+              <h3 className="mt-3 text-sm font-medium text-foreground">
+                No accounts yet
+              </h3>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add your first account to start organizing your finances.
               </p>
 
-              <button
-                type="button"
-                onClick={loadAccounts}
-                className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground transition hover:opacity-90"
-              >
-                Try again
-              </button>
+              <Button onClick={openCreateDialog} className="mt-4 gap-2">
+                <Plus className="size-4" />
+                Create account
+              </Button>
             </div>
-          ) : activeAccounts.length > 0 ? (
+          ) : (
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
@@ -319,77 +417,117 @@ export function AccountsPage() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext
-                items={activeAccounts.map((account) => account.account_id)}
+                items={activeAccounts.map((item) => item.account_id)}
                 strategy={rectSortingStrategy}
               >
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                   {activeAccounts.map((account) => (
                     <SortableAccountCard
                       key={account.account_id}
                       account={account}
-                      onEdit={handleEditClick}
-                      onDelete={handleDeleteAccount}
+                      onEdit={openEditDialog}
+                      onArchive={handleArchiveAccount}
                       disabled={savingOrder}
                     />
                   ))}
                 </div>
               </SortableContext>
 
-              <DragOverlay
-                dropAnimation={{
-                  duration: 220,
-                  easing: "cubic-bezier(0.18, 0.67, 0.6, 1.22)",
-                }}
-              >
+              <DragOverlay>
                 {activeDragAccount ? (
-                  <div className="rotate-2 scale-[1.02] cursor-grabbing shadow-2xl">
+                  <div className="rotate-1 shadow-xl">
                     <AccountCard
                       account={activeDragAccount}
                       onEdit={() => {}}
-                      onDelete={() => {}}
+                      onArchive={() => {}}
                       isDragging
-                      isOverlay
                     />
                   </div>
                 ) : null}
               </DragOverlay>
             </DndContext>
+          )}
+        </>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm text-muted-foreground">
+              Archived accounts can be restored here.
+            </p>
+
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={loadArchivedAccounts}
+              disabled={loadingArchived}
+            >
+              <RefreshCw
+                className={`size-3.5 ${loadingArchived ? "animate-spin" : ""}`}
+              />
+              Refresh
+            </Button>
+          </div>
+
+          {loadingArchived ? (
+            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
+              Loading archived accounts...
+            </div>
+          ) : archivedAccounts.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+              <Archive className="mx-auto size-8 text-muted-foreground" />
+
+              <h3 className="mt-3 text-sm font-medium text-foreground">
+                No archived accounts
+              </h3>
+
+              <p className="mt-1 text-xs text-muted-foreground">
+                Accounts you archive will appear here.
+              </p>
+            </div>
           ) : (
-            <div className="rounded-xl border border-dashed border-border bg-card">
-              <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-                <div className="flex size-12 items-center justify-center rounded-xl bg-muted text-muted-foreground">
-                  <Wallet size={23} />
+            archivedAccounts.map((account) => (
+              <div
+                key={account.account_id}
+                className="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-foreground">
+                    {account.account_name}
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {TYPE_LABELS[account.account_type] ?? account.account_type}
+                    {account.archived_at
+                      ? ` · Archived ${new Date(
+                          account.archived_at,
+                        ).toLocaleDateString()}`
+                      : ""}
+                  </p>
                 </div>
 
-                <h3 className="mt-4 font-semibold text-foreground">
-                  No accounts yet
-                </h3>
-
-                <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-                  Add your first account to start organizing your finances.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={handleAddClick}
-                  className="mt-5 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90"
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                  onClick={() => handleRestoreAccount(account)}
                 >
-                  <Plus size={16} />
-                  Add your first account
-                </button>
+                  <ArchiveRestore className="size-4" />
+                  Restore
+                </Button>
               </div>
-            </div>
+            ))
           )}
-        </section>
-      </div>
+        </div>
+      )}
 
       <AccountDialog
         open={dialogOpen}
-        onClose={handleCloseDialog}
-        onSave={handleSaveAccount}
+        account={editingAccount}
         currency="CAD"
-        account={selectedAccount}
+        onClose={closeDialog}
+        onSave={handleSaveAccount}
       />
-    </>
+    </div>
   );
 }

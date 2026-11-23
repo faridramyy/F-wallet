@@ -5,8 +5,6 @@ import { formatCurrency } from "../../lib/formatters";
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
 
-const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
-
 function centsToInput(value) {
   try {
     const cents = BigInt(value ?? 0);
@@ -49,12 +47,10 @@ export function BudgetAllocationDialog({
 
   const expenseCategories = useMemo(
     () =>
-      categories
-        .filter(
-          (category) =>
-            category.category_type === "expense" && !category.is_archived,
-        )
-        .sort((a, b) => a.category_name.localeCompare(b.category_name)),
+      categories.filter(
+        (category) =>
+          category.category_type === "expense" && !category.is_archived,
+      ),
     [categories],
   );
 

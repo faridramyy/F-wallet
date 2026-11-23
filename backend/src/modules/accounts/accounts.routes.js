@@ -6,10 +6,12 @@ import validate from "../../middleware/validate.js";
 
 import {
   getAccounts,
+  getArchivedAccounts,
   getAccount,
   createAccount,
   updateAccount,
   archiveAccount,
+  restoreAccount,
   reorderAccounts,
 } from "./accounts.controller.js";
 
@@ -23,14 +25,17 @@ import {
 const router = Router();
 
 router.use(authenticate, authenticateIdentity);
-
 router.get("/", getAccounts);
+router.get("/archived", getArchivedAccounts);
 router.post("/", validate(createAccountSchema), createAccount);
 
 // Register this BEFORE /:accountId.
 router.patch("/order", validate(reorderAccountsSchema), reorderAccounts);
 
 router.get("/:accountId", validate(accountIdSchema), getAccount);
+
+router.post("/:accountId/restore", validate(accountIdSchema), restoreAccount);
+
 router.patch("/:accountId", validate(updateAccountSchema), updateAccount);
 router.delete("/:accountId", validate(accountIdSchema), archiveAccount);
 

@@ -419,3 +419,81 @@ export const archiveAccount = async (req, res, next) => {
     next(error);
   }
 };
+
+// GET /api/v1/accounts/archived
+export const getArchivedAccounts = async (req, res, next) => {
+  try {
+    const result = await query(
+      `
+        SELECT ${accountColumns}
+        FROM public.accounts
+        WHERE user_id = $1
+          AND is_archived = TRUE
+        ORDER BY archived_at DESC, account_name ASC
+      `,
+      [req.user.sub],
+    );
+
+    res.status(200).json({
+      success: true,
+      data: {
+        accounts: result.rows,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// POST /api/v1/accounts/:accountId/restore
+export const restoreAccount = async (req, res, next) => {
+  try {
+    const { accountId } = req.validated.params;
+    const userId = req.user.sub;
+
+    const result = await transaction(async (client) => {
+      // The restored account goes to the end of the active list. Every
+      // account keeps a unique display_order, archived ones included.
+      const orderResult = await client.query(
+        `
+          SELECT COALESCE(MAX(display_order), -1) + 1 AS next_order
+          FROM public.accounts
+          WHERE user_id = $1
+        `,
+        [userId],
+      );
+
+      return client.query(
+        `
+          UPDATE public.accounts
+          SET
+            is_archived = FALSE,
+            archived_at = NULL,
+            display_order = $3,
+            updated_at = NOW()
+          WHERE account_id = $1
+            AND user_id = $2
+            AND is_archived = TRUE
+          RETURNING ${accountColumns}
+        `,
+        [accountId, userId, Number(orderResult.rows[0].next_order)],
+      );
+    });
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Archived account not found.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        account: result.rows[0],
+      },
+    });
+  } catch (error) {
+    handleControllerError(error, next);
+  }
+};
