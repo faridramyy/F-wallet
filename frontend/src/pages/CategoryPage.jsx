@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import {
   DndContext,
@@ -202,19 +202,12 @@ export function CategoryPage() {
   );
 
   // Display categories in database order and maintain hierarchy.
-  const visibleCategories = useMemo(
-    () => getOrderedCategories(categories, filter),
-    [categories, filter],
-  );
+  const visibleCategories = getOrderedCategories(categories, filter);
 
   // All budgets are already loaded; show the ones for the selected year.
-  const sortedBudgets = useMemo(
-    () =>
-      budgets
-        .filter((budget) => budget.budget_year === Number(selectedYear))
-        .sort((a, b) => a.budget_month - b.budget_month),
-    [budgets, selectedYear],
-  );
+  const sortedBudgets = budgets
+    .filter((budget) => budget.budget_year === Number(selectedYear))
+    .sort((a, b) => a.budget_month - b.budget_month);
 
   function openCreateDialog() {
     setEditingCategory(null);

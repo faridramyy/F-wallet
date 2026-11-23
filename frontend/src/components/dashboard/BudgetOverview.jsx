@@ -5,9 +5,9 @@ import { Progress } from "../ui/progress";
 import { useAppData } from "../providers/useAppData";
 import { formatCurrency, getCurrentYearMonth } from "../../lib/formatters";
 
-export function BudgetOverview({ transactions }) {
+export function BudgetOverview() {
   const navigate = useNavigate();
-  const { budgets, settings } = useAppData();
+  const { budgets, settings, transactions } = useAppData();
   const currency = settings?.currency ?? "CAD";
 
   const { year, month, prefix: thisMonth } = getCurrentYearMonth();

@@ -19,7 +19,6 @@ import { AppDataProvider } from "./components/providers/AppDataProvider";
 import { useAppData } from "./components/providers/useAppData";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { Button } from "./components/ui/button";
-import { useTransactions } from "./hooks/useTransactions";
 import { useTheme } from "./hooks/useTheme";
 import { navigation } from "./lib/navigation";
 
@@ -71,23 +70,12 @@ function AppShell() {
     setSettings,
     accounts,
     categories,
+    createTransaction,
+    updateTransaction,
     loading,
     error,
     reload,
   } = useAppData();
-
-  const {
-    transactions,
-    loading: transactionsLoading,
-    loadingMore,
-    hasMore,
-    error: transactionsError,
-    reload: reloadTransactions,
-    loadMore,
-    createTransaction,
-    updateTransaction,
-    deleteTransaction,
-  } = useTransactions();
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
@@ -163,23 +151,13 @@ function AppShell() {
             <Routes>
               <Route
                 path="/dashboard"
-                element={<DashboardPage transactions={transactions} />}
+                element={<DashboardPage />}
               />
 
               <Route
                 path="/transactions"
                 element={
-                  <TransactionsPage
-                    transactions={transactions}
-                    loading={transactionsLoading}
-                    loadingMore={loadingMore}
-                    hasMore={hasMore}
-                    error={transactionsError}
-                    onRetry={reloadTransactions}
-                    onLoadMore={loadMore}
-                    onEdit={handleEditTransaction}
-                    onDelete={deleteTransaction}
-                  />
+<TransactionsPage onEdit={handleEditTransaction} />
                 }
               />
 

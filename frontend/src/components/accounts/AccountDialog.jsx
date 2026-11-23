@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "../ui/button";
@@ -63,8 +63,7 @@ function getAccountForm(account, currency) {
     : createInitialForm(currency);
 }
 
-export function AccountDialog({
-  open,
+function AccountDialogContent({
   onClose,
   onSave,
   currency = "CAD",
@@ -72,17 +71,10 @@ export function AccountDialog({
 }) {
   const { toast, confirm } = useNotifications();
 
-  const [form, setForm] = useState(() => createInitialForm(currency));
+  const [form, setForm] = useState(() => getAccountForm(account, currency));
 
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-
-    setForm(getAccountForm(account, currency));
-  }, [open, account, currency]);
-
-  if (!open) return null;
 
   const isCreditCard = form.account_type === "credit_card";
   const isEditing = Boolean(account);
@@ -439,4 +431,12 @@ export function AccountDialog({
       </div>
     </div>
   );
+}
+
+// Mounted only while open, so every opening starts from a fresh form built
+// from the props (no effect needed to reset it).
+export function AccountDialog(props) {
+  if (!props.open) return null;
+
+  return <AccountDialogContent key={props.account?.account_id} {...props} />;
 }

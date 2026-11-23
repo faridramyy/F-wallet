@@ -1,12 +1,24 @@
-import { createContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+import { AppDataContext } from "./contexts";
 import { useAuth } from "react-oidc-context";
 
 import { apiRequest } from "../../lib/api";
 
-export const AppDataContext = createContext(null);
 
-// Loads everything the signed-in user owns with ONE request
-// (GET /bootstrap) and keeps it in state for the whole app.
+const TRANSACTIONS_PAGE_SIZE = 50;
+
+// Newest first. The API already sorts this way, but after a local add or edit
+// the order has to be restored.
+const sortTransactions = (list) =>
+  [...list].sort(
+    (a, b) =>
+      b.transaction_date.localeCompare(a.transaction_date) ||
+      b.created_at.localeCompare(a.created_at),
+  );
+
+// Loads everything the signed-in user owns (GET /bootstrap plus the first
+// page of GET /transactions, in parallel) and keeps it in state for the
+// whole app.
 //
 // Pages read the data with useAppData() instead of fetching it themselves.
 // After a create/update/delete, a page calls the matching setter so the
@@ -24,6 +36,10 @@ export function AppDataProvider({ children }) {
   const [categories, setCategories] = useState([]);
   const [archivedCategories, setArchivedCategories] = useState([]);
   const [budgets, setBudgets] = useState([]);
+  const [transactions, setTransactions] = useState([]);
+  const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
+  const [loadingMoreTransactions, setLoadingMoreTransactions] =
+    useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,10 +56,16 @@ export function AppDataProvider({ children }) {
 
     async function load() {
       try {
-        const response = await apiRequest("/bootstrap", auth);
+        const [bootstrap, transactionPage] = await Promise.all([
+          apiRequest("/bootstrap", auth),
+          apiRequest(
+            `/transactions?limit=${TRANSACTIONS_PAGE_SIZE}&offset=0`,
+            auth,
+          ),
+        ]);
         if (cancelled) return;
 
-        const data = response.data;
+        const data = bootstrap.data;
 
         setSettings(data.settings);
         setAccounts(data.accounts);
@@ -51,6 +73,10 @@ export function AppDataProvider({ children }) {
         setCategories(data.categories);
         setArchivedCategories(data.archived_categories);
         setBudgets(data.budgets);
+        setTransactions(transactionPage.data.transactions ?? []);
+        setHasMoreTransactions(
+          Boolean(transactionPage.data.pagination?.has_more),
+        );
       } catch (err) {
         if (cancelled) return;
 
@@ -80,6 +106,68 @@ export function AppDataProvider({ children }) {
     setReloadKey((key) => key + 1);
   };
 
+  const loadMoreTransactions = async () => {
+    setLoadingMoreTransactions(true);
+
+    try {
+      const response = await apiRequest(
+        `/transactions?limit=${TRANSACTIONS_PAGE_SIZE}&offset=${transactions.length}`,
+        auth,
+      );
+
+      setTransactions((current) => {
+        const known = new Set(current.map((item) => item.transaction_id));
+        const fresh = response.data.transactions.filter(
+          (item) => !known.has(item.transaction_id),
+        );
+
+        return sortTransactions([...current, ...fresh]);
+      });
+
+      setHasMoreTransactions(Boolean(response.data.pagination?.has_more));
+    } finally {
+      setLoadingMoreTransactions(false);
+    }
+  };
+
+  const createTransaction = async (body) => {
+    const response = await apiRequest("/transactions", auth, {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+
+    setTransactions((current) =>
+      sortTransactions([response.data.transaction, ...current]),
+    );
+  };
+
+  const updateTransaction = async (transactionId, changes) => {
+    const response = await apiRequest(`/transactions/${transactionId}`, auth, {
+      method: "PATCH",
+      body: JSON.stringify(changes),
+    });
+
+    setTransactions((current) =>
+      sortTransactions(
+        current.map((item) =>
+          item.transaction_id === transactionId
+            ? response.data.transaction
+            : item,
+        ),
+      ),
+    );
+  };
+
+  const deleteTransaction = async (transactionId) => {
+    await apiRequest(`/transactions/${transactionId}`, auth, {
+      method: "DELETE",
+    });
+
+    setTransactions((current) =>
+      current.filter((item) => item.transaction_id !== transactionId),
+    );
+  };
+
   const value = {
     settings,
     setSettings,
@@ -93,6 +181,13 @@ export function AppDataProvider({ children }) {
     setArchivedCategories,
     budgets,
     setBudgets,
+    transactions,
+    hasMoreTransactions,
+    loadingMoreTransactions,
+    loadMoreTransactions,
+    createTransaction,
+    updateTransaction,
+    deleteTransaction,
     loading,
     error,
     reload,

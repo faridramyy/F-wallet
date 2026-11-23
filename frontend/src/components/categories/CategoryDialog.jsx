@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 
 import { Button } from "../ui/button";
@@ -28,8 +28,7 @@ function getInitialForm(category) {
     : { ...EMPTY_FORM };
 }
 
-export function CategoryDialog({
-  open,
+function CategoryDialogContent({
   category,
   categories,
   accounts,
@@ -41,13 +40,6 @@ export function CategoryDialog({
   const [form, setForm] = useState(() => getInitialForm(category));
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-
-    setForm(getInitialForm(category));
-  }, [open, category]);
-
-  if (!open) return null;
 
   const isEditing = Boolean(category);
 
@@ -269,4 +261,12 @@ export function CategoryDialog({
       </div>
     </div>
   );
+}
+
+// Mounted only while open, so every opening starts from a fresh form built
+// from the props (no effect needed to reset it).
+export function CategoryDialog(props) {
+  if (!props.open) return null;
+
+  return <CategoryDialogContent key={props.category?.category_id} {...props} />;
 }

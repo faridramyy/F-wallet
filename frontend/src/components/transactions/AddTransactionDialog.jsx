@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { X } from "lucide-react";
 
 import { useNotifications } from "../providers/useNotifications";
@@ -22,8 +22,7 @@ const inputClass =
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
 
-export function AddTransactionDialog({
-  open,
+function AddTransactionDialogContent({
   onOpenChange,
   onSave,
   transaction = null,
@@ -32,36 +31,25 @@ export function AddTransactionDialog({
 }) {
   const { toast } = useNotifications();
 
-  const [form, setForm] = useState(() => blankForm(accounts));
+  const [form, setForm] = useState(() =>
+    transaction
+      ? {
+          transaction_type: transaction.transaction_type,
+          amount: centsToInput(transaction.amount_cents),
+          account_id: transaction.account_id ?? "",
+          category_id: transaction.category_id ?? "",
+          transaction_date: transaction.transaction_date,
+          description: transaction.description ?? "",
+          merchant: transaction.merchant ?? "",
+          notes: transaction.notes ?? "",
+        }
+      : blankForm(accounts),
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
   const isEditing = Boolean(transaction);
 
-  useEffect(() => {
-    if (!open) return;
-
-    setForm(
-      transaction
-        ? {
-            transaction_type: transaction.transaction_type,
-            amount: centsToInput(transaction.amount_cents),
-            account_id: transaction.account_id ?? "",
-            category_id: transaction.category_id ?? "",
-            transaction_date: transaction.transaction_date,
-            description: transaction.description ?? "",
-            merchant: transaction.merchant ?? "",
-            notes: transaction.notes ?? "",
-          }
-        : blankForm(accounts),
-    );
-    setError("");
-    // `accounts` is intentionally left out: it is only used to pick the
-    // default account when the dialog opens.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, transaction]);
-
-  if (!open) return null;
 
   // Income transactions can only use income categories, and vice versa.
   const categoryOptions = categories.filter(
@@ -373,5 +361,18 @@ export function AddTransactionDialog({
         </form>
       </div>
     </div>
+  );
+}
+
+// Mounted only while open, so every opening starts from a fresh form built
+// from the props (no effect needed to reset it).
+export function AddTransactionDialog(props) {
+  if (!props.open) return null;
+
+  return (
+    <AddTransactionDialogContent
+      key={props.transaction?.transaction_id ?? "new"}
+      {...props}
+    />
   );
 }

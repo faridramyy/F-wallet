@@ -1,4 +1,5 @@
-import { createContext, useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { NotificationContext } from "./contexts";
 import { toast, Toaster } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,13 +12,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-export const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
   const [confirmation, setConfirmation] = useState(null);
   const resolver = useRef(null);
 
-  const confirm = useCallback((options = {}) => {
+  const confirm = (options = {}) => {
     return new Promise((resolve) => {
       if (resolver.current) {
         resolver.current(false);
@@ -34,13 +34,13 @@ export function NotificationProvider({ children }) {
         variant: options.variant || "default",
       });
     });
-  }, []);
+  };
 
-  const closeConfirmation = useCallback((result) => {
+  const closeConfirmation = (result) => {
     resolver.current?.(result);
     resolver.current = null;
     setConfirmation(null);
-  }, []);
+  };
 
   return (
     <NotificationContext.Provider value={{ toast, confirm }}>

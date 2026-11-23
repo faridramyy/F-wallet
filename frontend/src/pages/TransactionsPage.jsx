@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Search } from "lucide-react";
 
 import {
@@ -12,30 +12,26 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { useNotifications } from "../components/providers/useNotifications";
+import { useAppData } from "../components/providers/useAppData";
 import { getTransactionTitle } from "../lib/formatters";
 
-export function TransactionsPage({
-  transactions,
-  loading,
-  loadingMore,
-  hasMore,
-  error,
-  onRetry,
-  onLoadMore,
-  onEdit,
-  onDelete,
-}) {
+export function TransactionsPage({ onEdit }) {
   const { toast, confirm } = useNotifications();
+  const {
+    transactions,
+    hasMoreTransactions: hasMore,
+    loadingMoreTransactions: loadingMore,
+    loadMoreTransactions,
+    deleteTransaction,
+  } = useAppData();
   const [search, setSearch] = useState("");
 
   // Note: this only searches the transactions already loaded (50 per page).
   // Searching the whole history would need a `search` query param on the API.
-  const filtered = useMemo(() => {
-    const term = search.trim().toLowerCase();
-
-    if (!term) return transactions;
-
-    return transactions.filter((transaction) =>
+  const term = search.trim().toLowerCase();
+  const filtered = !term
+    ? transactions
+    : transactions.filter((transaction) =>
       [
         transaction.description,
         transaction.merchant,
@@ -47,8 +43,7 @@ export function TransactionsPage({
         .join(" ")
         .toLowerCase()
         .includes(term),
-    );
-  }, [transactions, search]);
+      );
 
   async function handleDelete(transaction) {
     const confirmed = await confirm({
@@ -62,7 +57,7 @@ export function TransactionsPage({
     if (!confirmed) return;
 
     try {
-      await onDelete(transaction.transaction_id);
+      await deleteTransaction(transaction.transaction_id);
       toast.success("Transaction deleted.");
     } catch (err) {
       toast.error(err.message || "Unable to delete transaction.");
@@ -71,7 +66,7 @@ export function TransactionsPage({
 
   async function handleLoadMore() {
     try {
-      await onLoadMore();
+      await loadMoreTransactions();
     } catch (err) {
       toast.error(err.message || "Unable to load more transactions.");
     }
@@ -107,22 +102,7 @@ export function TransactionsPage({
       </CardHeader>
 
       <CardContent>
-        {loading ? (
-          <p className="py-12 text-center text-sm text-muted-foreground">
-            Loading transactions...
-          </p>
-        ) : error ? (
-          <div className="py-12 text-center">
-            <p className="text-sm text-destructive" role="alert">
-              {error}
-            </p>
-
-            <Button variant="outline" className="mt-4" onClick={onRetry}>
-              Try again
-            </Button>
-          </div>
-        ) : (
-          <>
+        <>
             <TransactionList
               transactions={filtered}
               onEdit={onEdit}
@@ -140,8 +120,7 @@ export function TransactionsPage({
                 </Button>
               </div>
             )}
-          </>
-        )}
+        </>
       </CardContent>
     </Card>
   );

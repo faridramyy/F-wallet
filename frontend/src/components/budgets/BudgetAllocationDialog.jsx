@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { X, Wallet } from "lucide-react";
 
 import {
@@ -23,8 +23,7 @@ function getInitialAmounts(budget) {
   return initialAmounts;
 }
 
-export function BudgetAllocationDialog({
-  open,
+function BudgetAllocationDialogContent({
   budget,
   categories,
   onClose,
@@ -32,25 +31,14 @@ export function BudgetAllocationDialog({
 }) {
   const { toast, confirm } = useNotifications();
 
-  const [amounts, setAmounts] = useState({});
+  const [amounts, setAmounts] = useState(() => getInitialAmounts(budget));
   const [saving, setSaving] = useState(false);
 
-  const expenseCategories = useMemo(
-    () =>
-      categories.filter(
-        (category) =>
-          category.category_type === "expense" && !category.is_archived,
-      ),
-    [categories],
+  const expenseCategories = categories.filter(
+    (category) =>
+      category.category_type === "expense" && !category.is_archived,
   );
 
-  useEffect(() => {
-    if (!open || !budget) return;
-
-    setAmounts(getInitialAmounts(budget));
-  }, [open, budget]);
-
-  if (!open || !budget) return null;
 
   function updateAmount(categoryId, value) {
     setAmounts((current) => ({
@@ -268,4 +256,12 @@ export function BudgetAllocationDialog({
       </div>
     </div>
   );
+}
+
+// Mounted only while open, so every opening starts from a fresh form built
+// from the props (no effect needed to reset it).
+export function BudgetAllocationDialog(props) {
+  if (!props.open || !props.budget) return null;
+
+  return <BudgetAllocationDialogContent key={props.budget?.budget_id} {...props} />;
 }

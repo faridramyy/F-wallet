@@ -3,8 +3,8 @@ import { Card, CardContent } from "../ui/card";
 import { formatCurrency, getCurrentYearMonth } from "../../lib/formatters";
 import { useAppData } from "../providers/useAppData";
 
-export function OverviewCards({ transactions }) {
-  const { accounts, settings } = useAppData();
+export function OverviewCards() {
+  const { accounts, settings, transactions } = useAppData();
   const currency = settings?.currency ?? "CAD";
 
   const { prefix: thisMonth } = getCurrentYearMonth();
