@@ -21,20 +21,18 @@ export const getSettings = async (req, res, next) => {
     // Ensure the authenticated user exists.
     await query(
       `
-        INSERT INTO public.app_users (
+        INSERT INTO f_wallet.users (
           user_id,
-          email,
-          created_at,
-          updated_at
+          email
         )
-        VALUES ($1, $2, NOW(), NOW())
+        VALUES ($1, $2)
         ON CONFLICT (user_id)
         DO UPDATE SET
           email = EXCLUDED.email,
           updated_at = CASE
-            WHEN public.app_users.email IS DISTINCT FROM EXCLUDED.email
-            THEN NOW()
-            ELSE public.app_users.updated_at
+            WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
+            THEN EXCLUDED.updated_at
+            ELSE f_wallet.users.updated_at
           END
       `,
       [req.user.sub, req.user.email],
@@ -43,12 +41,10 @@ export const getSettings = async (req, res, next) => {
     // Create settings using database defaults if they do not exist.
     await query(
       `
-        INSERT INTO public.app_settings (
-          user_id,
-          created_at,
-          updated_at
+        INSERT INTO f_wallet.user_settings (
+          user_id
         )
-        VALUES ($1, NOW(), NOW())
+        VALUES ($1)
         ON CONFLICT (user_id) DO NOTHING
       `,
       [req.user.sub],
@@ -57,7 +53,7 @@ export const getSettings = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${settingsColumns}
-        FROM public.app_settings
+        FROM f_wallet.user_settings
         WHERE user_id = $1
       `,
       [req.user.sub],
@@ -84,11 +80,11 @@ export const updateSettings = async (req, res, next) => {
       (field, index) => `${field} = $${index + 2}`,
     );
 
-    assignments.push("updated_at = NOW()");
+    assignments.push("updated_at = DEFAULT");
 
     const result = await query(
       `
-        UPDATE public.app_settings
+        UPDATE f_wallet.user_settings
         SET ${assignments.join(", ")}
         WHERE user_id = $1
         RETURNING ${settingsColumns}

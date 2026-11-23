@@ -43,7 +43,7 @@ const assertAccountUsable = async (run, userId, accountId) => {
   const result = await run(
     `
       SELECT account_id
-      FROM public.accounts
+      FROM f_wallet.accounts
       WHERE account_id = $1
         AND user_id = $2
         AND is_archived = FALSE
@@ -60,7 +60,7 @@ const assertCategoryUsable = async (run, userId, categoryId, type) => {
   const result = await run(
     `
       SELECT category_type, is_archived
-      FROM public.categories
+      FROM f_wallet.categories
       WHERE category_id = $1
         AND user_id = $2
     `,
@@ -102,8 +102,8 @@ const withEntries = async (run, userId, rows) => {
         a.account_name,
         e.entry_role,
         e.amount_cents
-      FROM public.transaction_entries AS e
-      JOIN public.accounts AS a
+      FROM f_wallet.transaction_entries AS e
+      JOIN f_wallet.accounts AS a
         ON a.account_id = e.account_id
        AND a.user_id = e.user_id
       WHERE e.user_id = $1
@@ -138,8 +138,8 @@ const findTransaction = async (run, userId, transactionId) => {
   const result = await run(
     `
       SELECT ${transactionColumns}
-      FROM public.transactions AS t
-      LEFT JOIN public.categories AS c
+      FROM f_wallet.transactions AS t
+      LEFT JOIN f_wallet.categories AS c
         ON c.category_id = t.category_id
        AND c.user_id = t.user_id
       WHERE t.transaction_id = $1
@@ -189,7 +189,7 @@ export const getTransactions = async (req, res, next) => {
       addCondition(
         `EXISTS (
           SELECT 1
-          FROM public.transaction_entries AS e
+          FROM f_wallet.transaction_entries AS e
           WHERE e.user_id = t.user_id
             AND e.transaction_id = t.transaction_id
             AND e.account_id = ?
@@ -205,8 +205,8 @@ export const getTransactions = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${transactionColumns}
-        FROM public.transactions AS t
-        LEFT JOIN public.categories AS c
+        FROM f_wallet.transactions AS t
+        LEFT JOIN f_wallet.categories AS c
           ON c.category_id = t.category_id
          AND c.user_id = t.user_id
         WHERE ${conditions.join(" AND ")}
@@ -285,7 +285,7 @@ export const createTransaction = async (req, res, next) => {
 
       await run(
         `
-          INSERT INTO public.transactions (
+          INSERT INTO f_wallet.transactions (
             transaction_id,
             user_id,
             category_id,
@@ -297,13 +297,11 @@ export const createTransaction = async (req, res, next) => {
             description,
             merchant,
             source,
-            notes,
-            created_at,
-            updated_at
+            notes
           )
           VALUES (
             $1, $2, $3, $4, 'posted', $5, $6::date, $6::date,
-            $7, $8, 'manual', $9, NOW(), NOW()
+            $7, $8, 'manual', $9
           )
         `,
         [
@@ -321,16 +319,15 @@ export const createTransaction = async (req, res, next) => {
 
       await run(
         `
-          INSERT INTO public.transaction_entries (
+          INSERT INTO f_wallet.transaction_entries (
             entry_id,
             user_id,
             transaction_id,
             account_id,
             entry_role,
-            amount_cents,
-            created_at
+            amount_cents
           )
-          VALUES ($1, $2, $3, $4, $5, $6, NOW())
+          VALUES ($1, $2, $3, $4, $5, $6)
         `,
         [
           randomUUID(),
@@ -414,7 +411,7 @@ export const updateTransaction = async (req, res, next) => {
 
       await run(
         `
-          UPDATE public.transactions
+          UPDATE f_wallet.transactions
           SET
             category_id = $3,
             transaction_type = $4,
@@ -424,7 +421,7 @@ export const updateTransaction = async (req, res, next) => {
             description = $7,
             merchant = $8,
             notes = $9,
-            updated_at = NOW()
+            updated_at = DEFAULT
           WHERE transaction_id = $1
             AND user_id = $2
             AND status <> 'deleted'
@@ -444,7 +441,7 @@ export const updateTransaction = async (req, res, next) => {
 
       await run(
         `
-          UPDATE public.transaction_entries
+          UPDATE f_wallet.transaction_entries
           SET
             account_id = $3,
             entry_role = $4,
@@ -484,7 +481,7 @@ export const deleteTransaction = async (req, res, next) => {
     const existing = await query(
       `
         SELECT transaction_type
-        FROM public.transactions
+        FROM f_wallet.transactions
         WHERE transaction_id = $1
           AND user_id = $2
           AND status <> 'deleted'
@@ -511,11 +508,11 @@ export const deleteTransaction = async (req, res, next) => {
 
     await query(
       `
-        UPDATE public.transactions
+        UPDATE f_wallet.transactions
         SET
           status = 'deleted',
           deleted_at = NOW(),
-          updated_at = NOW()
+          updated_at = DEFAULT
         WHERE transaction_id = $1
           AND user_id = $2
           AND status <> 'deleted'

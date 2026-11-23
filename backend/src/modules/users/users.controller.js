@@ -4,20 +4,18 @@ export const getCurrentUser = async (req, res, next) => {
   try {
     const result = await query(
       `
-        INSERT INTO public.app_users (
+        INSERT INTO f_wallet.users (
           user_id,
-          email,
-          created_at,
-          updated_at
+          email
         )
-        VALUES ($1, $2, NOW(), NOW())
+        VALUES ($1, $2)
         ON CONFLICT (user_id)
         DO UPDATE SET
           email = EXCLUDED.email,
           updated_at = CASE
-            WHEN public.app_users.email IS DISTINCT FROM EXCLUDED.email
-            THEN NOW()
-            ELSE public.app_users.updated_at
+            WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
+            THEN EXCLUDED.updated_at
+            ELSE f_wallet.users.updated_at
           END
         RETURNING
           user_id,

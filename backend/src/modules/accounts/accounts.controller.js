@@ -37,20 +37,18 @@ const createError = (message, statusCode) => {
 const ensureUserExists = async (user) => {
   await query(
     `
-      INSERT INTO public.app_users (
+      INSERT INTO f_wallet.users (
         user_id,
-        email,
-        created_at,
-        updated_at
+        email
       )
-      VALUES ($1, $2, NOW(), NOW())
+      VALUES ($1, $2)
       ON CONFLICT (user_id)
       DO UPDATE SET
         email = EXCLUDED.email,
         updated_at = CASE
-          WHEN public.app_users.email IS DISTINCT FROM EXCLUDED.email
-          THEN NOW()
-          ELSE public.app_users.updated_at
+          WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
+          THEN EXCLUDED.updated_at
+          ELSE f_wallet.users.updated_at
         END
     `,
     [user.sub, user.email],
@@ -73,7 +71,7 @@ export const getAccounts = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${accountColumns}
-        FROM public.accounts
+        FROM f_wallet.accounts
         WHERE user_id = $1
           AND is_archived = FALSE
         ORDER BY display_order ASC
@@ -100,7 +98,7 @@ export const getAccount = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${accountColumns}
-        FROM public.accounts
+        FROM f_wallet.accounts
         WHERE account_id = $1
           AND user_id = $2
           AND is_archived = FALSE
@@ -139,7 +137,7 @@ export const createAccount = async (req, res, next) => {
       const orderResult = await client.query(
         `
           SELECT COALESCE(MAX(display_order), -1) + 1 AS next_order
-          FROM public.accounts
+          FROM f_wallet.accounts
           WHERE user_id = $1
         `,
         [req.user.sub],
@@ -149,7 +147,7 @@ export const createAccount = async (req, res, next) => {
 
       return client.query(
         `
-          INSERT INTO public.accounts (
+          INSERT INTO f_wallet.accounts (
             account_id,
             user_id,
             account_name,
@@ -163,14 +161,11 @@ export const createAccount = async (req, res, next) => {
             payment_due_day,
             include_in_net_worth,
             notes,
-            display_order,
-            created_at,
-            updated_at
+            display_order
           )
           VALUES (
             $1, $2, $3, $4, $5, $6, $7,
-            $8, $9, $10, $11, $12, $13, $14,
-            NOW(), NOW()
+            $8, $9, $10, $11, $12, $13, $14
           )
           RETURNING ${accountColumns}
         `,
@@ -218,7 +213,7 @@ export const reorderAccounts = async (req, res, next) => {
       const existingResult = await client.query(
         `
           SELECT account_id
-          FROM public.accounts
+          FROM f_wallet.accounts
           WHERE user_id = $1
             AND is_archived = FALSE
         `,
@@ -239,27 +234,30 @@ export const reorderAccounts = async (req, res, next) => {
         );
       }
 
-      // Move existing positions out of the active range first.
-      // This avoids conflicts with the unique (user_id, display_order) index.
-      const offset = existingIds.length + accountIds.length + 1;
-
+      // Move active positions above every used position first (archived
+      // accounts keep theirs). This avoids conflicts with the unique
+      // (user_id, display_order) index while the new order is written.
       await client.query(
         `
-          UPDATE public.accounts
-          SET display_order = display_order + $2
+          UPDATE f_wallet.accounts
+          SET display_order = display_order + (
+            SELECT COALESCE(MAX(display_order), 0) + 1
+            FROM f_wallet.accounts
+            WHERE user_id = $1
+          )
           WHERE user_id = $1
             AND is_archived = FALSE
         `,
-        [userId, offset],
+        [userId],
       );
 
       for (let index = 0; index < accountIds.length; index += 1) {
         await client.query(
           `
-            UPDATE public.accounts
+            UPDATE f_wallet.accounts
             SET
               display_order = $3,
-              updated_at = NOW()
+              updated_at = DEFAULT
             WHERE account_id = $1
               AND user_id = $2
               AND is_archived = FALSE
@@ -272,7 +270,7 @@ export const reorderAccounts = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${accountColumns}
-        FROM public.accounts
+        FROM f_wallet.accounts
         WHERE user_id = $1
           AND is_archived = FALSE
         ORDER BY display_order ASC
@@ -300,7 +298,7 @@ export const updateAccount = async (req, res, next) => {
     const existingResult = await query(
       `
         SELECT ${accountColumns}
-        FROM public.accounts
+        FROM f_wallet.accounts
         WHERE account_id = $1
           AND user_id = $2
           AND is_archived = FALSE
@@ -349,11 +347,11 @@ export const updateAccount = async (req, res, next) => {
       }
     }
 
-    assignments.push("updated_at = NOW()");
+    assignments.push("updated_at = DEFAULT");
 
     const result = await query(
       `
-        UPDATE public.accounts
+        UPDATE f_wallet.accounts
         SET ${assignments.join(", ")}
         WHERE account_id = $1
           AND user_id = $2
@@ -388,11 +386,11 @@ export const archiveAccount = async (req, res, next) => {
 
     const result = await query(
       `
-        UPDATE public.accounts
+        UPDATE f_wallet.accounts
         SET
           is_archived = TRUE,
           archived_at = NOW(),
-          updated_at = NOW()
+          updated_at = DEFAULT
         WHERE account_id = $1
           AND user_id = $2
           AND is_archived = FALSE
@@ -425,7 +423,7 @@ export const getArchivedAccounts = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${accountColumns}
-        FROM public.accounts
+        FROM f_wallet.accounts
         WHERE user_id = $1
           AND is_archived = TRUE
         ORDER BY archived_at DESC, account_name ASC
@@ -456,7 +454,7 @@ export const restoreAccount = async (req, res, next) => {
       const orderResult = await client.query(
         `
           SELECT COALESCE(MAX(display_order), -1) + 1 AS next_order
-          FROM public.accounts
+          FROM f_wallet.accounts
           WHERE user_id = $1
         `,
         [userId],
@@ -464,12 +462,12 @@ export const restoreAccount = async (req, res, next) => {
 
       return client.query(
         `
-          UPDATE public.accounts
+          UPDATE f_wallet.accounts
           SET
             is_archived = FALSE,
             archived_at = NULL,
             display_order = $3,
-            updated_at = NOW()
+            updated_at = DEFAULT
           WHERE account_id = $1
             AND user_id = $2
             AND is_archived = TRUE

@@ -12,25 +12,23 @@ export const getBootstrap = async (req, res, next) => {
   try {
     const userId = req.user.sub;
 
-    // These two writes must run first and in this order: app_settings has a
-    // foreign key to app_users. They also make sure a brand-new user gets a
+    // These two writes must run first and in this order: user_settings has a
+    // foreign key to users. They also make sure a brand-new user gets a
     // user row and default settings on their very first request.
     const userResult = await query(
       `
-        INSERT INTO public.app_users (
+        INSERT INTO f_wallet.users (
           user_id,
-          email,
-          created_at,
-          updated_at
+          email
         )
-        VALUES ($1, $2, NOW(), NOW())
+        VALUES ($1, $2)
         ON CONFLICT (user_id)
         DO UPDATE SET
           email = EXCLUDED.email,
           updated_at = CASE
-            WHEN public.app_users.email IS DISTINCT FROM EXCLUDED.email
-            THEN NOW()
-            ELSE public.app_users.updated_at
+            WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
+            THEN EXCLUDED.updated_at
+            ELSE f_wallet.users.updated_at
           END
         RETURNING
           user_id,
@@ -43,12 +41,10 @@ export const getBootstrap = async (req, res, next) => {
 
     await query(
       `
-        INSERT INTO public.app_settings (
-          user_id,
-          created_at,
-          updated_at
+        INSERT INTO f_wallet.user_settings (
+          user_id
         )
-        VALUES ($1, NOW(), NOW())
+        VALUES ($1)
         ON CONFLICT (user_id) DO NOTHING
       `,
       [userId],
@@ -67,7 +63,7 @@ export const getBootstrap = async (req, res, next) => {
       query(
         `
           SELECT ${settingsColumns}
-          FROM public.app_settings
+          FROM f_wallet.user_settings
           WHERE user_id = $1
         `,
         [userId],
@@ -75,7 +71,7 @@ export const getBootstrap = async (req, res, next) => {
       query(
         `
           SELECT ${accountColumns}
-          FROM public.accounts
+          FROM f_wallet.accounts
           WHERE user_id = $1
             AND is_archived = FALSE
           ORDER BY display_order ASC
@@ -85,7 +81,7 @@ export const getBootstrap = async (req, res, next) => {
       query(
         `
           SELECT ${accountColumns}
-          FROM public.accounts
+          FROM f_wallet.accounts
           WHERE user_id = $1
             AND is_archived = TRUE
           ORDER BY archived_at DESC, account_name ASC
@@ -95,7 +91,7 @@ export const getBootstrap = async (req, res, next) => {
       query(
         `
           SELECT ${categoryColumns}
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE user_id = $1
             AND is_archived = FALSE
           ORDER BY display_order ASC, category_name ASC
@@ -105,7 +101,7 @@ export const getBootstrap = async (req, res, next) => {
       query(
         `
           SELECT ${categoryColumns}
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE user_id = $1
             AND is_archived = TRUE
           ORDER BY archived_at DESC, category_name ASC

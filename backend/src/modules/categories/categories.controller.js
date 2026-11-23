@@ -24,20 +24,18 @@ const createError = (message, statusCode) => {
 const ensureUserExists = async (user) => {
   await query(
     `
-      INSERT INTO public.app_users (
+      INSERT INTO f_wallet.users (
         user_id,
-        email,
-        created_at,
-        updated_at
+        email
       )
-      VALUES ($1, $2, NOW(), NOW())
+      VALUES ($1, $2)
       ON CONFLICT (user_id)
       DO UPDATE SET
         email = EXCLUDED.email,
         updated_at = CASE
-          WHEN public.app_users.email IS DISTINCT FROM EXCLUDED.email
-          THEN NOW()
-          ELSE public.app_users.updated_at
+          WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
+          THEN EXCLUDED.updated_at
+          ELSE f_wallet.users.updated_at
         END
     `,
     [user.sub, user.email],
@@ -92,7 +90,7 @@ const validateCategoryReferences = async (
             category_type,
             parent_category_id,
             is_archived
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE category_id = $1
             AND user_id = $2
         `,
@@ -128,7 +126,7 @@ const validateCategoryReferences = async (
     const accountResult = await client.query(
       `
         SELECT account_id
-        FROM public.accounts
+        FROM f_wallet.accounts
         WHERE account_id = $1
           AND user_id = $2
           AND is_archived = FALSE
@@ -148,7 +146,7 @@ export const getCategories = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${categoryColumns}
-        FROM public.categories
+        FROM f_wallet.categories
         WHERE user_id = $1
           AND is_archived = FALSE
         ORDER BY display_order ASC, category_name ASC
@@ -175,7 +173,7 @@ export const getCategory = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${categoryColumns}
-        FROM public.categories
+        FROM f_wallet.categories
         WHERE category_id = $1
           AND user_id = $2
           AND is_archived = FALSE
@@ -222,7 +220,7 @@ export const createCategory = async (req, res, next) => {
       const orderResult = await client.query(
         `
           SELECT COALESCE(MAX(display_order), -1) + 1 AS next_order
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE user_id = $1
         `,
         [userId],
@@ -232,7 +230,7 @@ export const createCategory = async (req, res, next) => {
 
       return client.query(
         `
-          INSERT INTO public.categories (
+          INSERT INTO f_wallet.categories (
             category_id,
             user_id,
             category_name,
@@ -240,11 +238,9 @@ export const createCategory = async (req, res, next) => {
             parent_category_id,
             default_account_id,
             display_order,
-            notes,
-            created_at,
-            updated_at
+            notes
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
           RETURNING ${categoryColumns}
         `,
         [
@@ -285,7 +281,7 @@ export const reorderCategories = async (req, res, next) => {
       const existingResult = await client.query(
         `
           SELECT category_id
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE user_id = $1
             AND is_archived = FALSE
         `,
@@ -309,10 +305,10 @@ export const reorderCategories = async (req, res, next) => {
       for (let index = 0; index < categoryIds.length; index += 1) {
         await client.query(
           `
-            UPDATE public.categories
+            UPDATE f_wallet.categories
             SET
               display_order = $3,
-              updated_at = NOW()
+              updated_at = DEFAULT
             WHERE category_id = $1
               AND user_id = $2
               AND is_archived = FALSE
@@ -325,7 +321,7 @@ export const reorderCategories = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${categoryColumns}
-        FROM public.categories
+        FROM f_wallet.categories
         WHERE user_id = $1
           AND is_archived = FALSE
         ORDER BY display_order ASC, category_name ASC
@@ -355,7 +351,7 @@ export const updateCategory = async (req, res, next) => {
       const existingResult = await client.query(
         `
           SELECT ${categoryColumns}
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE category_id = $1
             AND user_id = $2
             AND is_archived = FALSE
@@ -395,7 +391,7 @@ export const updateCategory = async (req, res, next) => {
         const childrenResult = await client.query(
           `
             SELECT category_id
-            FROM public.categories
+            FROM f_wallet.categories
             WHERE user_id = $1
               AND parent_category_id = $2
               AND category_type <> $3
@@ -419,11 +415,11 @@ export const updateCategory = async (req, res, next) => {
         return `${field} = $${index + 3}`;
       });
 
-      assignments.push("updated_at = NOW()");
+      assignments.push("updated_at = DEFAULT");
 
       return client.query(
         `
-          UPDATE public.categories
+          UPDATE f_wallet.categories
           SET ${assignments.join(", ")}
           WHERE category_id = $1
             AND user_id = $2
@@ -455,7 +451,7 @@ export const archiveCategory = async (req, res, next) => {
       const existingResult = await client.query(
         `
           SELECT category_id
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE category_id = $1
             AND user_id = $2
             AND is_archived = FALSE
@@ -470,7 +466,7 @@ export const archiveCategory = async (req, res, next) => {
       const childrenResult = await client.query(
         `
           SELECT category_id
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE user_id = $1
             AND parent_category_id = $2
             AND is_archived = FALSE
@@ -487,11 +483,11 @@ export const archiveCategory = async (req, res, next) => {
 
       return client.query(
         `
-          UPDATE public.categories
+          UPDATE f_wallet.categories
           SET
             is_archived = TRUE,
             archived_at = NOW(),
-            updated_at = NOW()
+            updated_at = DEFAULT
           WHERE category_id = $1
             AND user_id = $2
             AND is_archived = FALSE
@@ -532,7 +528,7 @@ export const restoreCategory = async (req, res, next) => {
             category_id,
             parent_category_id,
             category_type
-          FROM public.categories
+          FROM f_wallet.categories
           WHERE category_id = $1
             AND user_id = $2
             AND is_archived = TRUE
@@ -550,7 +546,7 @@ export const restoreCategory = async (req, res, next) => {
         const parentResult = await client.query(
           `
             SELECT category_id
-            FROM public.categories
+            FROM f_wallet.categories
             WHERE category_id = $1
               AND user_id = $2
               AND category_type = $3
@@ -569,11 +565,11 @@ export const restoreCategory = async (req, res, next) => {
 
       return client.query(
         `
-          UPDATE public.categories
+          UPDATE f_wallet.categories
           SET
             is_archived = FALSE,
             archived_at = NULL,
-            updated_at = NOW()
+            updated_at = DEFAULT
           WHERE category_id = $1
             AND user_id = $2
             AND is_archived = TRUE
@@ -607,7 +603,7 @@ export const getArchivedCategories = async (req, res, next) => {
     const result = await query(
       `
         SELECT ${categoryColumns}
-        FROM public.categories
+        FROM f_wallet.categories
         WHERE user_id = $1
           AND is_archived = TRUE
         ORDER BY archived_at DESC, category_name ASC

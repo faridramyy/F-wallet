@@ -19,20 +19,18 @@ const createError = (message, statusCode) => {
 const ensureUserExists = async (user) => {
   await query(
     `
-      INSERT INTO public.app_users (
+      INSERT INTO f_wallet.users (
         user_id,
-        email,
-        created_at,
-        updated_at
+        email
       )
-      VALUES ($1, $2, NOW(), NOW())
+      VALUES ($1, $2)
       ON CONFLICT (user_id)
       DO UPDATE SET
         email = EXCLUDED.email,
         updated_at = CASE
-          WHEN public.app_users.email IS DISTINCT FROM EXCLUDED.email
-          THEN NOW()
-          ELSE public.app_users.updated_at
+          WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
+          THEN EXCLUDED.updated_at
+          ELSE f_wallet.users.updated_at
         END
     `,
     [user.sub, user.email],
@@ -65,11 +63,11 @@ const getBudgetWithAllocations = async (client, userId, budgetId) => {
         c.category_name,
         c.category_type,
         c.is_archived AS category_is_archived
-      FROM public.budgets b
-      LEFT JOIN public.budget_categories bc
+      FROM f_wallet.budgets b
+      LEFT JOIN f_wallet.budget_categories bc
         ON bc.budget_id = b.budget_id
         AND bc.user_id = b.user_id
-      LEFT JOIN public.categories c
+      LEFT JOIN f_wallet.categories c
         ON c.category_id = bc.category_id
         AND c.user_id = bc.user_id
       WHERE b.budget_id = $1
@@ -133,11 +131,11 @@ export const fetchBudgets = async (userId, year) => {
         c.category_name,
         c.category_type,
         c.is_archived AS category_is_archived
-      FROM public.budgets b
-      LEFT JOIN public.budget_categories bc
+      FROM f_wallet.budgets b
+      LEFT JOIN f_wallet.budget_categories bc
         ON bc.budget_id = b.budget_id
         AND bc.user_id = b.user_id
-      LEFT JOIN public.categories c
+      LEFT JOIN f_wallet.categories c
         ON c.category_id = bc.category_id
         AND c.user_id = bc.user_id
       WHERE b.user_id = $1
@@ -234,16 +232,14 @@ export const createBudget = async (req, res, next) => {
 
     const result = await query(
       `
-        INSERT INTO public.budgets (
+        INSERT INTO f_wallet.budgets (
           budget_id,
           user_id,
           budget_year,
           budget_month,
-          name,
-          created_at,
-          updated_at
+          name
         )
-        VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5)
         RETURNING ${budgetColumns}
       `,
       [budgetId, req.user.sub, budget_year, budget_month, name ?? null],
@@ -281,11 +277,11 @@ export const updateBudget = async (req, res, next) => {
       }
     }
 
-    assignments.push("updated_at = NOW()");
+    assignments.push("updated_at = DEFAULT");
 
     const result = await query(
       `
-        UPDATE public.budgets
+        UPDATE f_wallet.budgets
         SET ${assignments.join(", ")}
         WHERE budget_id = $1
           AND user_id = $2
@@ -326,7 +322,7 @@ export const replaceBudgetAllocations = async (req, res, next) => {
       const budgetResult = await client.query(
         `
           SELECT budget_id
-          FROM public.budgets
+          FROM f_wallet.budgets
           WHERE budget_id = $1
             AND user_id = $2
         `,
@@ -349,7 +345,7 @@ export const replaceBudgetAllocations = async (req, res, next) => {
         const categoryResult = await client.query(
           `
             SELECT category_id
-            FROM public.categories
+            FROM f_wallet.categories
             WHERE user_id = $1
               AND is_archived = FALSE
               AND category_type = 'expense'
@@ -368,7 +364,7 @@ export const replaceBudgetAllocations = async (req, res, next) => {
 
       await client.query(
         `
-          DELETE FROM public.budget_categories
+          DELETE FROM f_wallet.budget_categories
           WHERE budget_id = $1
             AND user_id = $2
         `,
@@ -378,16 +374,14 @@ export const replaceBudgetAllocations = async (req, res, next) => {
       for (const allocation of allocations) {
         await client.query(
           `
-            INSERT INTO public.budget_categories (
+            INSERT INTO f_wallet.budget_categories (
               budget_category_id,
               user_id,
               budget_id,
               category_id,
-              allocated_cents,
-              created_at,
-              updated_at
+              allocated_cents
             )
-            VALUES ($1, $2, $3, $4, $5, NOW(), NOW())
+            VALUES ($1, $2, $3, $4, $5)
           `,
           [
             randomUUID(),
@@ -424,7 +418,7 @@ export const deleteBudget = async (req, res, next) => {
       const budgetResult = await client.query(
         `
           SELECT budget_id
-          FROM public.budgets
+          FROM f_wallet.budgets
           WHERE budget_id = $1
             AND user_id = $2
         `,
@@ -437,7 +431,7 @@ export const deleteBudget = async (req, res, next) => {
 
       await client.query(
         `
-          DELETE FROM public.budget_categories
+          DELETE FROM f_wallet.budget_categories
           WHERE budget_id = $1
             AND user_id = $2
         `,
@@ -446,7 +440,7 @@ export const deleteBudget = async (req, res, next) => {
 
       await client.query(
         `
-          DELETE FROM public.budgets
+          DELETE FROM f_wallet.budgets
           WHERE budget_id = $1
             AND user_id = $2
         `,
