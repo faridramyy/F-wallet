@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import query from "../../database/query.js";
-import transaction from "../../database/transaction.js";
+import { query, transaction } from "../../database/db.js";
 
 // `::text` makes Postgres send dates as "2026-11-22". Without it the pg driver
 // turns a DATE into a JavaScript Date, and JSON.stringify then shifts it by the

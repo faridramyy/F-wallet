@@ -1,11 +1,21 @@
 import app from "./app.js";
 import env from "./config/env.js";
-import pool from "./database/pool.js";
+import { checkConnection, closePool } from "./database/db.js";
 
 const server = app.listen(env.port, () => {
   console.log(
     `F-Wallet API running in ${env.nodeEnv} mode on port ${env.port}`,
   );
+
+  checkConnection()
+    .then(({ user, database, latencyMs }) =>
+      console.log(
+        `Database connected as '${user}' to '${database}' (${latencyMs} ms)`,
+      ),
+    )
+    .catch((error) => {
+      console.error(`Database connection failed: ${error.message}`);
+    });
 });
 
 let isShuttingDown = false;
@@ -26,7 +36,7 @@ const shutdown = (signal) => {
     }
 
     try {
-      await pool.end();
+      await closePool();
       console.log("Database connection pool closed.");
     } catch (poolError) {
       console.error("Error closing database pool:", poolError);

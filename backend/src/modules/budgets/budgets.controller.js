@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
-import query from "../../database/query.js";
-import transaction from "../../database/transaction.js";
+import { query, transaction } from "../../database/db.js";
 
 const budgetColumns = `
   budget_id,

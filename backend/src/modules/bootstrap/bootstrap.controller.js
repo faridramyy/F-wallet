@@ -1,4 +1,4 @@
-import query from "../../database/query.js";
+import { query } from "../../database/db.js";
 import { accountColumns } from "../accounts/accounts.controller.js";
 import { categoryColumns } from "../categories/categories.controller.js";
 import { settingsColumns } from "../settings/settings.controller.js";

@@ -1,4 +1,4 @@
-import query from "../../database/query.js";
+import { checkConnection } from "../../database/db.js";
 
 export const getHealth = (req, res) => {
   res.status(200).json({
@@ -10,20 +10,22 @@ export const getHealth = (req, res) => {
 
 export const getDatabaseHealth = async (req, res, next) => {
   try {
-    const result = await query(`
-      SELECT
-        current_database() AS database,
-        current_user AS user
-    `);
+    const { database, user, latencyMs } = await checkConnection();
 
     res.status(200).json({
       status: "ok",
       message: "Database connection is healthy",
-      database: result.rows[0].database,
-      user: result.rows[0].user,
+      database,
+      user,
+      latencyMs,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
-    next(error);
+    res.status(503).json({
+      status: "error",
+      message: "Database connection failed",
+      timestamp: new Date().toISOString(),
+    });
+    console.error("[db] Health check failed:", error.message);
   }
 };

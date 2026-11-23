@@ -1,4 +1,4 @@
-import query from "../../database/query.js";
+import { query } from "../../database/db.js";
 
 export const settingsColumns = `
   currency,
