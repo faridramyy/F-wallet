@@ -1,6 +1,6 @@
 import query from "../../database/query.js";
 
-const settingsColumns = `
+export const settingsColumns = `
   currency,
   timezone,
   date_format,

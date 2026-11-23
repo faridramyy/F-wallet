@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import query from "../../database/query.js";
 import transaction from "../../database/transaction.js";
 
-const accountColumns = `
+export const accountColumns = `
   account_id,
   account_name,
   account_type,

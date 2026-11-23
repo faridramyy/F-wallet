@@ -11,11 +11,11 @@ export function DashboardPage({
 }) {
   return (
     <div className="space-y-7">
-      <OverviewCards />
+      <OverviewCards transactions={transactions} />
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <AccountsOverview onViewAll={onViewAccounts} />
-        <BudgetOverview onManage={onViewBudgets} />
+        <BudgetOverview transactions={transactions} onManage={onViewBudgets} />
       </section>
 
       <RecentTransactions

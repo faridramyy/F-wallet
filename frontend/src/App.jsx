@@ -21,8 +21,10 @@ import { SettingsPage } from "./pages/SettingsPage";
 import LoginPage from "./pages/LoginPage";
 
 import { NotificationProvider } from "./components/providers/NotificationProvider";
+import { AppDataProvider } from "./components/providers/AppDataProvider";
+import { useAppData } from "./components/providers/useAppData";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
-import { useSettings } from "./hooks/useSettings";
+import { Button } from "./components/ui/button";
 import { useTransactions } from "./hooks/useTransactions";
 import { useTheme } from "./hooks/useTheme";
 import { navigation } from "./lib/navigation";
@@ -39,16 +41,39 @@ function LoadingScreen({ message }) {
   );
 }
 
-export default function App() {
-  const auth = useAuth();
+function LoadErrorScreen({ message, onRetry }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-background text-foreground">
+      <div className="text-center">
+        <p className="text-sm text-muted-foreground">
+          We couldn't load your data.
+        </p>
+
+        {message && (
+          <p className="mt-1 text-xs text-muted-foreground">{message}</p>
+        )}
+
+        <Button variant="outline" className="mt-4" onClick={onRetry}>
+          Try again
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Signed-out screens have no saved theme yet, so they follow the OS setting.
+function SystemTheme({ children }) {
+  useTheme("system");
+
+  return children;
+}
+
+// Everything the user sees after signing in. It is rendered inside
+// AppDataProvider, which has already started loading all of the user's data.
+function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
-  const {
-    settings,
-    setSettings,
-    loading: settingsLoading,
-    reload: reloadSettings,
-  } = useSettings();
+  const { settings, setSettings, loading, error, reload } = useAppData();
 
   const {
     transactions,
@@ -65,8 +90,6 @@ export default function App() {
     deleteTransaction,
   } = useTransactions();
 
-  // The one dialog is used for both adding and editing. `editingTransaction`
-  // is null when adding.
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -80,35 +103,32 @@ export default function App() {
     navigation.find((item) => item.path === location.pathname)?.label ??
     "Dashboard";
 
-  const openAddDialog = () => {
+  const handleOpenAddDialog = () => {
     setEditingTransaction(null);
     setAddDialogOpen(true);
   };
 
-  const openEditDialog = (transaction) => {
+  const handleEditTransaction = (transaction) => {
     setEditingTransaction(transaction);
     setAddDialogOpen(true);
   };
 
-  // Errors are thrown on purpose: the dialog catches them and shows them.
-  const handleSaveTransaction = async (data) => {
+  const handleSaveTransaction = async (body) => {
     if (editingTransaction) {
-      await updateTransaction(editingTransaction.transaction_id, data);
+      await updateTransaction(editingTransaction.transaction_id, body);
     } else {
-      await createTransaction(data);
+      await createTransaction(body);
     }
   };
 
-  if (auth.isLoading) {
-    return <LoadingScreen message="Connecting to AWS Cognito..." />;
+  // Nothing renders until all of the user's data has arrived, so pages never
+  // have to show their own loading states.
+  if (loading) {
+    return <LoadingScreen message="Loading your data..." />;
   }
 
-  if (!auth.isAuthenticated) {
-    return <LoginPage />;
-  }
-
-  if (settingsLoading) {
-    return <LoadingScreen message="Loading your settings..." />;
+  if (error) {
+    return <LoadErrorScreen message={error} onRetry={reload} />;
   }
 
   return (
@@ -135,7 +155,10 @@ export default function App() {
             sidebarOpen ? "md:pl-62" : "md:pl-19"
           }`}
         >
-          <AppHeader title={title} onAddTransaction={openAddDialog} />
+          <AppHeader
+            title={title}
+            onAddTransaction={handleOpenAddDialog}
+          />
 
           <div className="mx-auto w-full max-w-[1600px] p-5 pb-28 sm:p-8 sm:pb-28 md:pb-8 lg:p-10">
             <Routes>
@@ -162,7 +185,7 @@ export default function App() {
                     error={transactionsError}
                     onRetry={reloadTransactions}
                     onLoadMore={loadMore}
-                    onEdit={openEditDialog}
+                    onEdit={handleEditTransaction}
                     onDelete={deleteTransaction}
                   />
                 }
@@ -179,7 +202,7 @@ export default function App() {
                     settings={settings}
                     onSaved={setSettings}
                     onThemePreview={setThemePreview}
-                    onRetry={reloadSettings}
+                    onRetry={reload}
                   />
                 }
               />
@@ -191,7 +214,10 @@ export default function App() {
 
         <AddTransactionDialog
           open={addDialogOpen}
-          onOpenChange={setAddDialogOpen}
+          onOpenChange={(open) => {
+            setAddDialogOpen(open);
+            if (!open) setEditingTransaction(null);
+          }}
           onSave={handleSaveTransaction}
           transaction={editingTransaction}
           accounts={accounts}
@@ -199,5 +225,33 @@ export default function App() {
         />
       </div>
     </NotificationProvider>
+  );
+}
+
+export default function App() {
+  const auth = useAuth();
+
+  if (auth.isLoading) {
+    return (
+      <SystemTheme>
+        <LoadingScreen message="Connecting to AWS Cognito..." />
+      </SystemTheme>
+    );
+  }
+
+  if (!auth.isAuthenticated) {
+    return (
+      <SystemTheme>
+        <LoginPage />
+      </SystemTheme>
+    );
+  }
+
+  // The provider is mounted only while signed in, so it fetches the user's
+  // data once per sign-in and drops it on sign-out.
+  return (
+    <AppDataProvider>
+      <AppShell />
+    </AppDataProvider>
   );
 }

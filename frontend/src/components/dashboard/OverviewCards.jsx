@@ -1,35 +1,58 @@
 import { ArrowUpRight, Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
 import { formatCurrency } from "../../lib/formatters";
+import { useAppData } from "../providers/useAppData";
 
-const overview = [
-  {
-    label: "Total balance",
-    amount: 23440.5,
-    note: "Across your accounts",
-    icon: Wallet,
-    iconClass: "bg-muted text-muted-foreground",
-    amountClass: "text-card-foreground",
-  },
-  {
-    label: "Monthly income",
-    amount: 5250,
-    note: "Income received this month",
-    icon: TrendingUp,
-    iconClass: "bg-chart-1/10 text-chart-1",
-    amountClass: "text-chart-1",
-  },
-  {
-    label: "Monthly expenses",
-    amount: 1842.65,
-    note: "Expenses recorded this month",
-    icon: TrendingDown,
-    iconClass: "bg-chart-5/10 text-chart-5",
-    amountClass: "text-card-foreground",
-  },
-];
+export function OverviewCards({ transactions }) {
+  const { accounts, settings } = useAppData();
+  const currency = settings?.currency ?? "CAD";
 
-export function OverviewCards() {
+  const now = new Date();
+  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+  const totalBalance = accounts
+    .filter((a) => a.include_in_net_worth)
+    .reduce((sum, a) => sum + Number(a.opening_balance_cents ?? 0) / 100, 0);
+
+  const thisMonthTransactions = transactions.filter((t) =>
+    t.transaction_date?.startsWith(thisMonth),
+  );
+
+  const monthlyIncome = thisMonthTransactions
+    .filter((t) => t.transaction_type === "income")
+    .reduce((sum, t) => sum + Number(t.amount_cents ?? 0) / 100, 0);
+
+  const monthlyExpenses = thisMonthTransactions
+    .filter((t) => t.transaction_type === "expense")
+    .reduce((sum, t) => sum + Number(t.amount_cents ?? 0) / 100, 0);
+
+  const overview = [
+    {
+      label: "Total balance",
+      amount: totalBalance,
+      note: "Across your accounts",
+      icon: Wallet,
+      iconClass: "bg-muted text-muted-foreground",
+      amountClass: "text-card-foreground",
+    },
+    {
+      label: "Monthly income",
+      amount: monthlyIncome,
+      note: "Income received this month",
+      icon: TrendingUp,
+      iconClass: "bg-chart-1/10 text-chart-1",
+      amountClass: "text-chart-1",
+    },
+    {
+      label: "Monthly expenses",
+      amount: monthlyExpenses,
+      note: "Expenses recorded this month",
+      icon: TrendingDown,
+      iconClass: "bg-chart-5/10 text-chart-5",
+      amountClass: "text-card-foreground",
+    },
+  ];
+
   return (
     <section className="grid gap-4 md:grid-cols-3">
       {overview.map(
@@ -50,7 +73,7 @@ export function OverviewCards() {
               <p
                 className={`mt-4 text-2xl font-bold tracking-tight ${amountClass}`}
               >
-                {formatCurrency(amount)}
+                {formatCurrency(amount, currency)}
               </p>
 
               <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">

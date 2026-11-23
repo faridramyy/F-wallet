@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import {
   DndContext,
@@ -22,7 +22,6 @@ import {
   ArchiveRestore,
   CreditCard,
   Plus,
-  RefreshCw,
   Wallet,
 } from "lucide-react";
 
@@ -32,6 +31,7 @@ import { AccountDialog } from "../components/accounts/AccountDialog";
 import { AccountSummary } from "../components/accounts/AccountSummary";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
+import { useAppData } from "../components/providers/useAppData";
 
 const TYPE_LABELS = {
   checking: "Checking",
@@ -79,18 +79,17 @@ export function AccountsPage() {
   const auth = useAuth();
   const { toast, confirm } = useNotifications();
 
-  const [accounts, setAccounts] = useState([]);
-  const [archivedAccounts, setArchivedAccounts] = useState([]);
+  // Loaded once after sign-in (see AppDataProvider); no fetching in this page.
+  const { accounts, setAccounts, archivedAccounts, setArchivedAccounts } =
+    useAppData();
+
   const [activeTab, setActiveTab] = useState("active");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [activeDragAccount, setActiveDragAccount] = useState(null);
 
-  const [loading, setLoading] = useState(true);
-  const [loadingArchived, setLoadingArchived] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
-  const [loadFailed, setLoadFailed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -100,46 +99,6 @@ export function AccountsPage() {
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setLoadFailed(false);
-
-    try {
-      const response = await apiRequest("/accounts", auth);
-
-      setAccounts(response.data.accounts || []);
-    } catch (err) {
-      setLoadFailed(true);
-      toast.error(err.message || "Unable to load accounts.");
-    } finally {
-      setLoading(false);
-    }
-  }, [auth, toast]);
-
-  const loadArchivedAccounts = useCallback(async () => {
-    setLoadingArchived(true);
-
-    try {
-      const response = await apiRequest("/accounts/archived", auth);
-
-      setArchivedAccounts(response.data.accounts || []);
-    } catch (err) {
-      toast.error(err.message || "Unable to load archived accounts.");
-    } finally {
-      setLoadingArchived(false);
-    }
-  }, [auth, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    if (activeTab === "archived") {
-      loadArchivedAccounts();
-    }
-  }, [activeTab, loadArchivedAccounts]);
 
   const activeAccounts = accounts.filter((account) => !account.is_archived);
 
@@ -200,13 +159,16 @@ export function AccountsPage() {
     if (!confirmed) return;
 
     try {
-      await apiRequest(`/accounts/${account.account_id}`, auth, {
+      const response = await apiRequest(`/accounts/${account.account_id}`, auth, {
         method: "DELETE",
       });
 
       setAccounts((current) =>
         current.filter((item) => item.account_id !== account.account_id),
       );
+
+      // Newest archived first, matching the order the server returns.
+      setArchivedAccounts((current) => [response.data.account, ...current]);
 
       toast.success("Account archived.");
     } catch (err) {
@@ -376,26 +338,7 @@ export function AccountsPage() {
             </span>
           )}
 
-          {loading ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              Loading accounts...
-            </div>
-          ) : loadFailed ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                Accounts could not be loaded.
-              </p>
-
-              <Button
-                variant="outline"
-                className="mt-4 gap-2"
-                onClick={loadData}
-              >
-                <RefreshCw className="size-4" />
-                Try again
-              </Button>
-            </div>
-          ) : activeAccounts.length === 0 ? (
+          {activeAccounts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
               <Wallet className="mx-auto size-8 text-muted-foreground" />
 
@@ -454,30 +397,11 @@ export function AccountsPage() {
         </>
       ) : (
         <div className="space-y-3">
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm text-muted-foreground">
-              Archived accounts can be restored here.
-            </p>
+          <p className="text-sm text-muted-foreground">
+            Archived accounts can be restored here.
+          </p>
 
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={loadArchivedAccounts}
-              disabled={loadingArchived}
-            >
-              <RefreshCw
-                className={`size-3.5 ${loadingArchived ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
-          </div>
-
-          {loadingArchived ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              Loading archived accounts...
-            </div>
-          ) : archivedAccounts.length === 0 ? (
+          {archivedAccounts.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
               <Archive className="mx-auto size-8 text-muted-foreground" />
 

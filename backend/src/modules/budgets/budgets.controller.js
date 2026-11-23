@@ -108,83 +108,89 @@ const getBudgetWithAllocations = async (client, userId, budgetId) => {
   };
 };
 
+// Shared by GET /api/v1/budgets and GET /api/v1/bootstrap.
+// Returns every budget (optionally for one year) with its allocations.
+export const fetchBudgets = async (userId, year) => {
+  const params = [userId];
+  let yearCondition = "";
+
+  if (year !== undefined) {
+    params.push(year);
+    yearCondition = "AND b.budget_year = $2";
+  }
+
+  const result = await query(
+    `
+      SELECT
+        b.budget_id,
+        b.budget_year,
+        b.budget_month,
+        b.name,
+        b.created_at,
+        b.updated_at,
+        bc.budget_category_id,
+        bc.category_id,
+        bc.allocated_cents,
+        c.category_name,
+        c.category_type,
+        c.is_archived AS category_is_archived
+      FROM public.budgets b
+      LEFT JOIN public.budget_categories bc
+        ON bc.budget_id = b.budget_id
+        AND bc.user_id = b.user_id
+      LEFT JOIN public.categories c
+        ON c.category_id = bc.category_id
+        AND c.user_id = bc.user_id
+      WHERE b.user_id = $1
+        ${yearCondition}
+      ORDER BY
+        b.budget_year DESC,
+        b.budget_month DESC,
+        c.category_name ASC
+    `,
+    params,
+  );
+
+  const budgetsMap = new Map();
+
+  for (const row of result.rows) {
+    if (!budgetsMap.has(row.budget_id)) {
+      budgetsMap.set(row.budget_id, {
+        budget_id: row.budget_id,
+        budget_year: row.budget_year,
+        budget_month: row.budget_month,
+        name: row.name,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        allocations: [],
+      });
+    }
+
+    if (row.budget_category_id !== null) {
+      budgetsMap.get(row.budget_id).allocations.push({
+        budget_category_id: row.budget_category_id,
+        category_id: row.category_id,
+        category_name: row.category_name,
+        category_type: row.category_type,
+        category_is_archived: row.category_is_archived,
+        allocated_cents: row.allocated_cents,
+      });
+    }
+  }
+
+  return Array.from(budgetsMap.values());
+};
+
 // GET /api/v1/budgets
 export const getBudgets = async (req, res, next) => {
   try {
     const { year } = req.validated.query;
 
-    const params = [req.user.sub];
-    let yearCondition = "";
-
-    if (year !== undefined) {
-      params.push(year);
-      yearCondition = "AND b.budget_year = $2";
-    }
-
-    const result = await query(
-      `
-        SELECT
-          b.budget_id,
-          b.budget_year,
-          b.budget_month,
-          b.name,
-          b.created_at,
-          b.updated_at,
-          bc.budget_category_id,
-          bc.category_id,
-          bc.allocated_cents,
-          c.category_name,
-          c.category_type,
-          c.is_archived AS category_is_archived
-        FROM public.budgets b
-        LEFT JOIN public.budget_categories bc
-          ON bc.budget_id = b.budget_id
-          AND bc.user_id = b.user_id
-        LEFT JOIN public.categories c
-          ON c.category_id = bc.category_id
-          AND c.user_id = bc.user_id
-        WHERE b.user_id = $1
-          ${yearCondition}
-        ORDER BY
-          b.budget_year DESC,
-          b.budget_month DESC,
-          c.category_name ASC
-      `,
-      params,
-    );
-
-    const budgetsMap = new Map();
-
-    for (const row of result.rows) {
-      if (!budgetsMap.has(row.budget_id)) {
-        budgetsMap.set(row.budget_id, {
-          budget_id: row.budget_id,
-          budget_year: row.budget_year,
-          budget_month: row.budget_month,
-          name: row.name,
-          created_at: row.created_at,
-          updated_at: row.updated_at,
-          allocations: [],
-        });
-      }
-
-      if (row.budget_category_id !== null) {
-        budgetsMap.get(row.budget_id).allocations.push({
-          budget_category_id: row.budget_category_id,
-          category_id: row.category_id,
-          category_name: row.category_name,
-          category_type: row.category_type,
-          category_is_archived: row.category_is_archived,
-          allocated_cents: row.allocated_cents,
-        });
-      }
-    }
+    const budgets = await fetchBudgets(req.user.sub, year);
 
     res.status(200).json({
       success: true,
-      data: {
-        budgets: Array.from(budgetsMap.values()),
-      },
+      data: { budgets },
     });
   } catch (error) {
     next(error);

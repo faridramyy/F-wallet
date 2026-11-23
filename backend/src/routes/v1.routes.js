@@ -7,6 +7,7 @@ import accountsRoutes from "../modules/accounts/accounts.routes.js";
 import categoriesRoutes from "../modules/categories/categories.routes.js";
 import budgetsRoutes from "../modules/budgets/budgets.routes.js";
 import transactionsRoutes from "../modules/transactions/transactions.routes.js";
+import bootstrapRoutes from "../modules/bootstrap/bootstrap.routes.js";
 
 const router = Router();
 
@@ -17,5 +18,6 @@ router.use("/accounts", accountsRoutes);
 router.use("/categories", categoriesRoutes);
 router.use("/budgets", budgetsRoutes);
 router.use("/transactions", transactionsRoutes);
+router.use("/bootstrap", bootstrapRoutes);
 
 export default router;

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import {
   DndContext,
@@ -23,7 +23,6 @@ import {
   CalendarDays,
   Plus,
   Wallet,
-  RefreshCw,
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -34,6 +33,7 @@ import { BudgetAllocationDialog } from "../components/budgets/BudgetAllocationDi
 import { BudgetCard } from "../components/budgets/BudgetCard";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
+import { useAppData } from "../components/providers/useAppData";
 
 // Sort categories by their database display_order.
 function sortByDisplayOrder(a, b) {
@@ -159,9 +159,16 @@ export function CategoryPage() {
   const auth = useAuth();
   const { toast, confirm } = useNotifications();
 
-  const [categories, setCategories] = useState([]);
-  const [accounts, setAccounts] = useState([]);
-  const [archivedCategories, setArchivedCategories] = useState([]);
+  // Loaded once after sign-in (see AppDataProvider); no fetching in this page.
+  const {
+    categories,
+    setCategories,
+    archivedCategories,
+    setArchivedCategories,
+    accounts,
+    budgets,
+    setBudgets,
+  } = useAppData();
 
   const [mainTab, setMainTab] = useState("categories");
   const [activeTab, setActiveTab] = useState("active");
@@ -173,7 +180,6 @@ export function CategoryPage() {
   const [editingCategory, setEditingCategory] = useState(null);
   const [activeDragCategory, setActiveDragCategory] = useState(null);
 
-  const [budgets, setBudgets] = useState([]);
   const [selectedYear, setSelectedYear] = useState(
     String(new Date().getFullYear()),
   );
@@ -184,13 +190,7 @@ export function CategoryPage() {
   const [allocationDialogOpen, setAllocationDialogOpen] = useState(false);
   const [selectedBudget, setSelectedBudget] = useState(null);
 
-  const [loading, setLoading] = useState(true);
-  const [loadingArchived, setLoadingArchived] = useState(false);
-  const [loadingBudgets, setLoadingBudgets] = useState(false);
   const [savingOrder, setSavingOrder] = useState(false);
-
-  const [loadFailed, setLoadFailed] = useState(false);
-  const [budgetLoadFailed, setBudgetLoadFailed] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -201,89 +201,19 @@ export function CategoryPage() {
     }),
   );
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setLoadFailed(false);
-
-    try {
-      const [categoryResponse, accountResponse] = await Promise.all([
-        apiRequest("/categories", auth),
-        apiRequest("/accounts", auth),
-      ]);
-
-      setCategories(categoryResponse.data.categories || []);
-
-      setAccounts(
-        (accountResponse.data.accounts || []).filter(
-          (account) => !account.is_archived,
-        ),
-      );
-    } catch (err) {
-      setLoadFailed(true);
-      toast.error(err.message || "Unable to load categories.");
-    } finally {
-      setLoading(false);
-    }
-  }, [auth, toast]);
-
-  const loadArchivedCategories = useCallback(async () => {
-    setLoadingArchived(true);
-
-    try {
-      const response = await apiRequest("/categories/archived", auth);
-
-      setArchivedCategories(response.data.categories || []);
-    } catch (err) {
-      toast.error(err.message || "Unable to load archived categories.");
-    } finally {
-      setLoadingArchived(false);
-    }
-  }, [auth, toast]);
-
-  const loadBudgets = useCallback(async () => {
-    setLoadingBudgets(true);
-    setBudgetLoadFailed(false);
-
-    try {
-      const response = await apiRequest(
-        `/budgets?year=${encodeURIComponent(selectedYear)}`,
-        auth,
-      );
-
-      setBudgets(response.data.budgets || []);
-    } catch (err) {
-      setBudgetLoadFailed(true);
-      toast.error(err.message || "Unable to load budgets.");
-    } finally {
-      setLoadingBudgets(false);
-    }
-  }, [auth, selectedYear, toast]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    if (mainTab === "categories" && activeTab === "archived") {
-      loadArchivedCategories();
-    }
-  }, [mainTab, activeTab, loadArchivedCategories]);
-
-  useEffect(() => {
-    if (mainTab === "budgets") {
-      loadBudgets();
-    }
-  }, [mainTab, loadBudgets]);
-
   // Display categories in database order and maintain hierarchy.
   const visibleCategories = useMemo(
     () => getOrderedCategories(categories, filter),
     [categories, filter],
   );
 
+  // All budgets are already loaded; show the ones for the selected year.
   const sortedBudgets = useMemo(
-    () => [...budgets].sort((a, b) => a.budget_month - b.budget_month),
-    [budgets],
+    () =>
+      budgets
+        .filter((budget) => budget.budget_year === Number(selectedYear))
+        .sort((a, b) => a.budget_month - b.budget_month),
+    [budgets, selectedYear],
   );
 
   function openCreateDialog() {
@@ -337,13 +267,18 @@ export function CategoryPage() {
     if (!confirmed) return;
 
     try {
-      await apiRequest(`/categories/${category.category_id}`, auth, {
-        method: "DELETE",
-      });
+      const response = await apiRequest(
+        `/categories/${category.category_id}`,
+        auth,
+        { method: "DELETE" },
+      );
 
       setCategories((current) =>
         current.filter((item) => item.category_id !== category.category_id),
       );
+
+      // Newest archived first, matching the order the server returns.
+      setArchivedCategories((current) => [response.data.category, ...current]);
 
       toast.success("Category archived.");
     } catch (err) {
@@ -455,18 +390,30 @@ export function CategoryPage() {
   // BudgetDialog handles its own success and error notifications.
   async function handleSaveBudget(data) {
     if (editingBudget) {
-      await apiRequest(`/budgets/${editingBudget.budget_id}`, auth, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      const response = await apiRequest(
+        `/budgets/${editingBudget.budget_id}`,
+        auth,
+        {
+          method: "PATCH",
+          body: JSON.stringify(data),
+        },
+      );
+
+      setBudgets((current) =>
+        current.map((item) =>
+          item.budget_id === editingBudget.budget_id
+            ? response.data.budget
+            : item,
+        ),
+      );
     } else {
-      await apiRequest("/budgets", auth, {
+      const response = await apiRequest("/budgets", auth, {
         method: "POST",
         body: JSON.stringify(data),
       });
-    }
 
-    await loadBudgets();
+      setBudgets((current) => [...current, response.data.budget]);
+    }
   }
 
   async function handleDeleteBudget(budget) {
@@ -513,12 +460,22 @@ export function CategoryPage() {
   async function handleSaveAllocations(allocations) {
     if (!selectedBudget) return;
 
-    await apiRequest(`/budgets/${selectedBudget.budget_id}/allocations`, auth, {
-      method: "PUT",
-      body: JSON.stringify({ allocations }),
-    });
+    const response = await apiRequest(
+      `/budgets/${selectedBudget.budget_id}/allocations`,
+      auth,
+      {
+        method: "PUT",
+        body: JSON.stringify({ allocations }),
+      },
+    );
 
-    await loadBudgets();
+    setBudgets((current) =>
+      current.map((item) =>
+        item.budget_id === selectedBudget.budget_id
+          ? response.data.budget
+          : item,
+      ),
+    );
   }
 
   const incomeCount = categories.filter(
@@ -676,26 +633,7 @@ export function CategoryPage() {
                 )}
               </div>
 
-              {loading ? (
-                <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                  Loading categories...
-                </div>
-              ) : loadFailed ? (
-                <div className="rounded-xl border border-border bg-card p-8 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    Categories could not be loaded.
-                  </p>
-
-                  <Button
-                    variant="outline"
-                    className="mt-4 gap-2"
-                    onClick={loadData}
-                  >
-                    <RefreshCw className="size-4" />
-                    Try again
-                  </Button>
-                </div>
-              ) : visibleCategories.length === 0 ? (
+              {visibleCategories.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
                   <h3 className="text-sm font-medium text-foreground">
                     {categories.length === 0
@@ -758,32 +696,11 @@ export function CategoryPage() {
             </>
           ) : (
             <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-sm text-muted-foreground">
-                  Archived categories can be restored here.
-                </p>
+              <p className="text-sm text-muted-foreground">
+                Archived categories can be restored here.
+              </p>
 
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                  onClick={loadArchivedCategories}
-                  disabled={loadingArchived}
-                >
-                  <RefreshCw
-                    className={`size-3.5 ${
-                      loadingArchived ? "animate-spin" : ""
-                    }`}
-                  />
-                  Refresh
-                </Button>
-              </div>
-
-              {loadingArchived ? (
-                <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-                  Loading archived categories...
-                </div>
-              ) : archivedCategories.length === 0 ? (
+              {archivedCategories.length === 0 ? (
                 <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
                   <Archive className="mx-auto size-8 text-muted-foreground" />
 
@@ -853,42 +770,9 @@ export function CategoryPage() {
                 className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none focus:border-primary sm:w-40"
               />
             </div>
-
-            <Button
-              variant="outline"
-              className="gap-2"
-              onClick={loadBudgets}
-              disabled={loadingBudgets}
-            >
-              <RefreshCw
-                className={`size-4 ${loadingBudgets ? "animate-spin" : ""}`}
-              />
-              Refresh
-            </Button>
           </div>
 
-          {budgetLoadFailed && (
-            <div className="rounded-xl border border-border bg-card p-6 text-center">
-              <p className="text-sm text-muted-foreground">
-                Budgets could not be loaded.
-              </p>
-
-              <Button
-                variant="outline"
-                className="mt-4 gap-2"
-                onClick={loadBudgets}
-              >
-                <RefreshCw className="size-4" />
-                Try again
-              </Button>
-            </div>
-          )}
-
-          {loadingBudgets ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center text-sm text-muted-foreground">
-              Loading budgets...
-            </div>
-          ) : !budgetLoadFailed && sortedBudgets.length === 0 ? (
+          {sortedBudgets.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
               <CalendarDays className="mx-auto size-8 text-muted-foreground" />
 
@@ -906,19 +790,17 @@ export function CategoryPage() {
               </Button>
             </div>
           ) : (
-            !budgetLoadFailed && (
-              <div className="grid gap-4 md:grid-cols-2">
-                {sortedBudgets.map((budget) => (
-                  <BudgetCard
-                    key={budget.budget_id}
-                    budget={budget}
-                    onEdit={openEditBudgetDialog}
-                    onManageAllocations={openAllocationDialog}
-                    onDelete={handleDeleteBudget}
-                  />
-                ))}
-              </div>
-            )
+            <div className="grid gap-4 md:grid-cols-2">
+              {sortedBudgets.map((budget) => (
+                <BudgetCard
+                  key={budget.budget_id}
+                  budget={budget}
+                  onEdit={openEditBudgetDialog}
+                  onManageAllocations={openAllocationDialog}
+                  onDelete={handleDeleteBudget}
+                />
+              ))}
+            </div>
           )}
         </div>
       )}
