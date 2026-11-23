@@ -11,6 +11,7 @@ import {
 
 import { Card, CardContent, CardHeader } from "../components/ui/card";
 import { apiRequest } from "../lib/api";
+import { getCognitoLogoutUrl } from "../lib/authConfig";
 import { useNotifications } from "../components/providers/useNotifications";
 
 const notificationOptions = [
@@ -172,18 +173,7 @@ export function SettingsPage({
 
       await auth.removeUser();
 
-      const logoutUrl = new URL(
-        "https://ca-central-1vntwkf99n.auth.ca-central-1.amazoncognito.com/logout",
-      );
-
-      logoutUrl.searchParams.set(
-        "client_id",
-        import.meta.env.VITE_COGNITO_CLIENT_ID,
-      );
-
-      logoutUrl.searchParams.set("logout_uri", `${window.location.origin}/`);
-
-      window.location.assign(logoutUrl.toString());
+      window.location.assign(getCognitoLogoutUrl());
     } catch (error) {
       console.error("Sign-out failed:", error);
       toast.error("Sign-out failed. Please try again.");

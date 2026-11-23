@@ -27,17 +27,4 @@ const env = {
   },
 };
 
-// const missingCognito = [
-//   ["COGNITO_USER_POOL_ID", env.cognito.userPoolId],
-//   ["COGNITO_CLIENT_ID", env.cognito.clientId],
-// ]
-//   .filter(([, value]) => !value)
-//   .map(([name]) => name);
-
-// if (missingCognito.length > 0) {
-//   throw new Error(
-//     `Missing ${missingCognito.join(", ")} in backend/.env. Copy them from the Cognito user pool and its app client.`,
-//   );
-// }
-
 export default env;
