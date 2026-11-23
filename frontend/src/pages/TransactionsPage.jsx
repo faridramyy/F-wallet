@@ -12,6 +12,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { useNotifications } from "../components/providers/useNotifications";
+import { getTransactionTitle } from "../lib/formatters";
 
 export function TransactionsPage({
   transactions,
@@ -52,12 +53,7 @@ export function TransactionsPage({
   async function handleDelete(transaction) {
     const confirmed = await confirm({
       title: "Delete transaction?",
-      description: `Are you sure you want to delete "${
-        transaction.description ||
-        transaction.merchant ||
-        transaction.category_name ||
-        "this transaction"
-      }"? It will no longer appear in your transactions.`,
+      description: `Are you sure you want to delete "${getTransactionTitle(transaction)}"? It will no longer appear in your transactions.`,
       confirmText: "Delete transaction",
       cancelText: "Cancel",
       variant: "destructive",
@@ -101,6 +97,7 @@ export function TransactionsPage({
           />
 
           <Input
+            aria-label="Search transactions"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search transactions..."

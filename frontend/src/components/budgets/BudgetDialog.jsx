@@ -35,6 +35,12 @@ function getInitialForm(budget) {
   };
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April",
+  "May", "June", "July", "August",
+  "September", "October", "November", "December",
+];
+
 export function BudgetDialog({ open, budget = null, onClose, onSave }) {
   const { toast, confirm } = useNotifications();
 
@@ -125,31 +131,16 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
     }
   }
 
-  const monthNames = [
-    "January",
-    "February",
-    "March",
-    "April",
-    "May",
-    "June",
-    "July",
-    "August",
-    "September",
-    "October",
-    "November",
-    "December",
-  ];
-
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !saving) {
           handleClose();
         }
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">
@@ -185,7 +176,7 @@ export function BudgetDialog({ open, budget = null, onClose, onSave }) {
                   }
                   className={inputClass}
                 >
-                  {monthNames.map((month, index) => (
+                  {MONTH_NAMES.map((month, index) => (
                     <option key={month} value={index + 1}>
                       {month}
                     </option>

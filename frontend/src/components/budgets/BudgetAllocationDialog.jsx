@@ -1,40 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { X, Wallet } from "lucide-react";
 
-import { formatCurrency } from "../../lib/formatters";
+import {
+  centsToInput,
+  dollarsToCents,
+  formatCurrency,
+} from "../../lib/formatters";
 import { useNotifications } from "../providers/useNotifications";
 
 const inputClass =
   "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
-
-function centsToInput(value) {
-  try {
-    const cents = BigInt(value ?? 0);
-    const dollars = cents / 100n;
-    const remainder = String(cents % 100n).padStart(2, "0");
-
-    return `${dollars}.${remainder}`;
-  } catch {
-    return "0.00";
-  }
-}
-
-function dollarsToCents(value) {
-  const normalized = String(value).trim();
-
-  if (!/^\d+(\.\d{0,2})?$/.test(normalized)) {
-    return null;
-  }
-
-  const [dollars, fraction = ""] = normalized.split(".");
-  const cents = BigInt(dollars) * 100n + BigInt(fraction.padEnd(2, "0") || "0");
-
-  if (cents > BigInt(Number.MAX_SAFE_INTEGER)) {
-    return null;
-  }
-
-  return Number(cents);
-}
 
 function getInitialAmounts(budget) {
   const initialAmounts = {};
@@ -161,14 +136,14 @@ export function BudgetAllocationDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !saving) {
           handleClose();
         }
       }}
     >
-      <div className="max-h-[90vh] w-full max-w-xl overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-xl">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-hidden rounded-2xl border border-border bg-card text-card-foreground shadow-xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div>
             <h2 className="text-lg font-semibold">

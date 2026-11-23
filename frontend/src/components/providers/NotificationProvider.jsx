@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { createContext, useCallback, useRef, useState } from "react";
 import { toast, Toaster } from "sonner";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-import { NotificationContext } from "./notification-context";
+export const NotificationContext = createContext(null);
 
 export function NotificationProvider({ children }) {
   const [confirmation, setConfirmation] = useState(null);

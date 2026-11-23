@@ -1,17 +1,16 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Progress } from "../ui/progress";
 import { useAppData } from "../providers/useAppData";
-import { formatCurrency } from "../../lib/formatters";
+import { formatCurrency, getCurrentYearMonth } from "../../lib/formatters";
 
-export function BudgetOverview({ onManage, transactions }) {
+export function BudgetOverview({ transactions }) {
+  const navigate = useNavigate();
   const { budgets, settings } = useAppData();
   const currency = settings?.currency ?? "CAD";
 
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-  const thisMonth = `${year}-${String(month).padStart(2, "0")}`;
+  const { year, month, prefix: thisMonth } = getCurrentYearMonth();
 
   const currentBudget = budgets.find(
     (b) => Number(b.budget_year) === year && Number(b.budget_month) === month,
@@ -99,7 +98,7 @@ export function BudgetOverview({ onManage, transactions }) {
         <Button
           variant="outline"
           className="w-full rounded-lg"
-          onClick={onManage}
+          onClick={() => navigate("/categories")}
         >
           Manage budgets
         </Button>

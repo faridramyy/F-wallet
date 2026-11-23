@@ -32,13 +32,7 @@ import { AccountSummary } from "../components/accounts/AccountSummary";
 import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
 import { useAppData } from "../components/providers/useAppData";
-
-const TYPE_LABELS = {
-  checking: "Checking",
-  savings: "Savings",
-  credit_card: "Credit card",
-  cash: "Cash",
-};
+import { ACCOUNT_TYPE_LABELS } from "../lib/accounts";
 
 function SortableAccountCard({ account, onEdit, onArchive, disabled }) {
   const {
@@ -425,7 +419,7 @@ export function AccountsPage() {
                   </p>
 
                   <p className="mt-1 text-xs text-muted-foreground">
-                    {TYPE_LABELS[account.account_type] ?? account.account_type}
+                    {ACCOUNT_TYPE_LABELS[account.account_type] ?? account.account_type}
                     {account.archived_at
                       ? ` · Archived ${new Date(
                           account.archived_at,

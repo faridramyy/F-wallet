@@ -1,24 +1,13 @@
-import { ArrowUpRight, CreditCard, Landmark, PiggyBank, Wallet } from "lucide-react";
+import { ArrowUpRight, CreditCard } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { useAppData } from "../providers/useAppData";
 import { formatCurrency } from "../../lib/formatters";
+import { ACCOUNT_TYPE_ICONS, ACCOUNT_TYPE_LABELS } from "../../lib/accounts";
 
-const ACCOUNT_TYPES = {
-  checking: Landmark,
-  savings: PiggyBank,
-  credit_card: CreditCard,
-  cash: Wallet,
-};
-
-const ACCOUNT_TYPE_LABELS = {
-  checking: "Checking",
-  savings: "Savings",
-  credit_card: "Credit card",
-  cash: "Cash",
-};
-
-export function AccountsOverview({ onViewAll }) {
+export function AccountsOverview() {
+  const navigate = useNavigate();
   const { accounts, settings } = useAppData();
   const currency = settings?.currency ?? "CAD";
 
@@ -36,7 +25,7 @@ export function AccountsOverview({ onViewAll }) {
           variant="ghost"
           size="sm"
           className="rounded-lg text-primary"
-          onClick={onViewAll}
+          onClick={() => navigate("/accounts")}
         >
           View all <ArrowUpRight size={14} />
         </Button>
@@ -44,7 +33,7 @@ export function AccountsOverview({ onViewAll }) {
 
       <CardContent className="space-y-1">
         {accounts.map((account, index) => {
-          const Icon = ACCOUNT_TYPES[account.account_type] ?? CreditCard;
+          const Icon = ACCOUNT_TYPE_ICONS[account.account_type] ?? CreditCard;
           const isCreditCard = account.account_type === "credit_card";
           const balance = Number(account.opening_balance_cents ?? 0) / 100;
           const displayBalance = isCreditCard ? Math.abs(balance) : balance;

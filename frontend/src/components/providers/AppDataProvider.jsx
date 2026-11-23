@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { createContext, useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
 
 import { apiRequest } from "../../lib/api";
-import { AppDataContext } from "./app-data-context";
+
+export const AppDataContext = createContext(null);
 
 // Loads everything the signed-in user owns with ONE request
 // (GET /bootstrap) and keeps it in state for the whole app.

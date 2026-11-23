@@ -5,7 +5,7 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { formatCurrency } from "../../lib/formatters";
+import { formatCurrency, getTransactionTitle } from "../../lib/formatters";
 
 // The API only lets income and expense be edited or deleted for now.
 const EDITABLE_TYPES = ["income", "expense"];
@@ -35,11 +35,7 @@ export function TransactionItem({ transaction, onEdit, onDelete }) {
       ? "bg-chart-1/10 text-chart-1"
       : "bg-destructive/10 text-destructive";
 
-  const title =
-    transaction.description ||
-    transaction.merchant ||
-    transaction.category_name ||
-    "Transaction";
+  const title = getTransactionTitle(transaction);
 
   // Don't repeat the merchant when it is already the title.
   const subtitle = [

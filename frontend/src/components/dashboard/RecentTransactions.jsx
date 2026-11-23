@@ -1,9 +1,11 @@
 import { ArrowUpRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { TransactionList } from "../transactions/TransactionList";
 
-export function RecentTransactions({ transactions, onViewAll }) {
+export function RecentTransactions({ transactions }) {
+  const navigate = useNavigate();
   return (
     <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
       <CardHeader className="flex flex-row items-center justify-between">
@@ -18,7 +20,7 @@ export function RecentTransactions({ transactions, onViewAll }) {
           variant="ghost"
           size="sm"
           className="rounded-lg text-primary"
-          onClick={onViewAll}
+          onClick={() => navigate("/transactions")}
         >
           View all <ArrowUpRight size={14} />
         </Button>

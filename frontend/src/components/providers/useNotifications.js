@@ -1,5 +1,5 @@
 import { useContext } from "react";
-import { NotificationContext } from "./notification-context";
+import { NotificationContext } from "./NotificationProvider";
 
 export function useNotifications() {
   const context = useContext(NotificationContext);

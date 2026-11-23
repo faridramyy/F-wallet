@@ -1,14 +1,13 @@
 import { ArrowUpRight, Wallet, TrendingUp, TrendingDown } from "lucide-react";
 import { Card, CardContent } from "../ui/card";
-import { formatCurrency } from "../../lib/formatters";
+import { formatCurrency, getCurrentYearMonth } from "../../lib/formatters";
 import { useAppData } from "../providers/useAppData";
 
 export function OverviewCards({ transactions }) {
   const { accounts, settings } = useAppData();
   const currency = settings?.currency ?? "CAD";
 
-  const now = new Date();
-  const thisMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const { prefix: thisMonth } = getCurrentYearMonth();
 
   const totalBalance = accounts
     .filter((a) => a.include_in_net_worth)

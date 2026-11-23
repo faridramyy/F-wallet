@@ -15,17 +15,14 @@ function sortTransactions(list) {
   );
 }
 
-// Owns everything the transaction screens need: the transactions themselves
-// plus the accounts and categories the form dropdowns are built from.
-// Components never call fetch directly, they call these functions.
+// Owns the transactions list: fetching, pagination, and CRUD.
+// Accounts and categories come from AppDataProvider (bootstrap) — no need to
+// fetch them again here.
 export function useTransactions() {
   const auth = useAuth();
   const { isAuthenticated } = auth;
 
   const [transactions, setTransactions] = useState([]);
-  const [accounts, setAccounts] = useState([]);
-  const [categories, setCategories] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
@@ -36,18 +33,13 @@ export function useTransactions() {
     setError("");
 
     try {
-      // Three independent requests, so run them in parallel.
-      const [transactionResponse, accountResponse, categoryResponse] =
-        await Promise.all([
-          apiRequest(`/transactions?limit=${PAGE_SIZE}&offset=0`, auth),
-          apiRequest("/accounts", auth),
-          apiRequest("/categories", auth),
-        ]);
+      const response = await apiRequest(
+        `/transactions?limit=${PAGE_SIZE}&offset=0`,
+        auth,
+      );
 
-      setTransactions(transactionResponse.data.transactions || []);
-      setHasMore(Boolean(transactionResponse.data.pagination?.has_more));
-      setAccounts(accountResponse.data.accounts || []);
-      setCategories(categoryResponse.data.categories || []);
+      setTransactions(response.data.transactions || []);
+      setHasMore(Boolean(response.data.pagination?.has_more));
     } catch (err) {
       setError(err.message || "Unable to load transactions.");
     } finally {
@@ -58,8 +50,8 @@ export function useTransactions() {
   useEffect(() => {
     if (isAuthenticated) load();
 
-    // Same approach as useSettings: load once per sign-in. `auth` changes
-    // identity when the token renews, and re-fetching then would flash the UI.
+    // Load once per sign-in. `auth` changes identity on token renewal and
+    // re-fetching then would flash the UI.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
@@ -73,7 +65,6 @@ export function useTransactions() {
       );
 
       setTransactions((current) => {
-        // Guard against duplicates if a row was added while paging.
         const known = new Set(current.map((item) => item.transaction_id));
         const fresh = response.data.transactions.filter(
           (item) => !known.has(item.transaction_id),
@@ -88,8 +79,6 @@ export function useTransactions() {
     }
   };
 
-  // These three throw on failure on purpose: the caller (the dialog) decides
-  // how to show the error.
   const createTransaction = async (data) => {
     const response = await apiRequest("/transactions", auth, {
       method: "POST",
@@ -130,8 +119,6 @@ export function useTransactions() {
 
   return {
     transactions,
-    accounts,
-    categories,
     loading,
     loadingMore,
     hasMore,

@@ -7,6 +7,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 
 import { useNotifications } from "../providers/useNotifications";
+import { centsToInput, dollarsToCents } from "../../lib/formatters";
 
 const createInitialForm = (currency) => ({
   account_name: "",
@@ -21,21 +22,6 @@ const createInitialForm = (currency) => ({
   include_in_net_worth: true,
   notes: "",
 });
-
-function centsToInput(value) {
-  try {
-    const cents = BigInt(value ?? 0);
-    const sign = cents < 0 ? "-" : "";
-    const absolute = cents < 0n ? -cents : cents;
-
-    const dollars = absolute / 100n;
-    const remainder = String(absolute % 100n).padStart(2, "0");
-
-    return `${sign}${dollars}.${remainder}`;
-  } catch {
-    return "0.00";
-  }
-}
 
 const selectClass =
   "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground";
@@ -143,27 +129,26 @@ export function AccountDialog({
       return;
     }
 
-    const openingBalance = Number(form.opening_balance || 0);
-    const openingBalanceCents = Math.round(openingBalance * 100);
+    const openingBalanceCents = dollarsToCents(
+      form.opening_balance.replace(/^-/, ""),
+    );
+    const isNegativeBalance = form.opening_balance.trim().startsWith("-");
 
-    if (
-      !Number.isFinite(openingBalance) ||
-      !Number.isSafeInteger(openingBalanceCents)
-    ) {
+    if (openingBalanceCents === null) {
       toast.error("Enter a valid opening balance.");
       return;
     }
 
-    const creditLimit = Number(form.credit_limit);
-    const creditLimitCents = Math.round(creditLimit * 100);
+    const finalOpeningBalanceCents = isNegativeBalance
+      ? -openingBalanceCents
+      : openingBalanceCents;
 
-    if (
-      isCreditCard &&
-      form.credit_limit !== "" &&
-      (!Number.isFinite(creditLimit) ||
-        creditLimit < 0 ||
-        !Number.isSafeInteger(creditLimitCents))
-    ) {
+    const creditLimitCents =
+      isCreditCard && form.credit_limit !== ""
+        ? dollarsToCents(form.credit_limit)
+        : null;
+
+    if (isCreditCard && form.credit_limit !== "" && creditLimitCents === null) {
       toast.error("Enter a valid credit limit.");
       return;
     }
@@ -176,10 +161,9 @@ export function AccountDialog({
         account_type: form.account_type,
         institution_name: form.institution_name.trim() || null,
         currency: form.currency,
-        opening_balance_cents: openingBalanceCents,
+        opening_balance_cents: finalOpeningBalanceCents,
 
-        credit_limit_cents:
-          isCreditCard && form.credit_limit !== "" ? creditLimitCents : null,
+        credit_limit_cents: creditLimitCents,
 
         card_last_four: isCreditCard
           ? form.card_last_four.trim() || null

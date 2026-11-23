@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 import { useNotifications } from "../providers/useNotifications";
+import { centsToInput, dollarsToCents } from "../../lib/formatters";
 
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
 
@@ -20,23 +21,6 @@ const inputClass =
   "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
 const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
-
-// "12.5" -> 1250. Never do Math.round(Number(text) * 100): in floating point
-// 1.005 * 100 is 100.49999999999999, which would silently lose a cent.
-// Working on the text avoids floating point completely.
-function dollarsToCents(text) {
-  const trimmed = String(text).trim();
-
-  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) return null;
-
-  const [whole, fraction = ""] = trimmed.split(".");
-
-  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
-}
-
-function centsToDollars(cents) {
-  return (cents / 100).toFixed(2);
-}
 
 export function AddTransactionDialog({
   open,
@@ -61,7 +45,7 @@ export function AddTransactionDialog({
       transaction
         ? {
             transaction_type: transaction.transaction_type,
-            amount: centsToDollars(transaction.amount_cents),
+            amount: centsToInput(transaction.amount_cents),
             account_id: transaction.account_id ?? "",
             category_id: transaction.category_id ?? "",
             transaction_date: transaction.transaction_date,
@@ -170,8 +154,8 @@ export function AddTransactionDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl border border-border bg-card text-card-foreground shadow-xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4">
+      <div className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-xl">
         {/* Header */}
         <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card p-5">
           <div>

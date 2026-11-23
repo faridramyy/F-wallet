@@ -1,12 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
-import {
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 
 import { AppSidebar } from "./components/layout/AppSidebar";
@@ -72,13 +66,18 @@ function SystemTheme({ children }) {
 // AppDataProvider, which has already started loading all of the user's data.
 function AppShell() {
   const location = useLocation();
-  const navigate = useNavigate();
-  const { settings, setSettings, loading, error, reload } = useAppData();
+  const {
+    settings,
+    setSettings,
+    accounts,
+    categories,
+    loading,
+    error,
+    reload,
+  } = useAppData();
 
   const {
     transactions,
-    accounts,
-    categories,
     loading: transactionsLoading,
     loadingMore,
     hasMore,
@@ -164,14 +163,7 @@ function AppShell() {
             <Routes>
               <Route
                 path="/dashboard"
-                element={
-                  <DashboardPage
-                    transactions={transactions}
-                    onViewTransactions={() => navigate("/transactions")}
-                    onViewAccounts={() => navigate("/accounts")}
-                    onViewBudgets={() => navigate("/categories")}
-                  />
-                }
+                element={<DashboardPage transactions={transactions} />}
               />
 
               <Route

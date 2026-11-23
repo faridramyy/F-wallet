@@ -1,21 +1,14 @@
-import {
-  Archive,
-  CreditCard,
-  GripVertical,
-  Landmark,
-  Pencil,
-  PiggyBank,
-  Wallet,
-} from "lucide-react";
+import { Archive, GripVertical, Pencil } from "lucide-react";
 
 import { formatCurrency } from "../../lib/formatters";
+import { ACCOUNT_TYPE_ICONS } from "../../lib/accounts";
 
-// Icon and theme-token color for each account type (see index.css).
-const ACCOUNT_TYPES = {
-  checking: { icon: Landmark, tone: "bg-chart-2/10 text-chart-2" },
-  savings: { icon: PiggyBank, tone: "bg-chart-1/10 text-chart-1" },
-  credit_card: { icon: CreditCard, tone: "bg-chart-4/10 text-chart-4" },
-  cash: { icon: Wallet, tone: "bg-chart-3/10 text-chart-3" },
+// Theme-token color for each account type (see index.css).
+const ACCOUNT_TYPE_TONES = {
+  checking: "bg-chart-2/10 text-chart-2",
+  savings: "bg-chart-1/10 text-chart-1",
+  credit_card: "bg-chart-4/10 text-chart-4",
+  cash: "bg-chart-3/10 text-chart-3",
 };
 
 // Cents (number or numeric string) -> dollars, or null if unsafe.
@@ -35,8 +28,8 @@ export function AccountCard({
   style,
   isDragging = false,
 }) {
-  const { icon: Icon, tone } =
-    ACCOUNT_TYPES[account.account_type] ?? ACCOUNT_TYPES.cash;
+  const Icon = ACCOUNT_TYPE_ICONS[account.account_type] ?? ACCOUNT_TYPE_ICONS.cash;
+  const tone = ACCOUNT_TYPE_TONES[account.account_type] ?? ACCOUNT_TYPE_TONES.cash;
 
   const isCreditCard = account.account_type === "credit_card";
 
