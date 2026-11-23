@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
+import { createError } from "../../utils/http-error.js";
 
 export const accountColumns = `
   account_id,
@@ -27,12 +28,6 @@ const creditCardFields = [
   "statement_closing_day",
   "payment_due_day",
 ];
-
-const createError = (message, statusCode) => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-};
 
 const ensureUserExists = async (user) => {
   await query(

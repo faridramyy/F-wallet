@@ -1,11 +1,10 @@
 import { Router } from "express";
 
-import authenticate from "../../middleware/authenticate.js";
-import authenticateIdentity from "../../middleware/authenticate-identity.js";
+import requireAuth from "../../middleware/auth.js";
 import { getCurrentUser } from "./users.controller.js";
 
 const router = Router();
 
-router.get("/me", authenticate, authenticateIdentity, getCurrentUser);
+router.get("/me", requireAuth, getCurrentUser);
 
 export default router;

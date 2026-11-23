@@ -22,6 +22,7 @@ const errorHandler = (err, req, res, next) => {
 
   res.status(statusCode).json({
     success: false,
+    ...(statusCode < 500 && err.code && { code: err.code }),
     message,
     ...(err.details && { errors: err.details }),
   });

@@ -1,18 +1,6 @@
 -- =====================================================================
 -- F-Wallet Complete Database Schema
 -- Database: Amazon Aurora DSQL
---
--- How to apply (as the cluster admin, not the app role):
---   * CREATE SCHEMA f_wallet; must already exist.
---   * DSQL allows only ONE DDL statement per transaction, so run this
---     file in autocommit mode (plain `psql -f`, never `--single-transaction`).
---   * Tables are ordered parents-before-children for the foreign keys.
---   * Indexes are at the end and use CREATE INDEX ASYNC (DSQL builds them
---     in the background). On regular PostgreSQL, delete the word ASYNC.
---   * created_at / updated_at default to now(). DSQL has no triggers, so
---     UPDATE statements refresh it with `updated_at = DEFAULT`.
---   * Constraints are cheapest to get right here: DSQL has limited
---     ALTER TABLE support, so adding them later is hard.
 -- =====================================================================
 
 
@@ -75,10 +63,6 @@ CREATE TABLE f_wallet.user_settings (
 
 -- =====================================================================
 -- 3. ACCOUNTS
--- Includes Migration 002: opening_balance_cents
--- Includes Migration 003: display_order
--- opening_balance_cents is signed like ledger entries, so a credit card
--- that starts with debt (or an overdrawn checking account) is negative.
 -- =====================================================================
 
 CREATE TABLE f_wallet.accounts (
@@ -363,7 +347,6 @@ CREATE TABLE f_wallet.recurring_rules (
 
 -- =====================================================================
 -- 7. TRANSACTIONS
--- Migration 002: opening_balance removed from transaction types.
 -- =====================================================================
 
 CREATE TABLE f_wallet.transactions (
@@ -490,7 +473,6 @@ CREATE TABLE f_wallet.transactions (
 
 -- =====================================================================
 -- 8. TRANSACTION ENTRIES
--- Migration 002: opening_balance removed from entry roles.
 -- =====================================================================
 
 CREATE TABLE f_wallet.transaction_entries (
@@ -909,9 +891,6 @@ CREATE TABLE f_wallet.monthly_reports (
 
 -- =====================================================================
 -- 18. INDEXES
--- Primary keys and UNIQUE constraints above already index their columns
--- (e.g. accounts (user_id, account_id) serves "all accounts of a user").
--- These cover the remaining lookups the API and background jobs make.
 -- =====================================================================
 
 -- Every active-or-archived account keeps a unique position per user;

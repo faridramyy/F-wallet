@@ -1,7 +1,6 @@
 import { Router } from "express";
 
-import authenticate from "../../middleware/authenticate.js";
-import authenticateIdentity from "../../middleware/authenticate-identity.js";
+import requireAuth from "../../middleware/auth.js";
 import validate from "../../middleware/validate.js";
 
 import {
@@ -24,7 +23,7 @@ import {
 
 const router = Router();
 
-router.use(authenticate, authenticateIdentity);
+router.use(requireAuth);
 router.get("/", getAccounts);
 router.get("/archived", getArchivedAccounts);
 router.post("/", validate(createAccountSchema), createAccount);

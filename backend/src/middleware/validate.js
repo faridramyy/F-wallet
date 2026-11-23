@@ -1,3 +1,5 @@
+import { createError } from "../utils/http-error.js";
+
 const validate = (schema) => {
   return (req, res, next) => {
     const result = schema.safeParse({
@@ -7,14 +9,12 @@ const validate = (schema) => {
     });
 
     if (!result.success) {
-      const error = new Error("Validation failed");
-      error.statusCode = 400;
-      error.details = result.error.issues.map((issue) => ({
+      const details = result.error.issues.map((issue) => ({
         field: issue.path.join("."),
         message: issue.message,
       }));
 
-      return next(error);
+      return next(createError("Validation failed", 400, undefined, details));
     }
 
     req.validated = result.data;

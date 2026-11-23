@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
+import { createError } from "../../utils/http-error.js";
 
 // `::text` makes Postgres send dates as "2026-11-22". Without it the pg driver
 // turns a DATE into a JavaScript Date, and JSON.stringify then shifts it by the
@@ -23,12 +24,6 @@ const transactionColumns = `
 
 // Transfers and refunds need extra rules, so they are read-only here.
 const EDITABLE_TYPES = ["income", "expense"];
-
-const createError = (message, statusCode) => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-};
 
 // Ledger convention: each entry is signed from the account's point of view,
 // so an account balance is opening_balance_cents + SUM(entries).

@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
+import { createError } from "../../utils/http-error.js";
 
 export const categoryColumns = `
   category_id,
@@ -14,12 +15,6 @@ export const categoryColumns = `
   created_at,
   updated_at
 `;
-
-const createError = (message, statusCode) => {
-  const error = new Error(message);
-  error.statusCode = statusCode;
-  return error;
-};
 
 const ensureUserExists = async (user) => {
   await query(

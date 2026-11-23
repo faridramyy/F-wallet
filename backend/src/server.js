@@ -1,6 +1,7 @@
 import app from "./app.js";
 import env from "./config/env.js";
 import { checkConnection, closePool } from "./database/db.js";
+import { warmUpAuth } from "./middleware/auth.js";
 
 const server = app.listen(env.port, () => {
   console.log(
@@ -15,6 +16,16 @@ const server = app.listen(env.port, () => {
     )
     .catch((error) => {
       console.error(`Database connection failed: ${error.message}`);
+    });
+
+  warmUpAuth()
+    .then(() =>
+      console.log(`Cognito keys loaded for pool '${env.cognito.userPoolId}'`),
+    )
+    .catch((error) => {
+      console.error(
+        `Cognito keys could not be loaded for pool '${env.cognito.userPoolId}': ${error.message}`,
+      );
     });
 });
 

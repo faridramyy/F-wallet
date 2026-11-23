@@ -1,20 +1,20 @@
 import { Router } from "express";
 import { getHealth, getDatabaseHealth } from "./health.controller.js";
-import authenticate from "../../middleware/authenticate.js";
+import requireAuth from "../../middleware/auth.js";
 
 const router = Router();
 
 router.get("/", getHealth);
 router.get("/db", getDatabaseHealth);
 
-// Temporary authentication test endpoint
-router.get("/auth", authenticate, (req, res) => {
+// Checks that the caller's Cognito tokens are accepted.
+router.get("/auth", requireAuth, (req, res) => {
   res.status(200).json({
     success: true,
     message: "Authentication successful",
     user: {
       sub: req.user.sub,
-      username: req.user.username,
+      email: req.user.email,
     },
   });
 });
