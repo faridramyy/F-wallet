@@ -24,6 +24,7 @@ import {
   buildCategoryTree,
   flattenCategoryTree,
   moveWithinParent,
+  rollUpBudgetUsage,
 } from "../../lib/categories";
 
 // The Categories section: one switch for Expenses / Income / Archived.
@@ -56,17 +57,16 @@ export function CategoriesTab({ section, onSectionChange }) {
   // This month's budget use per budgeted category: { spentCents, limitCents }.
   const { current } = getMonthContext();
   const spent = expenseCentsByCategory(transactions, current.key);
-  const budgetUsage = new Map(
+  // This month's budget use; a parent's bar includes its sub-categories.
+  const limits = Object.fromEntries(
     getMonthBudget(budgets, current.year, current.month).allocations.map(
       (allocation) => [
         allocation.category_id,
-        {
-          spentCents: spent[allocation.category_id] ?? 0,
-          limitCents: Number(allocation.allocated_cents ?? 0),
-        },
+        Number(allocation.allocated_cents ?? 0),
       ],
     ),
   );
+  const budgetUsage = rollUpBudgetUsage(tree, spent, limits);
 
   const countOf = (type) =>
     categories.filter((c) => c.category_type === type).length;

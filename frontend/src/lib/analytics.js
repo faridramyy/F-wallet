@@ -7,7 +7,7 @@ import { formatMonthShort } from "./formatters";
 // its cash-flow chart shows this many months ending at the chosen month.
 // The app loads enough history to cover both.
 export const SELECTABLE_MONTHS = 12;
-export const CASH_FLOW_MONTHS = 6;
+export const CASH_FLOW_MONTHS = 12;
 export const HISTORY_MONTHS = SELECTABLE_MONTHS + CASH_FLOW_MONTHS - 1;
 
 const pad = (value) => String(value).padStart(2, "0");

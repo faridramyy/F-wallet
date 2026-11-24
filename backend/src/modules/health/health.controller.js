@@ -20,9 +20,7 @@ export const getDatabaseHealth = async (req, res) => {
       latencyMs,
       timestamp: new Date().toISOString(),
     });
-
   } catch (error) {
-    
     console.error("[db] Health check failed:", error.message);
 
     res.status(503).json({

@@ -1,16 +1,20 @@
 import { cn } from "cn";
 
+// The app icon (public/icon-192.png). In dark mode it sits on a white tile,
+// like on a phone home screen, so the black wallet stays visible.
 export function BrandMark({ className }) {
   return (
-    <div
+    <img
+      src="/icon-192.png"
+      alt=""
       aria-hidden="true"
+      width="32"
+      height="32"
       className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground",
+        "size-8 shrink-0 rounded-lg dark:bg-white dark:p-0.5",
         className,
       )}
-    >
-      f.
-    </div>
+    />
   );
 }
 

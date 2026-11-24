@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "react-oidc-context";
 
 import { AppDataContext } from "./contexts";
@@ -12,9 +12,10 @@ import {
 
 const TRANSACTIONS_PAGE_SIZE = 50;
 
-// The dashboard can analyse any of the last 12 months (with a 6-month cash
-// flow chart), so the first load fetches that much history (in pages of 200,
-// the API maximum). Older history is paged in with "Load more".
+// The dashboard can analyse any of the last SELECTABLE_MONTHS months, each
+// with a CASH_FLOW_MONTHS cash-flow chart, so the first load fetches
+// HISTORY_MONTHS of history (in pages of 200, the API maximum). Older history
+// is paged in with "Load more".
 const WINDOW_PAGE_SIZE = 200;
 const MAX_WINDOW_PAGES = 25;
 
@@ -50,7 +51,7 @@ const sortTransactions = (list) =>
   );
 
 // Loads everything the signed-in user owns (GET /bootstrap plus at least the
-// last 6 months of transactions, in parallel) and keeps it in state for the
+// last HISTORY_MONTHS of transactions, in parallel) and keeps it in state for the
 // whole app.
 //
 // Pages read the data with useAppData() instead of fetching it themselves.
@@ -80,19 +81,32 @@ export function AppDataProvider({ children }) {
   // Bumped by reload() to run the load effect again.
   const [reloadKey, setReloadKey] = useState(0);
 
+  // The load in progress, tagged with the reloadKey it was started for.
+  // React StrictMode runs effects twice in development; reusing the same
+  // request means the API is still called only once per sign-in or retry.
+  const inFlight = useRef(null);
+
   useEffect(() => {
     if (!isAuthenticated) return;
 
     // Ignore a response that arrives after this effect was cleaned up
-    // (sign-out, a retry, or React StrictMode's extra dev-mode run).
+    // (sign-out, a retry, or StrictMode's extra dev-mode run).
     let cancelled = false;
+
+    if (inFlight.current?.key !== reloadKey) {
+      inFlight.current = {
+        key: reloadKey,
+        request: Promise.all([
+          api.get("/bootstrap"),
+          loadTransactionWindow(api),
+        ]),
+      };
+    }
+    const { request } = inFlight.current;
 
     async function load() {
       try {
-        const [bootstrap, transactionWindow] = await Promise.all([
-          api.get("/bootstrap"),
-          loadTransactionWindow(api),
-        ]);
+        const [bootstrap, transactionWindow] = await request;
         if (cancelled) return;
 
         const data = bootstrap.data;

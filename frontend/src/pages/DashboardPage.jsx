@@ -2,6 +2,7 @@ import { useState } from "react";
 
 import { OverviewCards } from "../components/dashboard/OverviewCards";
 import { InsightsCard } from "../components/dashboard/InsightsCard";
+import { TransactionCalendar } from "../components/dashboard/TransactionCalendar";
 import { AccountsOverview } from "../components/dashboard/AccountsOverview";
 import { BudgetOverview } from "../components/dashboard/BudgetOverview";
 import { RecentTransactions } from "../components/dashboard/RecentTransactions";
@@ -116,6 +117,13 @@ export function DashboardPage() {
           currency={currency}
         />
       </section>
+
+      {/* Keyed by month, so the selected day resets when the month changes. */}
+      <TransactionCalendar
+        key={current.key}
+        year={current.year}
+        month={current.month}
+      />
 
       <section className="grid gap-6 lg:grid-cols-2">
         <SpendingPaceChart

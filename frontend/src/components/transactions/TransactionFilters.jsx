@@ -39,17 +39,19 @@ export function TransactionFilters({
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4 text-card-foreground">
-      <div className="relative">
-        <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          aria-label="Search transactions"
-          value={filters.search}
-          onChange={(event) => set("search")(event.target.value)}
-          placeholder="Search description, merchant, notes…"
-          className="pl-9"
-        />
-      </div>
+      <Field label="Search" htmlFor="filter_search">
+        <div className="relative">
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            id="filter_search"
+            type="search"
+            value={filters.search}
+            onChange={(event) => set("search")(event.target.value)}
+            placeholder="Description, merchant, notes…"
+            className="pl-9"
+          />
+        </div>
+      </Field>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Field label="Account" htmlFor="filter_account">

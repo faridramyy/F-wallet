@@ -43,11 +43,13 @@ function netTone(cents) {
   return "text-muted-foreground";
 }
 
+//   showDayHeaders: false when the list is already one known day
 export function TransactionList({
   transactions = [],
   onEdit,
   onDelete,
   onRefund,
+  showDayHeaders = true,
 }) {
   const { currency } = useAppData();
 
@@ -65,21 +67,23 @@ export function TransactionList({
     <div className="space-y-6">
       {groupByDay(transactions).map((group) => (
         <section key={group.key}>
-          <div className="mb-2 flex items-center justify-between gap-3 px-1">
-            <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-              {formatDateKey(group.key)}
-            </h3>
+          {showDayHeaders && (
+            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+              <h3 className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
+                {formatDateKey(group.key)}
+              </h3>
 
-            <p
-              className={cn(
-                "text-xs font-semibold tabular-nums",
-                netTone(group.netCents),
-              )}
-            >
-              {group.netCents > 0 ? "+" : ""}
-              {formatCents(group.netCents, currency)}
-            </p>
-          </div>
+              <p
+                className={cn(
+                  "text-xs font-semibold tabular-nums",
+                  netTone(group.netCents),
+                )}
+              >
+                {group.netCents > 0 ? "+" : ""}
+                {formatCents(group.netCents, currency)}
+              </p>
+            </div>
+          )}
 
           <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card text-card-foreground">
             {group.transactions.map((transaction) => (

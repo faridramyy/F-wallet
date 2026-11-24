@@ -71,3 +71,32 @@ export function flattenCategoryTree(nodes) {
     ...flattenCategoryTree(node.children),
   ]);
 }
+
+// This month's budget use per category, with each parent showing its whole
+// group: its own spending and budget plus all of its sub-categories'.
+// Categories with no budget anywhere in their group are left out.
+//   nodes:      buildCategoryTree() result
+//   spentById:  { [categoryId]: cents spent }
+//   limitById:  { [categoryId]: cents budgeted }
+// Returns Map(categoryId -> { spentCents, limitCents }).
+export function rollUpBudgetUsage(nodes, spentById, limitById) {
+  const usage = new Map();
+
+  const visit = (node) => {
+    const id = node.category.category_id;
+    let spentCents = spentById[id] ?? 0;
+    let limitCents = limitById[id] ?? 0;
+
+    for (const child of node.children) {
+      const childTotals = visit(child);
+      spentCents += childTotals.spentCents;
+      limitCents += childTotals.limitCents;
+    }
+
+    if (limitCents > 0) usage.set(id, { spentCents, limitCents });
+    return { spentCents, limitCents };
+  };
+
+  nodes.forEach(visit);
+  return usage;
+}

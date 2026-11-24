@@ -11,7 +11,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="mb-10 text-center">
-          <BrandMark className="mx-auto mb-5 size-14 rounded-2xl text-2xl" />
+          <BrandMark className="mx-auto mb-5 size-16 rounded-2xl dark:p-1" />
 
           <h1 className="text-3xl font-bold tracking-tight">F-Wallet</h1>
 

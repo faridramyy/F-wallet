@@ -306,7 +306,7 @@ function AddTransactionDialogContent({
       </Field>
 
       {isTransfer ? (
-        <div className="grid items-end gap-4 sm:grid-cols-[1fr_auto_1fr]">
+        <div className="grid items-end gap-4 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
           <Field label="From" htmlFor="account_id">
             <Select
               id="account_id"

@@ -1,29 +1,9 @@
-import {
-  ArrowDownLeft,
-  ArrowLeftRight,
-  ArrowUpRight,
-  Pencil,
-  Trash2,
-  Undo2,
-} from "lucide-react";
+import { Pencil, Trash2, Undo2 } from "lucide-react";
 import { cn } from "cn";
 
 import { IconButton } from "../ui/icon-button";
 import { formatCents, getTransactionTitle } from "../../lib/formatters";
-
-// Icon, color and sign for each kind of transaction.
-const KINDS = {
-  income: { icon: ArrowDownLeft, tone: "income", sign: "+" },
-  expense: { icon: ArrowUpRight, tone: "expense", sign: "-" },
-  transfer: { icon: ArrowLeftRight, tone: "transfer", sign: "" },
-  refund: { icon: Undo2, tone: "income", sign: "+" },
-};
-
-const TONES = {
-  income: { text: "text-income", badge: "bg-income/10 text-income" },
-  expense: { text: "text-expense", badge: "bg-expense/10 text-expense" },
-  transfer: { text: "text-transfer", badge: "bg-transfer/10 text-transfer" },
-};
+import { getTransactionKind } from "../../lib/transaction-kinds";
 
 // Types the user can edit and delete (adjustments are system-made).
 const MODIFIABLE_TYPES = new Set(["income", "expense", "transfer", "refund"]);
@@ -54,7 +34,7 @@ export function TransactionItem({
   onRefund,
 }) {
   const type = transaction.transaction_type;
-  const { icon: Icon, tone, sign } = KINDS[type] ?? KINDS.expense;
+  const { icon: Icon, sign, text, badge } = getTransactionKind(type);
 
   const refundedCents = Number(transaction.refunded_cents ?? 0);
   const canRefund =
@@ -66,7 +46,7 @@ export function TransactionItem({
       <div
         className={cn(
           "flex size-10 shrink-0 items-center justify-center rounded-full",
-          TONES[tone].badge,
+          badge,
         )}
       >
         <Icon size={18} strokeWidth={1.8} />
@@ -82,9 +62,7 @@ export function TransactionItem({
       </div>
 
       <div className="shrink-0 text-right">
-        <p
-          className={cn("text-sm font-semibold tabular-nums", TONES[tone].text)}
-        >
+        <p className={cn("text-sm font-semibold tabular-nums", text)}>
           {sign}
           {formatCents(transaction.amount_cents, currency)}
         </p>
