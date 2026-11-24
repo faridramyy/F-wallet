@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
-import { Bell, LogOut, Palette, RefreshCw, Save, UserRound } from "lucide-react";
+import {
+  Bell,
+  LogOut,
+  Palette,
+  RefreshCw,
+  Save,
+  UserRound,
+} from "lucide-react";
 
 import { Button } from "../components/ui/button";
 import {
@@ -12,12 +19,12 @@ import {
 } from "../components/ui/card";
 import { Field } from "../components/ui/field";
 import { Input } from "../components/ui/input";
-import { NativeSelect } from "../components/ui/native-select";
+import { Select } from "../components/ui/select";
 import { Switch } from "../components/ui/switch";
 import { useNotifications } from "../components/providers/useNotifications";
 import { createApi } from "../lib/api";
 import { getCognitoLogoutUrl } from "../lib/authConfig";
-import { CURRENCY_OPTIONS, renderOptions } from "../lib/options";
+import { CURRENCY_OPTIONS } from "../lib/options";
 
 const notificationOptions = [
   {
@@ -122,11 +129,11 @@ export function SettingsPage({
     setSaved(false);
   };
 
-  // Props for a select bound to settings[key].
+  // Props for a <Select> bound to settings[key].
   const bind = (key) => ({
     id: key,
     value: settings[key],
-    onChange: (event) => updateSetting(key, event.target.value),
+    onValueChange: (value) => updateSetting(key, value),
   });
 
   async function handleSave() {
@@ -182,21 +189,15 @@ export function SettingsPage({
       >
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Currency" htmlFor="currency">
-            <NativeSelect {...bind("currency")}>
-              {renderOptions(CURRENCY_OPTIONS)}
-            </NativeSelect>
+            <Select {...bind("currency")} options={CURRENCY_OPTIONS} />
           </Field>
 
           <Field label="Timezone" htmlFor="timezone">
-            <NativeSelect {...bind("timezone")}>
-              {renderOptions(TIMEZONE_OPTIONS)}
-            </NativeSelect>
+            <Select {...bind("timezone")} options={TIMEZONE_OPTIONS} />
           </Field>
 
           <Field label="Date format" htmlFor="date_format">
-            <NativeSelect {...bind("date_format")}>
-              {renderOptions(DATE_FORMAT_OPTIONS)}
-            </NativeSelect>
+            <Select {...bind("date_format")} options={DATE_FORMAT_OPTIONS} />
           </Field>
         </div>
       </SettingsSection>
@@ -207,9 +208,7 @@ export function SettingsPage({
         description="Customize how F-Wallet looks on your devices."
       >
         <Field label="Application theme" htmlFor="theme">
-          <NativeSelect {...bind("theme")}>
-            {renderOptions(THEME_OPTIONS)}
-          </NativeSelect>
+          <Select {...bind("theme")} options={THEME_OPTIONS} />
         </Field>
       </SettingsSection>
 

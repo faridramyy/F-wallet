@@ -17,12 +17,3 @@ export const CATEGORY_TYPE_OPTIONS = [
   { value: "expense", label: "Expense" },
   { value: "income", label: "Income" },
 ];
-
-// Renders [{ value, label }] as <option> elements.
-export function renderOptions(options) {
-  return options.map(({ value, label }) => (
-    <option key={value} value={value}>
-      {label}
-    </option>
-  ));
-}

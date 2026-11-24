@@ -3,12 +3,13 @@ import { useState } from "react";
 import { FormDialog } from "../common/FormDialog";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
+import { Select } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
 import { centsToInput, dollarsToCents } from "../../lib/formatters";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
-import { CATEGORY_TYPE_OPTIONS, renderOptions } from "../../lib/options";
+import { CATEGORY_TYPE_OPTIONS } from "../../lib/options";
+import { accountOptions, categoryOptions } from "../../lib/select-options";
 
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
 
@@ -69,18 +70,22 @@ function AddTransactionDialogContent({
   const isEditing = Boolean(transaction);
   const close = () => onOpenChange(false);
 
-  // Income transactions can only use income categories, and vice versa.
-  const categoryOptions = categories.filter(
-    (category) => category.category_type === form.transaction_type,
+  // Categories of the chosen type, parents with their sub-categories. If the
+  // transaction's category was archived later it is no longer listed, so it
+  // is kept as an extra option rather than the field silently going blank.
+  const categorySelectOptions = categoryOptions(
+    categories,
+    form.transaction_type,
+    {
+      none: "Uncategorized",
+      extra: form.category_id
+        ? {
+            value: form.category_id,
+            label: transaction?.category_name ?? "Archived category",
+          }
+        : undefined,
+    },
   );
-
-  // If the transaction's category was archived later, it is no longer in the
-  // active list. Keep it visible so the select does not silently go blank.
-  const hasCurrentCategory =
-    !form.category_id ||
-    categoryOptions.some(
-      (category) => category.category_id === form.category_id,
-    );
 
   function updateField(changes) {
     setForm((current) => ({ ...current, ...changes }));
@@ -118,10 +123,7 @@ function AddTransactionDialogContent({
     // When editing, send only what changed (this is what PATCH is for). It
     // also means an untouched archived category is never re-validated.
     if (isEditing) {
-      const original = toPayload(
-        initialForm,
-        Number(transaction.amount_cents),
-      );
+      const original = toPayload(initialForm, Number(transaction.amount_cents));
 
       body = Object.fromEntries(
         Object.entries(body).filter(([key, value]) => value !== original[key]),
@@ -170,19 +172,15 @@ function AddTransactionDialogContent({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Transaction type" htmlFor="transaction_type">
-          <NativeSelect
+          <Select
             id="transaction_type"
             value={form.transaction_type}
+            options={CATEGORY_TYPE_OPTIONS}
             // The old category belongs to the other type.
-            onChange={(event) =>
-              updateField({
-                transaction_type: event.target.value,
-                category_id: "",
-              })
+            onValueChange={(value) =>
+              updateField({ transaction_type: value, category_id: "" })
             }
-          >
-            {renderOptions(CATEGORY_TYPE_OPTIONS)}
-          </NativeSelect>
+          />
         </Field>
 
         <Field label="Amount" htmlFor="amount">
@@ -198,43 +196,22 @@ function AddTransactionDialogContent({
         </Field>
 
         <Field label="Account" htmlFor="account_id">
-          <NativeSelect
+          <Select
             id="account_id"
             value={form.account_id}
-            onChange={(event) =>
-              updateField({ account_id: event.target.value })
-            }
-          >
-            {accounts.map((account) => (
-              <option key={account.account_id} value={account.account_id}>
-                {account.account_name}
-              </option>
-            ))}
-          </NativeSelect>
+            options={accountOptions(accounts)}
+            placeholder="Choose an account"
+            onValueChange={(value) => updateField({ account_id: value })}
+          />
         </Field>
 
         <Field label="Category" htmlFor="category_id">
-          <NativeSelect
+          <Select
             id="category_id"
             value={form.category_id}
-            onChange={(event) =>
-              updateField({ category_id: event.target.value })
-            }
-          >
-            <option value="">Uncategorized</option>
-
-            {!hasCurrentCategory && (
-              <option value={form.category_id}>
-                {transaction?.category_name ?? "Archived category"}
-              </option>
-            )}
-
-            {categoryOptions.map((category) => (
-              <option key={category.category_id} value={category.category_id}>
-                {category.category_name}
-              </option>
-            ))}
-          </NativeSelect>
+            options={categorySelectOptions}
+            onValueChange={(value) => updateField({ category_id: value })}
+          />
         </Field>
 
         <Field label="Transaction date" htmlFor="transaction_date">

@@ -3,11 +3,11 @@ import { useState } from "react";
 import { FormDialog } from "../common/FormDialog";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
+import { Select } from "../ui/select";
 import { useNotifications } from "../providers/useNotifications";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
 import { getCurrentYearMonth } from "../../lib/formatters";
-import { MONTH_OPTIONS, renderOptions } from "../../lib/options";
+import { MONTH_OPTIONS } from "../../lib/options";
 
 function getInitialForm(budget) {
   const { year, month } = getCurrentYearMonth();
@@ -92,9 +92,14 @@ function BudgetDialogContent({ budget, onClose, onSave }) {
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Month" htmlFor="budget_budget_month">
-          <NativeSelect {...bind("budget_month")}>
-            {renderOptions(MONTH_OPTIONS)}
-          </NativeSelect>
+          <Select
+            id="budget_budget_month"
+            value={form.budget_month}
+            options={MONTH_OPTIONS}
+            onValueChange={(value) =>
+              setForm((current) => ({ ...current, budget_month: value }))
+            }
+          />
         </Field>
 
         <Field label="Year" htmlFor="budget_budget_year">

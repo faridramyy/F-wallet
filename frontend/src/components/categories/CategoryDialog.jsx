@@ -3,11 +3,12 @@ import { useState } from "react";
 import { FormDialog } from "../common/FormDialog";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
+import { Select } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
-import { CATEGORY_TYPE_OPTIONS, renderOptions } from "../../lib/options";
+import { CATEGORY_TYPE_OPTIONS } from "../../lib/options";
+import { accountOptions, categoryOptions } from "../../lib/select-options";
 
 function getInitialForm(category) {
   return {
@@ -35,12 +36,6 @@ function CategoryDialogContent({
 
   const isEditing = Boolean(category);
 
-  const eligibleParents = categories.filter(
-    (item) =>
-      item.category_id !== category?.category_id &&
-      item.category_type === form.category_type,
-  );
-
   const updateField = (changes) => {
     setForm((current) => ({ ...current, ...changes }));
     setError("");
@@ -50,6 +45,13 @@ function CategoryDialogContent({
     id: name,
     value: form[name],
     onChange: (event) => updateField({ [name]: event.target.value }),
+  });
+
+  // Props for a <Select> bound to form[name].
+  const bindSelect = (name) => ({
+    id: name,
+    value: form[name],
+    onValueChange: (value) => updateField({ [name]: value }),
   });
 
   function handleClose() {
@@ -109,40 +111,32 @@ function CategoryDialogContent({
       </Field>
 
       <Field label="Category type" htmlFor="category_type">
-        <NativeSelect
-          {...bind("category_type")}
+        <Select
+          {...bindSelect("category_type")}
+          options={CATEGORY_TYPE_OPTIONS}
           // A parent of the other type is no longer valid.
-          onChange={(event) =>
-            updateField({
-              category_type: event.target.value,
-              parent_category_id: "",
-            })
+          onValueChange={(value) =>
+            updateField({ category_type: value, parent_category_id: "" })
           }
-        >
-          {renderOptions(CATEGORY_TYPE_OPTIONS)}
-        </NativeSelect>
+        />
       </Field>
 
       <Field label="Parent category" htmlFor="parent_category_id">
-        <NativeSelect {...bind("parent_category_id")}>
-          <option value="">No parent (top-level)</option>
-          {eligibleParents.map((item) => (
-            <option key={item.category_id} value={item.category_id}>
-              {item.category_name}
-            </option>
-          ))}
-        </NativeSelect>
+        <Select
+          {...bindSelect("parent_category_id")}
+          options={categoryOptions(categories, form.category_type, {
+            none: "No parent (top-level)",
+            // Not itself, and not one of its own sub-categories.
+            exclude: category?.category_id,
+          })}
+        />
       </Field>
 
       <Field label="Default account" htmlFor="default_account_id">
-        <NativeSelect {...bind("default_account_id")}>
-          <option value="">No default account</option>
-          {accounts.map((account) => (
-            <option key={account.account_id} value={account.account_id}>
-              {account.account_name}
-            </option>
-          ))}
-        </NativeSelect>
+        <Select
+          {...bindSelect("default_account_id")}
+          options={accountOptions(accounts, { none: "No default account" })}
+        />
       </Field>
 
       <Field label="Notes" htmlFor="notes">

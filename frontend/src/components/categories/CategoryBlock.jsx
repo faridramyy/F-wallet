@@ -38,7 +38,7 @@ function CategoryRow({
   isChild = false,
   ...props
 }) {
-  const { accountNames, onEdit, onArchive } = props;
+  const { accountNames, budgetUsage, currency, onEdit, onArchive } = props;
   const { category, children } = node;
 
   return (
@@ -46,6 +46,8 @@ function CategoryRow({
       <CategoryCard
         category={category}
         accountName={accountNames.get(category.default_account_id)}
+        budget={budgetUsage.get(category.category_id)}
+        currency={currency}
         onEdit={onEdit}
         onArchive={onArchive}
         dragHandleRef={dragHandleRef}
@@ -66,7 +68,9 @@ function CategoryRow({
 // One top-level category and all its sub-categories in a single bordered
 // block. The drag props come from the top-level SortableList, so the whole
 // block moves when the parent's handle is dragged.
-//   props: accountNames, onEdit, onArchive, onReorder(parentId, from, to), disabled
+//   props: accountNames, budgetUsage (Map of category id -> { spentCents,
+//   limitCents }), currency, onEdit, onArchive,
+//   onReorder(parentId, from, to), disabled
 export function CategoryBlock({
   node,
   containerRef,

@@ -14,6 +14,11 @@ import { useAppData } from "../providers/useAppData";
 import { createApi } from "../../lib/api";
 import { removeById, replaceById } from "../../lib/collections";
 import {
+  expenseCentsByCategory,
+  getMonthBudget,
+  getMonthContext,
+} from "../../lib/analytics";
+import {
   buildCategoryTree,
   flattenCategoryTree,
   moveWithinParent,
@@ -38,6 +43,9 @@ export function CategoriesTab() {
     archivedCategories,
     setArchivedCategories,
     accounts,
+    budgets,
+    transactions,
+    settings,
   } = useAppData();
 
   const [status, setStatus] = useState("active");
@@ -49,6 +57,21 @@ export function CategoriesTab() {
   const editingCategory = dialog?.category ?? null;
   // Top-level categories of the chosen type, each with its sub-categories.
   const tree = buildCategoryTree(categories, filter);
+
+  // This month's budget use per budgeted category: { spentCents, limitCents }.
+  const { current } = getMonthContext();
+  const spent = expenseCentsByCategory(transactions, current.key);
+  const budgetUsage = new Map(
+    getMonthBudget(budgets, current.year, current.month).allocations.map(
+      (allocation) => [
+        allocation.category_id,
+        {
+          spentCents: spent[allocation.category_id] ?? 0,
+          limitCents: Number(allocation.allocated_cents ?? 0),
+        },
+      ],
+    ),
+  );
 
   // Looked up once per render instead of once per card.
   const accountNames = new Map(
@@ -219,6 +242,8 @@ export function CategoriesTab() {
                   node={node}
                   {...sortable}
                   accountNames={accountNames}
+                  budgetUsage={budgetUsage}
+                  currency={settings?.currency ?? "CAD"}
                   onEdit={(item) => setDialog({ category: item })}
                   onArchive={handleArchiveCategory}
                   onReorder={handleReorder}

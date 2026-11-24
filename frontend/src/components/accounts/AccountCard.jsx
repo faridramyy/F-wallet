@@ -2,47 +2,9 @@ import { Archive, GripVertical, Pencil } from "lucide-react";
 import { cn } from "cn";
 
 import { IconButton } from "../ui/icon-button";
+import { UsageBar } from "../ui/usage-bar";
 import { formatCurrency } from "../../lib/formatters";
 import { getAccountBalance, getAccountType } from "../../lib/accounts";
-
-// Bar color for a credit card's utilization percentage.
-function utilizationTone(percent) {
-  if (percent > 90) return "bg-destructive";
-  if (percent > 70) return "bg-warning";
-  return "bg-income";
-}
-
-function CreditUtilization({ owed, limit, currency }) {
-  const percent = (owed / limit) * 100;
-
-  return (
-    <div className="mt-2 space-y-1.5">
-      <div className="flex items-center justify-between gap-2 text-2xs text-muted-foreground">
-        <span className="shrink-0">{percent.toFixed(0)}% used</span>
-        <span className="truncate text-right">
-          {formatCurrency(Math.max(limit - owed, 0), currency)} available
-        </span>
-      </div>
-
-      <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-muted"
-        role="progressbar"
-        aria-label="Credit utilization"
-        aria-valuenow={Math.round(percent)}
-        aria-valuemin={0}
-        aria-valuemax={100}
-      >
-        <div
-          className={cn(
-            "h-full rounded-full transition-all duration-300",
-            utilizationTone(percent),
-          )}
-          style={{ width: `${Math.min(percent, 100)}%` }}
-        />
-      </div>
-    </div>
-  );
-}
 
 export function AccountCard({
   account,
@@ -129,10 +91,12 @@ export function AccountCard({
         </p>
 
         {hasLimit && (
-          <CreditUtilization
-            owed={amount}
+          <UsageBar
+            className="mt-2"
+            used={amount}
             limit={creditLimit}
             currency={account.currency}
+            label="Credit utilization"
           />
         )}
 

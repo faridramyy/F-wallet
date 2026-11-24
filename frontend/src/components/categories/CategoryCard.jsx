@@ -8,12 +8,17 @@ import {
 import { cn } from "cn";
 
 import { IconButton } from "../ui/icon-button";
+import { UsageBar } from "../ui/usage-bar";
 
 // One category row. It has no border of its own: CategoryBlock groups a
 // parent and its sub-categories inside one bordered block.
+//   budget: { spentCents, limitCents } when the category has a budget this
+//           month; shown as a usage bar
 export function CategoryCard({
   category,
   accountName,
+  budget,
+  currency,
   onEdit,
   onArchive,
   dragHandleProps,
@@ -63,6 +68,17 @@ export function CategoryCard({
             <span className="max-w-full truncate">{category.notes}</span>
           )}
         </div>
+
+        {budget && (
+          <UsageBar
+            className="mt-2 max-w-md"
+            used={budget.spentCents / 100}
+            limit={budget.limitCents / 100}
+            currency={currency}
+            remainingLabel="left"
+            label={`${category.category_name} budget used`}
+          />
+        )}
       </div>
 
       <div className="flex shrink-0 items-center gap-1">

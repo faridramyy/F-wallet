@@ -5,25 +5,11 @@ import { Progress } from "../ui/progress";
 import { SectionCard } from "../common/SectionCard";
 import { useAppData } from "../providers/useAppData";
 import { formatCents } from "../../lib/formatters";
-import { getMonthBudget, monthKey } from "../../lib/analytics";
-
-// Cents spent per category on expenses in the given "YYYY-MM" month.
-function getSpendingByCategory(transactions, monthPrefix) {
-  const spending = {};
-
-  for (const t of transactions) {
-    if (
-      t.transaction_type === "expense" &&
-      t.category_id &&
-      t.transaction_date?.startsWith(monthPrefix)
-    ) {
-      spending[t.category_id] =
-        (spending[t.category_id] ?? 0) + Number(t.amount_cents ?? 0);
-    }
-  }
-
-  return spending;
-}
+import {
+  expenseCentsByCategory,
+  getMonthBudget,
+  monthKey,
+} from "../../lib/analytics";
 
 // Spending against the budget of the given month.
 export function BudgetOverview({ year, month }) {
@@ -37,7 +23,7 @@ export function BudgetOverview({ year, month }) {
     month,
   );
 
-  const spending = getSpendingByCategory(transactions, prefix);
+  const spending = expenseCentsByCategory(transactions, prefix);
 
   const items = allocations.map((a) => {
     const spentCents = spending[a.category_id] ?? 0;

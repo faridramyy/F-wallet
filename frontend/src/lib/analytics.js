@@ -247,3 +247,17 @@ export function getMonthBudget(budgets, year, month) {
     ),
   };
 }
+
+// Expense cents per category id in a "YYYY-MM" month (no folding, unlike
+// spendingByCategory). Transactions without a category are left out.
+export function expenseCentsByCategory(transactions, key) {
+  const spending = {};
+
+  for (const t of transactions) {
+    if (t.transaction_type === "expense" && t.category_id && inMonth(t, key)) {
+      spending[t.category_id] = (spending[t.category_id] ?? 0) + cents(t);
+    }
+  }
+
+  return spending;
+}

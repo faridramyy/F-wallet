@@ -3,13 +3,13 @@ import { useState } from "react";
 import { FormDialog } from "../common/FormDialog";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { NativeSelect } from "../ui/native-select";
+import { Select } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
 import { centsToInput, dollarsToCents } from "../../lib/formatters";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
 import { ACCOUNT_TYPES } from "../../lib/accounts";
-import { CURRENCY_OPTIONS, renderOptions } from "../../lib/options";
+import { CURRENCY_OPTIONS } from "../../lib/options";
 
 const optionalNumber = (value) => (value == null ? "" : String(value));
 
@@ -65,6 +65,13 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
     id: name,
     value: form[name],
     onChange: (event) => updateField(name, event.target.value),
+  });
+
+  // Props for a <Select> bound to form[name].
+  const bindSelect = (name) => ({
+    id: name,
+    value: form[name],
+    onValueChange: (value) => updateField(name, value),
   });
 
   function handleClose() {
@@ -147,15 +154,11 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Account type" htmlFor="account_type">
-          <NativeSelect {...bind("account_type")}>
-            {renderOptions(ACCOUNT_TYPES)}
-          </NativeSelect>
+          <Select {...bindSelect("account_type")} options={ACCOUNT_TYPES} />
         </Field>
 
         <Field label="Currency" htmlFor="currency">
-          <NativeSelect {...bind("currency")}>
-            {renderOptions(CURRENCY_OPTIONS)}
-          </NativeSelect>
+          <Select {...bindSelect("currency")} options={CURRENCY_OPTIONS} />
         </Field>
       </div>
 
@@ -218,7 +221,10 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
               />
             </Field>
 
-            <Field label="Statement closing day" htmlFor="statement_closing_day">
+            <Field
+              label="Statement closing day"
+              htmlFor="statement_closing_day"
+            >
               <Input
                 {...bind("statement_closing_day")}
                 type="number"
@@ -261,7 +267,9 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
         />
 
         <span>
-          <span className="block text-sm font-medium">Include in net worth</span>
+          <span className="block text-sm font-medium">
+            Include in net worth
+          </span>
           <span className="mt-1 block text-xs text-muted-foreground">
             Include this account when calculating your total net worth.
           </span>
