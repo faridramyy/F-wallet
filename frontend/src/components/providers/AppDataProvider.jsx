@@ -157,12 +157,22 @@ export function AppDataProvider({ children }) {
     }
   };
 
+  // Account balances include every posted transaction, so they are fetched
+  // again after a transaction changes. A failure here only leaves balances
+  // stale until the next load; the transaction itself was saved.
+  const refreshAccounts = () =>
+    api
+      .get("/accounts")
+      .then(({ data }) => setAccounts(data.accounts))
+      .catch((error) => console.error("Failed to refresh balances:", error));
+
   const createTransaction = async (body) => {
     const { data } = await api.post("/transactions", body);
 
     setTransactions((current) =>
       sortTransactions([data.transaction, ...current]),
     );
+    refreshAccounts();
   };
 
   const updateTransaction = async (transactionId, changes) => {
@@ -173,6 +183,7 @@ export function AppDataProvider({ children }) {
         replaceById(current, "transaction_id", data.transaction),
       ),
     );
+    refreshAccounts();
   };
 
   const deleteTransaction = async (transactionId) => {
@@ -181,6 +192,7 @@ export function AppDataProvider({ children }) {
     setTransactions((current) =>
       removeById(current, "transaction_id", transactionId),
     );
+    refreshAccounts();
   };
 
   const value = {

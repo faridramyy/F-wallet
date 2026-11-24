@@ -1,30 +1,23 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
-import { arrayMove } from "@dnd-kit/sortable";
-import {
-  Archive,
-  ArrowDownLeft,
-  ArrowUpRight,
-  Flame,
-  Plus,
-  Tags,
-} from "lucide-react";
+import { Archive, Plus, Tags } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
-import { StatCard, StatGrid } from "../ui/stat-card";
 import { TabBar } from "../ui/tab-bar";
 import { ArchivedList } from "../common/ArchivedList";
-import { PageIntro } from "../common/PageIntro";
 import { SortableList } from "../common/SortableList";
-import { CategoryCard } from "./CategoryCard";
+import { CategoryBlock } from "./CategoryBlock";
 import { CategoryDialog } from "./CategoryDialog";
 import { useNotifications } from "../providers/useNotifications";
 import { useAppData } from "../providers/useAppData";
 import { createApi } from "../../lib/api";
 import { removeById, replaceById } from "../../lib/collections";
-import { getMonthContext, spendingByCategory } from "../../lib/analytics";
-import { formatCents } from "../../lib/formatters";
+import {
+  buildCategoryTree,
+  flattenCategoryTree,
+  moveWithinParent,
+} from "../../lib/categories";
 
 const STATUS_TABS = [
   { value: "active", label: "Active categories" },
@@ -36,48 +29,6 @@ const TYPE_FILTERS = [
   { value: "income", label: "Income" },
 ];
 
-const byDisplayOrder = (a, b) =>
-  (a.display_order ?? 0) - (b.display_order ?? 0) ||
-  a.category_name.localeCompare(b.category_name);
-
-// Categories of one type in display order, each child placed directly under
-// its parent and tagged with its nesting `depth`.
-function getOrderedCategories(categories, categoryType) {
-  const ofType = categories.filter((c) => c.category_type === categoryType);
-  const ids = new Set(ofType.map((c) => c.category_id));
-  const childrenOf = new Map();
-
-  for (const category of ofType) {
-    const parentId = ids.has(category.parent_category_id)
-      ? category.parent_category_id
-      : null;
-
-    if (!childrenOf.has(parentId)) childrenOf.set(parentId, []);
-    childrenOf.get(parentId).push(category);
-  }
-
-  const result = [];
-  const visited = new Set();
-
-  const visit = (category, depth) => {
-    if (visited.has(category.category_id)) return;
-
-    visited.add(category.category_id);
-    result.push({ ...category, depth });
-
-    (childrenOf.get(category.category_id) ?? [])
-      .sort(byDisplayOrder)
-      .forEach((child) => visit(child, depth + 1));
-  };
-
-  (childrenOf.get(null) ?? []).sort(byDisplayOrder).forEach((c) => visit(c, 0));
-
-  // Defensive: anything left over (e.g. a parent cycle) is shown at the top level.
-  [...ofType].sort(byDisplayOrder).forEach((c) => visit(c, 0));
-
-  return result;
-}
-
 export function CategoriesTab() {
   const api = createApi(useAuth());
   const { toast, confirm } = useNotifications();
@@ -87,8 +38,6 @@ export function CategoriesTab() {
     archivedCategories,
     setArchivedCategories,
     accounts,
-    transactions,
-    settings,
   } = useAppData();
 
   const [status, setStatus] = useState("active");
@@ -98,25 +47,13 @@ export function CategoriesTab() {
   const [savingOrder, setSavingOrder] = useState(false);
 
   const editingCategory = dialog?.category ?? null;
-  const visibleCategories = getOrderedCategories(categories, filter);
+  // Top-level categories of the chosen type, each with its sub-categories.
+  const tree = buildCategoryTree(categories, filter);
 
   // Looked up once per render instead of once per card.
-  const categoryNames = new Map(
-    categories.map((c) => [c.category_id, c.category_name]),
-  );
   const accountNames = new Map(
     accounts.map((a) => [a.account_id, a.account_name]),
   );
-
-  const countOf = (type) =>
-    categories.filter((c) => c.category_type === type).length;
-  const subcategoryCount = categories.filter((c) =>
-    categoryNames.has(c.parent_category_id),
-  ).length;
-  const topCategory = spendingByCategory(
-    transactions,
-    getMonthContext().current.key,
-  ).find((item) => item.id !== "other");
 
   // CategoryDialog shows its own success/error messages; errors are rethrown.
   async function handleSaveCategory(body) {
@@ -174,17 +111,24 @@ export function CategoriesTab() {
     }
   }
 
-  // Optimistic reorder within the visible type; the other type keeps its
-  // positions. Rolls back if saving fails.
-  async function handleReorder(from, to) {
+  // Optimistic reorder of one sibling list (top-level categories when
+  // parentId is null). Parents move with their sub-categories; the other
+  // category type keeps its positions. Rolls back if saving fails.
+  async function handleReorder(parentId, from, to) {
     const previous = categories;
-    const reorderedVisible = arrayMove(visibleCategories, from, to);
+    const reorderedVisible = flattenCategoryTree(
+      moveWithinParent(tree, parentId, from, to),
+    );
     const visibleIds = new Set(reorderedVisible.map((c) => c.category_id));
 
+    // display_order follows list position, as the server will save it, so
+    // the new order shows immediately instead of after the response.
     let cursor = 0;
-    const reordered = categories.map((item) =>
-      visibleIds.has(item.category_id) ? reorderedVisible[cursor++] : item,
-    );
+    const reordered = categories
+      .map((item) =>
+        visibleIds.has(item.category_id) ? reorderedVisible[cursor++] : item,
+      )
+      .map((item, index) => ({ ...item, display_order: index }));
 
     setCategories(reordered);
     setSavingOrder(true);
@@ -207,50 +151,19 @@ export function CategoriesTab() {
 
   return (
     <>
-      <PageIntro description="Organize your income and expenses.">
-        {status === "active" && (
-          <Button onClick={openCreate}>
-            <Plus />
-            New category
-          </Button>
-        )}
-      </PageIntro>
-
-      <StatGrid>
-        <StatCard
-          icon={Tags}
-          label="Categories"
-          value={categories.length}
-          description={`${subcategoryCount} sub-categor${subcategoryCount === 1 ? "y" : "ies"}`}
-        />
-        <StatCard
-          icon={ArrowDownLeft}
-          tone="income"
-          label="Income categories"
-          value={countOf("income")}
-          description="For money coming in"
-        />
-        <StatCard
-          icon={ArrowUpRight}
-          tone="expense"
-          label="Expense categories"
-          value={countOf("expense")}
-          description="For money going out"
-        />
-        <StatCard
-          icon={Flame}
-          tone="warning"
-          label="Top category"
-          value={topCategory?.name ?? "—"}
-          description={
-            topCategory
-              ? `${formatCents(topCategory.cents, settings?.currency ?? "CAD")} spent this month`
-              : "No expenses yet this month"
-          }
-        />
-      </StatGrid>
-
-      <TabBar value={status} onValueChange={setStatus} items={STATUS_TABS} />
+      <TabBar
+        value={status}
+        onValueChange={setStatus}
+        items={STATUS_TABS}
+        actions={
+          status === "active" && (
+            <Button onClick={openCreate}>
+              <Plus />
+              New category
+            </Button>
+          )
+        }
+      />
 
       {status === "archived" ? (
         <ArchivedList
@@ -275,7 +188,7 @@ export function CategoriesTab() {
             items={TYPE_FILTERS}
           />
 
-          {visibleCategories.length === 0 ? (
+          {tree.length === 0 ? (
             <EmptyState
               icon={Tags}
               title={
@@ -296,19 +209,20 @@ export function CategoriesTab() {
             </EmptyState>
           ) : (
             <SortableList
-              items={visibleCategories}
-              getId={(category) => category.category_id}
+              items={tree}
+              getId={(node) => node.category.category_id}
               disabled={savingOrder}
-              onReorder={handleReorder}
+              onReorder={(from, to) => handleReorder(null, from, to)}
               className="space-y-3"
-              renderItem={(category, sortable) => (
-                <CategoryCard
-                  category={category}
-                  parentName={categoryNames.get(category.parent_category_id)}
-                  accountName={accountNames.get(category.default_account_id)}
+              renderItem={(node, sortable) => (
+                <CategoryBlock
+                  node={node}
+                  {...sortable}
+                  accountNames={accountNames}
                   onEdit={(item) => setDialog({ category: item })}
                   onArchive={handleArchiveCategory}
-                  {...sortable}
+                  onReorder={handleReorder}
+                  disabled={savingOrder}
                 />
               )}
             />

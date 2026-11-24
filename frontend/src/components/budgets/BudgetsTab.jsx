@@ -6,7 +6,6 @@ import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { PageIntro } from "../common/PageIntro";
 import { BudgetCard } from "./BudgetCard";
 import { BudgetDialog } from "./BudgetDialog";
 import { BudgetAllocationDialog } from "./BudgetAllocationDialog";
@@ -85,23 +84,23 @@ export function BudgetsTab() {
 
   return (
     <>
-      <PageIntro description="Plan how much you want to spend each month.">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <Field label="Budget year" htmlFor="budget-year" className="w-40">
+          <Input
+            id="budget-year"
+            type="number"
+            min="2000"
+            max="9999"
+            value={year}
+            onChange={(event) => setYear(event.target.value)}
+          />
+        </Field>
+
         <Button onClick={openCreate}>
           <Plus />
           New budget
         </Button>
-      </PageIntro>
-
-      <Field label="Budget year" htmlFor="budget-year" className="sm:w-40">
-        <Input
-          id="budget-year"
-          type="number"
-          min="2000"
-          max="9999"
-          value={year}
-          onChange={(event) => setYear(event.target.value)}
-        />
-      </Field>
+      </div>
 
       {yearBudgets.length === 0 ? (
         <EmptyState

@@ -25,6 +25,7 @@ import {
   topMerchant,
 } from "../lib/analytics";
 import { formatMonthYear } from "../lib/formatters";
+import { summarizeAccounts } from "../lib/accounts";
 
 const monthName = new Intl.DateTimeFormat("en-CA", { month: "long" });
 const nameOf = ({ year, month }) =>
@@ -55,12 +56,7 @@ export function DashboardPage() {
   const lastMonthToDate = summarizeMonth(transactions, previous.key, today);
   const categories = spendingByCategory(transactions, current.key);
 
-  const netWorthCents = accounts
-    .filter((account) => account.include_in_net_worth)
-    .reduce(
-      (sum, account) => sum + Number(account.opening_balance_cents ?? 0),
-      0,
-    );
+  const netWorthCents = summarizeAccounts(accounts).netCents;
 
   // The pace chart stops at today for the current month.
   const currentPace = cumulativeDailySpending(

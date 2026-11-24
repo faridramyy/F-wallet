@@ -109,8 +109,10 @@ export function SortableList({
 
       <DragOverlay>
         {activeItem && (
-          <div className="rotate-1 shadow-xl">
-            {renderItem(activeItem, { isDragging: true })}
+          // The floating copy under the pointer; `isOverlay` lets an item
+          // style it (the original stays in place, faded, via isDragging).
+          <div className="rotate-1 rounded-xl shadow-xl">
+            {renderItem(activeItem, { isOverlay: true })}
           </div>
         )}
       </DragOverlay>

@@ -79,12 +79,15 @@ function StatCard({
   );
 }
 
-// The standard row of overview tiles: 1 → 2 → 4 columns.
-function StatGrid({ className, children }) {
+const GRID_COLUMNS = {
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-2 xl:grid-cols-4",
+};
+
+// The standard row of overview tiles: one column on phones, then 3 or 4.
+function StatGrid({ columns = 4, className, children }) {
   return (
-    <section
-      className={cn("grid gap-4 sm:grid-cols-2 xl:grid-cols-4", className)}
-    >
+    <section className={cn("grid gap-4", GRID_COLUMNS[columns], className)}>
       {children}
     </section>
   );

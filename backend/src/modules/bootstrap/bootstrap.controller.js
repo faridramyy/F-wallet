@@ -1,5 +1,8 @@
 import { query } from "../../database/db.js";
-import { accountColumns } from "../accounts/accounts.controller.js";
+import {
+  accountColumns,
+  activeAccountsWithTotalsSql,
+} from "../accounts/accounts.controller.js";
 import { categoryColumns } from "../categories/categories.controller.js";
 import { settingsColumns } from "../settings/settings.controller.js";
 import { fetchBudgets } from "../budgets/budgets.controller.js";
@@ -68,16 +71,7 @@ export const getBootstrap = async (req, res, next) => {
         `,
         [userId],
       ),
-      query(
-        `
-          SELECT ${accountColumns}
-          FROM f_wallet.accounts
-          WHERE user_id = $1
-            AND is_archived = FALSE
-          ORDER BY display_order ASC
-        `,
-        [userId],
-      ),
+      query(activeAccountsWithTotalsSql, [userId]),
       query(
         `
           SELECT ${accountColumns}

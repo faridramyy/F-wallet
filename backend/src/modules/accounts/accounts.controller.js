@@ -22,6 +22,35 @@ export const accountColumns = `
   updated_at
 `;
 
+// Active accounts with `entries_total_cents`: the sum of the account's ledger
+// entries from posted (not deleted or scheduled) transactions. Entries are
+// signed from the account's point of view, so for cash, checking and savings
+// the live balance is opening_balance_cents + entries_total_cents. The
+// client applies the credit-card rule (see frontend/src/lib/accounts.js).
+// $1 must be the user id.
+export const activeAccountsWithTotalsSql = `
+  SELECT
+    ${accountColumns
+      .split(",")
+      .map((column) => `a.${column.trim()}`)
+      .join(",\n    ")},
+    COALESCE(totals.entries_total_cents, 0) AS entries_total_cents
+  FROM f_wallet.accounts a
+  LEFT JOIN (
+    SELECT e.account_id, SUM(e.amount_cents) AS entries_total_cents
+    FROM f_wallet.transaction_entries e
+    JOIN f_wallet.transactions t
+      ON t.user_id = e.user_id
+     AND t.transaction_id = e.transaction_id
+    WHERE e.user_id = $1
+      AND t.status = 'posted'
+    GROUP BY e.account_id
+  ) totals ON totals.account_id = a.account_id
+  WHERE a.user_id = $1
+    AND a.is_archived = FALSE
+  ORDER BY a.display_order ASC
+`;
+
 const creditCardFields = [
   "credit_limit_cents",
   "card_last_four",
@@ -63,16 +92,7 @@ const handleControllerError = (error, next) => {
 // GET /api/v1/accounts
 export const getAccounts = async (req, res, next) => {
   try {
-    const result = await query(
-      `
-        SELECT ${accountColumns}
-        FROM f_wallet.accounts
-        WHERE user_id = $1
-          AND is_archived = FALSE
-        ORDER BY display_order ASC
-      `,
-      [req.user.sub],
-    );
+    const result = await query(activeAccountsWithTotalsSql, [req.user.sub]);
 
     res.status(200).json({
       success: true,

@@ -5,7 +5,7 @@ import { Progress } from "../ui/progress";
 import { SectionCard } from "../common/SectionCard";
 import { useAppData } from "../providers/useAppData";
 import { formatCents } from "../../lib/formatters";
-import { monthKey } from "../../lib/analytics";
+import { getMonthBudget, monthKey } from "../../lib/analytics";
 
 // Cents spent per category on expenses in the given "YYYY-MM" month.
 function getSpendingByCategory(transactions, monthPrefix) {
@@ -31,27 +31,26 @@ export function BudgetOverview({ year, month }) {
   const currency = settings?.currency ?? "CAD";
   const prefix = monthKey(year, month);
 
-  const currentBudget = budgets.find(
-    (b) => Number(b.budget_year) === year && Number(b.budget_month) === month,
+  const { budget: currentBudget, allocations } = getMonthBudget(
+    budgets,
+    year,
+    month,
   );
 
   const spending = getSpendingByCategory(transactions, prefix);
 
-  const items = (currentBudget?.allocations ?? [])
-    .filter((a) => a.category_type === "expense" && !a.category_is_archived)
-    .map((a) => {
-      const spentCents = spending[a.category_id] ?? 0;
-      const limitCents = Number(a.allocated_cents ?? 0);
+  const items = allocations.map((a) => {
+    const spentCents = spending[a.category_id] ?? 0;
+    const limitCents = Number(a.allocated_cents ?? 0);
 
-      return {
-        id: a.budget_category_id ?? a.category_id,
-        name: a.category_name,
-        spentCents,
-        limitCents,
-        percent:
-          limitCents > 0 ? Math.round((spentCents / limitCents) * 100) : 0,
-      };
-    });
+    return {
+      id: a.budget_category_id ?? a.category_id,
+      name: a.category_name,
+      spentCents,
+      limitCents,
+      percent: limitCents > 0 ? Math.round((spentCents / limitCents) * 100) : 0,
+    };
+  });
 
   return (
     <SectionCard

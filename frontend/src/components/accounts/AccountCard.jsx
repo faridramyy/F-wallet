@@ -71,7 +71,7 @@ export function AccountCard({
 
   const caption = isCreditCard
     ? `Owed${hasLimit ? ` · limit ${formatCurrency(creditLimit, account.currency)}` : ""}`
-    : "Opening balance";
+    : "Current balance";
 
   return (
     <div

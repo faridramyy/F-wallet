@@ -14,18 +14,25 @@ const variants = {
 };
 
 // items: [{ value, label, icon? }]
+// actions: optional buttons shown at the right end of the row (kept outside
+// the tab list, which may only contain tabs).
 function TabBar({
   value,
   onValueChange,
   items,
   variant = "underline",
+  actions,
   className,
   ...props
 }) {
   const styles = variants[variant];
 
-  return (
-    <div role="tablist" className={cn(styles.list, className)} {...props}>
+  const list = (
+    <div
+      role="tablist"
+      className={cn(styles.list, actions && "border-b-0", className)}
+      {...props}
+    >
       {items.map(({ value: itemValue, label, icon: Icon }) => (
         <button
           key={itemValue}
@@ -42,6 +49,20 @@ function TabBar({
           {label}
         </button>
       ))}
+    </div>
+  );
+
+  if (!actions) return list;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-end justify-between gap-2",
+        variant === "underline" && "border-b border-border",
+      )}
+    >
+      {list}
+      <div className="flex shrink-0 gap-2 pb-2">{actions}</div>
     </div>
   );
 }

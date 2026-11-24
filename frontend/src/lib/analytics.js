@@ -225,3 +225,25 @@ export function niceScale(value, tickCount = 4) {
     ),
   };
 }
+
+// A month's budget and its active expense-category allocations.
+//   totalCents: what was budgeted across those categories (0 without a budget)
+export function getMonthBudget(budgets, year, month) {
+  const budget =
+    budgets.find(
+      (b) => Number(b.budget_year) === year && Number(b.budget_month) === month,
+    ) ?? null;
+
+  const allocations = (budget?.allocations ?? []).filter(
+    (a) => a.category_type === "expense" && !a.category_is_archived,
+  );
+
+  return {
+    budget,
+    allocations,
+    totalCents: allocations.reduce(
+      (sum, a) => sum + Number(a.allocated_cents ?? 0),
+      0,
+    ),
+  };
+}

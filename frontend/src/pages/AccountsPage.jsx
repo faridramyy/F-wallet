@@ -1,29 +1,21 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { arrayMove } from "@dnd-kit/sortable";
-import {
-  Archive,
-  CreditCard,
-  Landmark,
-  Plus,
-  Scale,
-  Wallet,
-} from "lucide-react";
+import { Archive, CreditCard, Landmark, Plus, Wallet } from "lucide-react";
 
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/empty-state";
 import { StatCard, StatGrid } from "../components/ui/stat-card";
 import { TabBar } from "../components/ui/tab-bar";
 import { ArchivedList } from "../components/common/ArchivedList";
-import { PageIntro } from "../components/common/PageIntro";
 import { SortableList } from "../components/common/SortableList";
 import { AccountCard } from "../components/accounts/AccountCard";
 import { AccountDialog } from "../components/accounts/AccountDialog";
 import { useNotifications } from "../components/providers/useNotifications";
 import { useAppData } from "../components/providers/useAppData";
 import { createApi } from "../lib/api";
-import { getAccountType } from "../lib/accounts";
-import { formatCents, formatPercent } from "../lib/formatters";
+import { getAccountType, summarizeAccounts } from "../lib/accounts";
+import { formatCents } from "../lib/formatters";
 import { removeById, replaceById } from "../lib/collections";
 
 const TABS = [
@@ -130,67 +122,55 @@ export function AccountsPage() {
   }
 
   const currency = settings?.currency ?? "CAD";
-  const count = (predicate) => accounts.filter(predicate).length;
-  const sumCents = (items, field) =>
-    items.reduce((sum, item) => sum + Number(item[field] ?? 0), 0);
+  const money = (cents) => formatCents(cents, currency);
+  const totals = summarizeAccounts(accounts);
+  const hasCardLimits = totals.limitCents > 0;
 
-  const netWorthAccounts = accounts.filter((a) => a.include_in_net_worth);
-  const creditCards = accounts.filter((a) => a.account_type === "credit_card");
-  const creditOwed = creditCards.reduce(
-    (sum, card) => sum + Math.max(Number(card.opening_balance_cents ?? 0), 0),
-    0,
-  );
-  const creditLimit = sumCents(creditCards, "credit_limit_cents");
-  const creditUsed = creditLimit > 0 ? creditOwed / creditLimit : null;
   const openCreate = () => setDialog({});
 
   return (
     <div className="space-y-6">
-      <PageIntro description="Manage your bank accounts, savings, cash, and credit cards.">
-        {activeTab === "active" && (
-          <Button onClick={openCreate}>
-            <Plus />
-            New account
-          </Button>
-        )}
-      </PageIntro>
-
-      <StatGrid>
+      <StatGrid columns={3}>
         <StatCard
           icon={Wallet}
-          label="Net worth"
-          value={formatCents(
-            sumCents(netWorthAccounts, "opening_balance_cents"),
-            currency,
-          )}
-          description="Included accounts"
-        />
-        <StatCard
-          icon={Landmark}
-          label="Accounts"
-          value={accounts.length}
-          description={`${count((a) => a.account_type === "savings")} savings · ${count((a) => a.account_type === "checking")} checking`}
+          label="Net money"
+          value={money(totals.netCents)}
+          valueClassName={totals.netCents < 0 ? "text-destructive" : undefined}
+          description="What is left after clearing all debt"
         />
         <StatCard
           icon={CreditCard}
-          label="Credit used"
-          value={formatCents(creditOwed, currency)}
-          tone={creditUsed !== null && creditUsed > 0.7 ? "warning" : "default"}
-          description={
-            creditUsed === null
-              ? `${creditCards.length} credit card${creditCards.length === 1 ? "" : "s"}, no limits set`
-              : `${formatPercent(creditUsed)} of ${formatCents(creditLimit, currency)} limit`
-          }
+          tone={totals.debtCents > 0 ? "expense" : "default"}
+          label="Card debt"
+          value={money(totals.debtCents)}
+          description="What you currently owe"
         />
         <StatCard
-          icon={Scale}
-          label="Included in net worth"
-          value={`${netWorthAccounts.length} of ${accounts.length}`}
-          description="Accounts counted in your total"
+          icon={Landmark}
+          tone="income"
+          label="Available credit"
+          value={hasCardLimits ? money(totals.availableCents) : "—"}
+          description={
+            hasCardLimits
+              ? "Left to spend on your cards"
+              : "Add a credit limit to a card to see this"
+          }
         />
       </StatGrid>
 
-      <TabBar value={activeTab} onValueChange={setActiveTab} items={TABS} />
+      <TabBar
+        value={activeTab}
+        onValueChange={setActiveTab}
+        items={TABS}
+        actions={
+          activeTab === "active" && (
+            <Button onClick={openCreate}>
+              <Plus />
+              New account
+            </Button>
+          )
+        }
+      />
 
       {activeTab === "archived" ? (
         <ArchivedList
