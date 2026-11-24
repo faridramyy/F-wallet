@@ -186,13 +186,76 @@ export function AppDataProvider({ children }) {
     refreshAccounts();
   };
 
+  // Re-reads one transaction (e.g. an expense whose refunded total changed).
+  // Skipped quietly if it is not loaded or no longer exists.
+  const refreshTransaction = (transactionId) =>
+    api
+      .get(`/transactions/${transactionId}`)
+      .then(({ data }) =>
+        setTransactions((current) =>
+          replaceById(current, "transaction_id", data.transaction),
+        ),
+      )
+      .catch(() => {});
+
+  // Adds or replaces a saved transaction, then refreshes what depends on it.
+  const applySaved = (saved, { isNew }) => {
+    setTransactions((current) =>
+      sortTransactions(
+        isNew
+          ? [saved, ...current]
+          : replaceById(current, "transaction_id", saved),
+      ),
+    );
+    refreshAccounts();
+    if (saved.original_transaction_id) {
+      refreshTransaction(saved.original_transaction_id);
+    }
+  };
+
   const deleteTransaction = async (transactionId) => {
+    const deleted = transactions.find(
+      (item) => item.transaction_id === transactionId,
+    );
+
     await api.delete(`/transactions/${transactionId}`);
 
     setTransactions((current) =>
       removeById(current, "transaction_id", transactionId),
     );
     refreshAccounts();
+    if (deleted?.original_transaction_id) {
+      refreshTransaction(deleted.original_transaction_id);
+    }
+  };
+
+  // Transfers between two accounts:
+  //   { from_account_id, to_account_id, amount_cents, transaction_date, ... }
+  const createTransfer = async (body) => {
+    const { data } = await api.post("/transactions/transfers", body);
+    applySaved(data.transaction, { isNew: true });
+  };
+
+  const updateTransfer = async (transactionId, changes) => {
+    const { data } = await api.patch(
+      `/transactions/transfers/${transactionId}`,
+      changes,
+    );
+    applySaved(data.transaction, { isNew: false });
+  };
+
+  // Refunds of an expense: { amount_cents, transaction_date, account_id?, ... }
+  const createRefund = async (expenseId, body) => {
+    const { data } = await api.post(`/transactions/${expenseId}/refunds`, body);
+    applySaved(data.transaction, { isNew: true });
+  };
+
+  const updateRefund = async (refundId, changes) => {
+    const { data } = await api.patch(
+      `/transactions/refunds/${refundId}`,
+      changes,
+    );
+    applySaved(data.transaction, { isNew: false });
   };
 
   const value = {
@@ -215,6 +278,10 @@ export function AppDataProvider({ children }) {
     createTransaction,
     updateTransaction,
     deleteTransaction,
+    createTransfer,
+    updateTransfer,
+    createRefund,
+    updateRefund,
     loading,
     error,
     reload,

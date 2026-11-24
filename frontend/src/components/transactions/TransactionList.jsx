@@ -46,6 +46,7 @@ export function TransactionList({
   transactions = [],
   onEdit,
   onDelete,
+  onRefund,
 }) {
   if (!transactions.length) {
     return (
@@ -84,6 +85,7 @@ export function TransactionList({
                 transaction={transaction}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onRefund={onRefund}
               />
             ))}
           </div>

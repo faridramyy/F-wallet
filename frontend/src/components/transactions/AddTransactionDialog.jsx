@@ -8,10 +8,23 @@ import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
 import { centsToInput, dollarsToCents } from "../../lib/formatters";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
-import { CATEGORY_TYPE_OPTIONS } from "../../lib/options";
 import { accountOptions, categoryOptions } from "../../lib/select-options";
 
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
+
+const TYPE_OPTIONS = {
+  expense: { value: "expense", label: "Expense" },
+  income: { value: "income", label: "Income" },
+  transfer: { value: "transfer", label: "Transfer between accounts" },
+};
+
+// Income and expense can switch into each other; a transfer stays a transfer.
+function typeOptionsFor(transaction) {
+  if (transaction?.transaction_type === "transfer")
+    return [TYPE_OPTIONS.transfer];
+  if (transaction) return [TYPE_OPTIONS.expense, TYPE_OPTIONS.income];
+  return Object.values(TYPE_OPTIONS);
+}
 
 function getInitialForm(transaction, accounts) {
   if (!transaction) {
@@ -19,6 +32,7 @@ function getInitialForm(transaction, accounts) {
       transaction_type: "expense",
       amount: "",
       account_id: accounts[0]?.account_id ?? "",
+      to_account_id: accounts[1]?.account_id ?? "",
       category_id: "",
       transaction_date: today(),
       description: "",
@@ -30,7 +44,9 @@ function getInitialForm(transaction, accounts) {
   return {
     transaction_type: transaction.transaction_type,
     amount: centsToInput(transaction.amount_cents),
+    // For a transfer this is the "from" account.
     account_id: transaction.account_id ?? "",
+    to_account_id: transaction.to_account_id ?? "",
     category_id: transaction.category_id ?? "",
     transaction_date: transaction.transaction_date,
     description: transaction.description ?? "",
@@ -41,18 +57,31 @@ function getInitialForm(transaction, accounts) {
 
 // The request body for a form, in API shape.
 function toPayload(form, amountCents) {
+  const shared = {
+    amount_cents: amountCents,
+    transaction_date: form.transaction_date,
+    description: form.description.trim() || null,
+    notes: form.notes.trim() || null,
+  };
+
+  if (form.transaction_type === "transfer") {
+    return {
+      from_account_id: form.account_id,
+      to_account_id: form.to_account_id,
+      ...shared,
+    };
+  }
+
   return {
     transaction_type: form.transaction_type,
     account_id: form.account_id,
     category_id: form.category_id || null,
-    amount_cents: amountCents,
-    transaction_date: form.transaction_date,
-    description: form.description.trim() || null,
     merchant: form.merchant.trim() || null,
-    notes: form.notes.trim() || null,
+    ...shared,
   };
 }
 
+//   onSave(body, { isTransfer }) saves a new or changed transaction
 function AddTransactionDialogContent({
   onOpenChange,
   onSave,
@@ -68,28 +97,53 @@ function AddTransactionDialogContent({
   const [error, setError] = useState("");
 
   const isEditing = Boolean(transaction);
+  const isTransfer = form.transaction_type === "transfer";
+  const typeOptions = typeOptionsFor(transaction);
   const close = () => onOpenChange(false);
 
   // Categories of the chosen type, parents with their sub-categories. If the
   // transaction's category was archived later it is no longer listed, so it
   // is kept as an extra option rather than the field silently going blank.
-  const categorySelectOptions = categoryOptions(
-    categories,
-    form.transaction_type,
-    {
-      none: "Uncategorized",
-      extra: form.category_id
-        ? {
-            value: form.category_id,
-            label: transaction?.category_name ?? "Archived category",
-          }
-        : undefined,
-    },
+  const categorySelectOptions = isTransfer
+    ? []
+    : categoryOptions(categories, form.transaction_type, {
+        none: "Uncategorized",
+        extra: form.category_id
+          ? {
+              value: form.category_id,
+              label: transaction?.category_name ?? "Archived category",
+            }
+          : undefined,
+      });
+
+  // A transfer cannot go to the account it comes from.
+  const toAccountOptions = accountOptions(
+    accounts.filter((account) => account.account_id !== form.account_id),
   );
 
   function updateField(changes) {
     setForm((current) => ({ ...current, ...changes }));
     setError("");
+  }
+
+  function changeType(type) {
+    const changes = { transaction_type: type, category_id: "" };
+
+    // Make sure "to" differs from "from" when switching to a transfer.
+    if (type === "transfer" && form.to_account_id === form.account_id) {
+      changes.to_account_id =
+        accounts.find((a) => a.account_id !== form.account_id)?.account_id ??
+        "";
+    }
+
+    updateField(changes);
+  }
+
+  function changeFromAccount(accountId) {
+    updateField({
+      account_id: accountId,
+      ...(accountId === form.to_account_id && { to_account_id: "" }),
+    });
   }
 
   function handleClose() {
@@ -99,7 +153,7 @@ function AddTransactionDialogContent({
       isDirty: hasChanges(form, initialForm),
       confirm,
       onClose: close,
-      noun: "transaction",
+      noun: isTransfer ? "transfer" : "transaction",
     });
   }
 
@@ -109,13 +163,17 @@ function AddTransactionDialogContent({
     const amountCents = dollarsToCents(form.amount);
 
     if (amountCents === null || amountCents <= 0) {
-      setError("Enter a valid amount, for example 12.50.");
-      return;
+      return setError("Enter a valid amount, for example 12.50.");
     }
-
     if (!form.account_id) {
-      setError("Choose an account.");
-      return;
+      return setError(
+        isTransfer
+          ? "Choose the account to move money from."
+          : "Choose an account.",
+      );
+    }
+    if (isTransfer && !form.to_account_id) {
+      return setError("Choose the account to move money to.");
     }
 
     let body = toPayload(form, amountCents);
@@ -138,8 +196,10 @@ function AddTransactionDialogContent({
     setSaving(true);
 
     try {
-      await onSave(body);
-      toast.success(isEditing ? "Transaction updated." : "Transaction added.");
+      await onSave(body, { isTransfer });
+      toast.success(
+        `${isTransfer ? "Transfer" : "Transaction"} ${isEditing ? "updated" : "added"}.`,
+      );
       close();
     } catch (err) {
       setError(err.message || "Unable to save transaction.");
@@ -147,19 +207,25 @@ function AddTransactionDialogContent({
     }
   }
 
+  const noun = isTransfer ? "transfer" : "transaction";
+
   return (
     <FormDialog
       size="lg"
-      title={isEditing ? "Edit transaction" : "Add transaction"}
+      title={isEditing ? `Edit ${noun}` : `Add ${noun}`}
       description={
-        isEditing
-          ? "Update your transaction information."
-          : "Record income or an expense in your F-Wallet."
+        isTransfer
+          ? "Move money between your own accounts, like paying a credit card."
+          : isEditing
+            ? "Update your transaction information."
+            : "Record income, an expense or a transfer in your F-Wallet."
       }
       onClose={handleClose}
       onSubmit={handleSubmit}
-      submitLabel={isEditing ? "Save changes" : "Add transaction"}
-      submitDisabled={accounts.length === 0}
+      submitLabel={isEditing ? "Save changes" : `Add ${noun}`}
+      submitDisabled={
+        accounts.length === 0 || (isTransfer && accounts.length < 2)
+      }
       saving={saving}
       error={error}
     >
@@ -170,16 +236,21 @@ function AddTransactionDialogContent({
         </p>
       )}
 
+      {isTransfer && accounts.length === 1 && (
+        <p className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
+          A transfer needs two accounts. Create another one on the Accounts page
+          first.
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Transaction type" htmlFor="transaction_type">
+        <Field label="Type" htmlFor="transaction_type">
           <Select
             id="transaction_type"
             value={form.transaction_type}
-            options={CATEGORY_TYPE_OPTIONS}
-            // The old category belongs to the other type.
-            onValueChange={(value) =>
-              updateField({ transaction_type: value, category_id: "" })
-            }
+            options={typeOptions}
+            disabled={typeOptions.length === 1}
+            onValueChange={changeType}
           />
         </Field>
 
@@ -195,26 +266,52 @@ function AddTransactionDialogContent({
           />
         </Field>
 
-        <Field label="Account" htmlFor="account_id">
-          <Select
-            id="account_id"
-            value={form.account_id}
-            options={accountOptions(accounts)}
-            placeholder="Choose an account"
-            onValueChange={(value) => updateField({ account_id: value })}
-          />
-        </Field>
+        {isTransfer ? (
+          <>
+            <Field label="From account" htmlFor="account_id">
+              <Select
+                id="account_id"
+                value={form.account_id}
+                options={accountOptions(accounts)}
+                placeholder="Choose an account"
+                onValueChange={changeFromAccount}
+              />
+            </Field>
 
-        <Field label="Category" htmlFor="category_id">
-          <Select
-            id="category_id"
-            value={form.category_id}
-            options={categorySelectOptions}
-            onValueChange={(value) => updateField({ category_id: value })}
-          />
-        </Field>
+            <Field label="To account" htmlFor="to_account_id">
+              <Select
+                id="to_account_id"
+                value={form.to_account_id}
+                options={toAccountOptions}
+                placeholder="Choose an account"
+                onValueChange={(value) => updateField({ to_account_id: value })}
+              />
+            </Field>
+          </>
+        ) : (
+          <>
+            <Field label="Account" htmlFor="account_id">
+              <Select
+                id="account_id"
+                value={form.account_id}
+                options={accountOptions(accounts)}
+                placeholder="Choose an account"
+                onValueChange={(value) => updateField({ account_id: value })}
+              />
+            </Field>
 
-        <Field label="Transaction date" htmlFor="transaction_date">
+            <Field label="Category" htmlFor="category_id">
+              <Select
+                id="category_id"
+                value={form.category_id}
+                options={categorySelectOptions}
+                onValueChange={(value) => updateField({ category_id: value })}
+              />
+            </Field>
+          </>
+        )}
+
+        <Field label="Date" htmlFor="transaction_date">
           <Input
             id="transaction_date"
             required
@@ -226,15 +323,19 @@ function AddTransactionDialogContent({
           />
         </Field>
 
-        <Field label="Merchant" htmlFor="merchant">
-          <Input
-            id="merchant"
-            maxLength={150}
-            value={form.merchant}
-            onChange={(event) => updateField({ merchant: event.target.value })}
-            placeholder="e.g. Metro"
-          />
-        </Field>
+        {!isTransfer && (
+          <Field label="Merchant" htmlFor="merchant">
+            <Input
+              id="merchant"
+              maxLength={150}
+              value={form.merchant}
+              onChange={(event) =>
+                updateField({ merchant: event.target.value })
+              }
+              placeholder="e.g. Metro"
+            />
+          </Field>
+        )}
       </div>
 
       <Field label="Description" htmlFor="description">
@@ -243,7 +344,9 @@ function AddTransactionDialogContent({
           maxLength={255}
           value={form.description}
           onChange={(event) => updateField({ description: event.target.value })}
-          placeholder="e.g. Grocery shopping"
+          placeholder={
+            isTransfer ? "e.g. Credit card payment" : "e.g. Grocery shopping"
+          }
         />
       </Field>
 

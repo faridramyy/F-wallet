@@ -12,6 +12,7 @@ import { Input } from "../components/ui/input";
 import { StatCard, StatGrid } from "../components/ui/stat-card";
 import { SectionCard } from "../components/common/SectionCard";
 import { TransactionList } from "../components/transactions/TransactionList";
+import { RefundDialog } from "../components/transactions/RefundDialog";
 import { useNotifications } from "../components/providers/useNotifications";
 import { useAppData } from "../components/providers/useAppData";
 import {
@@ -42,9 +43,35 @@ export function TransactionsPage({ onEdit }) {
     loadingMoreTransactions,
     loadMoreTransactions,
     deleteTransaction,
+    createRefund,
+    updateRefund,
+    accounts,
     settings,
   } = useAppData();
   const currency = settings?.currency ?? "CAD";
+
+  // null = closed; { expense } = new refund; { expense?, refund } = editing
+  const [refundDialog, setRefundDialog] = useState(null);
+
+  const findTransaction = (id) =>
+    transactions.find((item) => item.transaction_id === id);
+
+  // Refunds open the refund form; everything else the transaction form.
+  function handleEdit(transaction) {
+    if (transaction.transaction_type === "refund") {
+      setRefundDialog({
+        refund: transaction,
+        expense: findTransaction(transaction.original_transaction_id),
+      });
+    } else {
+      onEdit(transaction);
+    }
+  }
+
+  const handleSaveRefund = (body) =>
+    refundDialog.refund
+      ? updateRefund(refundDialog.refund.transaction_id, body)
+      : createRefund(refundDialog.expense.transaction_id, body);
 
   const [search, setSearch] = useState("");
 
@@ -145,8 +172,9 @@ export function TransactionsPage({ onEdit }) {
       >
         <TransactionList
           transactions={filtered}
-          onEdit={onEdit}
+          onEdit={handleEdit}
           onDelete={handleDelete}
+          onRefund={(expense) => setRefundDialog({ expense })}
         />
 
         {hasMoreTransactions && (
@@ -161,6 +189,15 @@ export function TransactionsPage({ onEdit }) {
           </div>
         )}
       </SectionCard>
+
+      <RefundDialog
+        open={refundDialog !== null}
+        expense={refundDialog?.expense}
+        refund={refundDialog?.refund}
+        accounts={accounts}
+        onClose={() => setRefundDialog(null)}
+        onSave={handleSaveRefund}
+      />
     </div>
   );
 }

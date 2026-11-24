@@ -18,23 +18,67 @@ const transactionColumns = `
   t.merchant,
   t.source,
   t.notes,
+  t.original_transaction_id,
+  t.transfer_group_id,
+  (
+    SELECT COALESCE(o.description, o.merchant)
+    FROM f_wallet.transactions AS o
+    WHERE o.user_id = t.user_id
+      AND o.transaction_id = t.original_transaction_id
+  ) AS original_title,
+  (
+    SELECT COALESCE(SUM(r.amount_cents), 0)
+    FROM f_wallet.transactions AS r
+    WHERE r.user_id = t.user_id
+      AND r.original_transaction_id = t.transaction_id
+      AND r.status = 'posted'
+  ) AS refunded_cents,
   t.created_at,
   t.updated_at
 `;
 
-// Transfers and refunds need extra rules, so they are read-only here.
+// Income and expense are edited here; transfers and refunds have their own
+// endpoints (transfers.controller.js, refunds.controller.js).
 const EDITABLE_TYPES = ["income", "expense"];
+
+// Types the user can delete. Adjustments are system-made.
+const DELETABLE_TYPES = ["income", "expense", "transfer", "refund"];
 
 // Ledger convention: each entry is signed from the account's point of view,
 // so an account balance is opening_balance_cents + SUM(entries).
 // Expense = money leaves the account (negative). Income = money enters it.
+// A transfer has two entries: -amount on the source, +amount on the
+// destination. A refund is one +amount entry (money comes back).
 const signedAmount = (type, cents) => (type === "expense" ? -cents : cents);
 
 // A "run" is any function (text, params) => Promise<result>. It lets the same
 // helper work both inside a DB transaction (client.query) and outside one.
-const runOnPool = (text, params) => query(text, params);
+export const runOnPool = (text, params) => query(text, params);
 
-const assertAccountUsable = async (run, userId, accountId) => {
+export const insertEntry = (run, userId, entry) =>
+  run(
+    `
+      INSERT INTO f_wallet.transaction_entries (
+        entry_id,
+        user_id,
+        transaction_id,
+        account_id,
+        entry_role,
+        amount_cents
+      )
+      VALUES ($1, $2, $3, $4, $5, $6)
+    `,
+    [
+      randomUUID(),
+      userId,
+      entry.transactionId,
+      entry.accountId,
+      entry.role,
+      entry.amountCents,
+    ],
+  );
+
+export const assertAccountUsable = async (run, userId, accountId) => {
   const result = await run(
     `
       SELECT account_id
@@ -82,6 +126,7 @@ const assertCategoryUsable = async (run, userId, categoryId, type) => {
 
 // Adds `entries`, `account_id` and `account_name` to each transaction row and
 // converts bigint (which pg returns as a string) to a normal number.
+// For a transfer, account_* is the source and to_account_* the destination.
 const withEntries = async (run, userId, rows) => {
   if (rows.length === 0) return [];
 
@@ -103,7 +148,10 @@ const withEntries = async (run, userId, rows) => {
        AND a.user_id = e.user_id
       WHERE e.user_id = $1
         AND e.transaction_id IN (${placeholders})
-      ORDER BY e.created_at ASC, e.entry_id ASC
+      ORDER BY
+        CASE e.entry_role WHEN 'source' THEN 0 WHEN 'destination' THEN 2 ELSE 1 END,
+        e.created_at ASC,
+        e.entry_id ASC
     `,
     [userId, ...ids],
   );
@@ -118,18 +166,22 @@ const withEntries = async (run, userId, rows) => {
 
   return rows.map((row) => {
     const entries = entriesByTransaction.get(row.transaction_id) ?? [];
+    const destination = entries.find((e) => e.entry_role === "destination");
 
     return {
       ...row,
       amount_cents: Number(row.amount_cents),
+      refunded_cents: Number(row.refunded_cents),
       account_id: entries[0]?.account_id ?? null,
       account_name: entries[0]?.account_name ?? null,
+      to_account_id: destination?.account_id ?? null,
+      to_account_name: destination?.account_name ?? null,
       entries,
     };
   });
 };
 
-const findTransaction = async (run, userId, transactionId) => {
+export const findTransaction = async (run, userId, transactionId) => {
   const result = await run(
     `
       SELECT ${transactionColumns}
@@ -312,27 +364,12 @@ export const createTransaction = async (req, res, next) => {
         ],
       );
 
-      await run(
-        `
-          INSERT INTO f_wallet.transaction_entries (
-            entry_id,
-            user_id,
-            transaction_id,
-            account_id,
-            entry_role,
-            amount_cents
-          )
-          VALUES ($1, $2, $3, $4, $5, $6)
-        `,
-        [
-          randomUUID(),
-          userId,
-          transactionId,
-          data.account_id,
-          data.transaction_type,
-          signedAmount(data.transaction_type, data.amount_cents),
-        ],
-      );
+      await insertEntry(run, userId, {
+        transactionId,
+        accountId: data.account_id,
+        role: data.transaction_type,
+        amountCents: signedAmount(data.transaction_type, data.amount_cents),
+      });
 
       return findTransaction(run, userId, transactionId);
     });
@@ -367,6 +404,30 @@ export const updateTransaction = async (req, res, next) => {
           "Only income and expense transactions can be edited.",
           400,
         );
+      }
+
+      // An expense with refunds must stay an expense, and cannot drop below
+      // what has already been refunded.
+      if (existing.refunded_cents > 0) {
+        if (
+          updates.transaction_type !== undefined &&
+          updates.transaction_type !== existing.transaction_type
+        ) {
+          throw createError(
+            "This expense has refunds, so it cannot become income.",
+            400,
+          );
+        }
+
+        if (
+          updates.amount_cents !== undefined &&
+          updates.amount_cents < existing.refunded_cents
+        ) {
+          throw createError(
+            "The amount cannot be less than what has already been refunded.",
+            400,
+          );
+        }
       }
 
       const entry = existing.entries[0];
@@ -475,11 +536,19 @@ export const deleteTransaction = async (req, res, next) => {
 
     const existing = await query(
       `
-        SELECT transaction_type
-        FROM f_wallet.transactions
-        WHERE transaction_id = $1
-          AND user_id = $2
-          AND status <> 'deleted'
+        SELECT
+          t.transaction_type,
+          EXISTS (
+            SELECT 1
+            FROM f_wallet.transactions AS r
+            WHERE r.user_id = t.user_id
+              AND r.original_transaction_id = t.transaction_id
+              AND r.status = 'posted'
+          ) AS has_refunds
+        FROM f_wallet.transactions AS t
+        WHERE t.transaction_id = $1
+          AND t.user_id = $2
+          AND t.status <> 'deleted'
       `,
       [transactionId, userId],
     );
@@ -491,11 +560,15 @@ export const deleteTransaction = async (req, res, next) => {
       });
     }
 
-    // Deleting one leg of a transfer would leave the other leg orphaned.
-    if (!EDITABLE_TYPES.includes(existing.rows[0].transaction_type)) {
+    if (!DELETABLE_TYPES.includes(existing.rows[0].transaction_type)) {
+      return next(createError("This transaction cannot be deleted.", 400));
+    }
+
+    // A refund must point at a live expense.
+    if (existing.rows[0].has_refunds) {
       return next(
         createError(
-          "Only income and expense transactions can be deleted.",
+          "This expense has refunds. Delete its refunds first.",
           400,
         ),
       );

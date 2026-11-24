@@ -99,3 +99,85 @@ export const transactionIdSchema = z.object({
     transactionId: z.string().uuid(),
   }),
 });
+
+// ---------------------------------------------------------------------------
+// Transfers: money moving between two of the user's own accounts.
+
+const amountCents = z.number().int().safe().positive();
+const optionalText = (max) => z.string().trim().max(max).nullable().optional();
+
+const transferFields = {
+  from_account_id: z.string().uuid(),
+  to_account_id: z.string().uuid(),
+  amount_cents: amountCents,
+  transaction_date: dateString,
+  description: optionalText(255),
+  notes: z.string().nullable().optional(),
+};
+
+const differentAccounts = (data) =>
+  !data.from_account_id ||
+  !data.to_account_id ||
+  data.from_account_id !== data.to_account_id;
+
+const differentAccountsError = {
+  message: "Choose two different accounts",
+  path: ["to_account_id"],
+};
+
+const transactionIdParams = z.object({
+  transactionId: z.string().uuid(),
+});
+
+export const createTransferSchema = z.object({
+  body: z
+    .object(transferFields)
+    .strict()
+    .refine(differentAccounts, differentAccountsError),
+  query: z.object({}),
+  params: z.object({}),
+});
+
+export const updateTransferSchema = z.object({
+  body: z
+    .object(transferFields)
+    .partial()
+    .strict()
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "At least one transfer field must be provided",
+    })
+    .refine(differentAccounts, differentAccountsError),
+  query: z.object({}),
+  params: transactionIdParams,
+});
+
+// ---------------------------------------------------------------------------
+// Refunds: money returned for an expense. The expense is the URL's
+// :transactionId when creating; the refund's own id when editing.
+
+const refundFields = {
+  // Defaults to the account the expense was paid from.
+  account_id: z.string().uuid().optional(),
+  amount_cents: amountCents,
+  transaction_date: dateString,
+  description: optionalText(255),
+  notes: z.string().nullable().optional(),
+};
+
+export const createRefundSchema = z.object({
+  body: z.object(refundFields).strict(),
+  query: z.object({}),
+  params: transactionIdParams,
+});
+
+export const updateRefundSchema = z.object({
+  body: z
+    .object(refundFields)
+    .partial()
+    .strict()
+    .refine((data) => Object.keys(data).length > 0, {
+      message: "At least one refund field must be provided",
+    }),
+  query: z.object({}),
+  params: transactionIdParams,
+});

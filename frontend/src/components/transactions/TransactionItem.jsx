@@ -4,6 +4,7 @@ import {
   ArrowUpRight,
   Pencil,
   Trash2,
+  Undo2,
 } from "lucide-react";
 import { cn } from "cn";
 
@@ -15,6 +16,7 @@ const KINDS = {
   income: { icon: ArrowDownLeft, tone: "income", sign: "+" },
   expense: { icon: ArrowUpRight, tone: "expense", sign: "-" },
   transfer: { icon: ArrowLeftRight, tone: "transfer", sign: "" },
+  refund: { icon: Undo2, tone: "income", sign: "+" },
 };
 
 const TONES = {
@@ -23,28 +25,35 @@ const TONES = {
   transfer: { text: "text-transfer", badge: "bg-transfer/10 text-transfer" },
 };
 
-function getKind(type) {
-  if (type === "income" || type === "refund") return KINDS.income;
-  if (type === "transfer") return KINDS.transfer;
-  return KINDS.expense;
-}
+// Types the user can edit and delete (adjustments are system-made).
+const MODIFIABLE_TYPES = new Set(["income", "expense", "transfer", "refund"]);
 
-// The API only lets income and expense be edited or deleted for now.
-const EDITABLE_TYPES = new Set(["income", "expense"]);
-
-export function TransactionItem({ transaction, onEdit, onDelete }) {
-  const { icon: Icon, tone, sign } = getKind(transaction.transaction_type);
-  const canModify =
-    EDITABLE_TYPES.has(transaction.transaction_type) && (onEdit || onDelete);
+function getSubtitle(transaction) {
+  if (transaction.transaction_type === "transfer") {
+    return `${transaction.account_name ?? "?"} → ${transaction.to_account_name ?? "?"}`;
+  }
 
   // Don't repeat the merchant when it is already the title.
-  const subtitle = [
-    transaction.description ? transaction.merchant : null,
-    transaction.category_name,
-    transaction.account_name,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  return (
+    [
+      transaction.description ? transaction.merchant : null,
+      transaction.category_name,
+      transaction.account_name,
+    ]
+      .filter(Boolean)
+      .join(" · ") || "Uncategorized"
+  );
+}
+
+//   onRefund: shown on expenses that are not fully refunded yet
+export function TransactionItem({ transaction, onEdit, onDelete, onRefund }) {
+  const type = transaction.transaction_type;
+  const { icon: Icon, tone, sign } = KINDS[type] ?? KINDS.expense;
+
+  const refundedCents = Number(transaction.refunded_cents ?? 0);
+  const canRefund =
+    onRefund && type === "expense" && refundedCents < transaction.amount_cents;
+  const canModify = MODIFIABLE_TYPES.has(type) && (onEdit || onDelete);
 
   return (
     <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30 sm:gap-4">
@@ -62,30 +71,41 @@ export function TransactionItem({ transaction, onEdit, onDelete }) {
           {getTransactionTitle(transaction)}
         </p>
         <p className="mt-1 truncate text-xs text-muted-foreground">
-          {subtitle || "Uncategorized"}
+          {getSubtitle(transaction)}
         </p>
       </div>
 
-      <p
-        className={cn(
-          "shrink-0 text-right text-sm font-semibold tabular-nums",
-          TONES[tone].text,
+      <div className="shrink-0 text-right">
+        <p
+          className={cn("text-sm font-semibold tabular-nums", TONES[tone].text)}
+        >
+          {sign}
+          {formatCents(transaction.amount_cents)}
+        </p>
+        {refundedCents > 0 && (
+          <p className="mt-0.5 text-2xs text-muted-foreground">
+            {formatCents(refundedCents)} refunded
+          </p>
         )}
-      >
-        {sign}
-        {formatCents(transaction.amount_cents)}
-      </p>
+      </div>
 
-      {canModify && (
+      {(canModify || canRefund) && (
         <div className="flex shrink-0 items-center gap-1 border-l border-border pl-2">
-          {onEdit && (
+          {canRefund && (
+            <IconButton
+              icon={Undo2}
+              label="Refund"
+              onClick={() => onRefund(transaction)}
+            />
+          )}
+          {canModify && onEdit && (
             <IconButton
               icon={Pencil}
               label="Edit transaction"
               onClick={() => onEdit(transaction)}
             />
           )}
-          {onDelete && (
+          {canModify && onDelete && (
             <IconButton
               icon={Trash2}
               tone="destructive"

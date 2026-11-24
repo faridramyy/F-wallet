@@ -92,8 +92,7 @@ export function dollarsToCents(value) {
   if (!/^\d+(\.\d{0,2})?$/.test(normalized)) return null;
 
   const [dollars, fraction = ""] = normalized.split(".");
-  const cents =
-    BigInt(dollars) * 100n + BigInt(fraction.padEnd(2, "0") || "0");
+  const cents = BigInt(dollars) * 100n + BigInt(fraction.padEnd(2, "0") || "0");
 
   if (cents > BigInt(Number.MAX_SAFE_INTEGER)) return null;
 
@@ -132,11 +131,15 @@ export function getCurrentYearMonth() {
 
 // Human-readable title for a transaction, following the same priority used
 // everywhere in the UI: description → merchant → category → fallback.
+// Transfers and refunds without a description get a title of their own.
 export function getTransactionTitle(transaction) {
-  return (
-    transaction.description ||
-    transaction.merchant ||
-    transaction.category_name ||
-    "Transaction"
-  );
+  if (transaction.description) return transaction.description;
+
+  if (transaction.transaction_type === "transfer") return "Transfer";
+
+  if (transaction.transaction_type === "refund") {
+    return `Refund · ${transaction.original_title || transaction.merchant || "expense"}`;
+  }
+
+  return transaction.merchant || transaction.category_name || "Transaction";
 }

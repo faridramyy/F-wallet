@@ -75,8 +75,17 @@ const inMonth = (transaction, key, throughDay = 31) =>
   transaction.transaction_date?.startsWith(key) &&
   dayOf(transaction) <= throughDay;
 
-// Income, expenses and net for a list of transactions. Transfers and other
-// types move money between your own accounts, so they are left out.
+// What a transaction adds to spending: an expense adds its amount and a
+// refund takes it back. Income and transfers are not spending.
+export const spendingCents = (transaction) => {
+  if (transaction.transaction_type === "expense") return cents(transaction);
+  if (transaction.transaction_type === "refund") return -cents(transaction);
+  return 0;
+};
+
+// Income, spending and net for a list of transactions. Spending is expenses
+// minus refunds. Transfers move money between your own accounts, so they are
+// left out.
 export function summarize(transactions) {
   let income = 0;
   let expense = 0;
@@ -88,9 +97,9 @@ export function summarize(transactions) {
       income += cents(transaction);
       incomeCount += 1;
     } else if (transaction.transaction_type === "expense") {
-      expense += cents(transaction);
       expenseCount += 1;
     }
+    expense += spendingCents(transaction);
   }
 
   return {
@@ -121,13 +130,13 @@ export function monthlyCashFlow(transactions, months) {
   }));
 }
 
-// Expense cents per category in a month, largest first. Everything past
-// `limit` categories is folded into "Other".
+// Spending (expenses minus refunds) per category in a month, largest first.
+// Everything past `limit` categories is folded into "Other".
 export function spendingByCategory(transactions, key, limit = 5) {
   const totals = new Map();
 
   for (const t of transactions) {
-    if (t.transaction_type !== "expense" || !inMonth(t, key)) continue;
+    if (!spendingCents(t) || !inMonth(t, key)) continue;
 
     const id = t.category_id ?? "uncategorized";
     const entry = totals.get(id) ?? {
@@ -136,11 +145,14 @@ export function spendingByCategory(transactions, key, limit = 5) {
       cents: 0,
     };
 
-    entry.cents += cents(t);
+    entry.cents += spendingCents(t);
     totals.set(id, entry);
   }
 
-  const ranked = [...totals.values()].sort((a, b) => b.cents - a.cents);
+  // A category fully refunded this month has nothing left to show.
+  const ranked = [...totals.values()]
+    .filter((entry) => entry.cents > 0)
+    .sort((a, b) => b.cents - a.cents);
 
   if (ranked.length <= limit + 1) return ranked;
 
@@ -161,9 +173,7 @@ export function cumulativeDailySpending(transactions, year, month) {
   const daily = new Array(daysInMonth(year, month)).fill(0);
 
   for (const t of transactions) {
-    if (t.transaction_type === "expense" && inMonth(t, key)) {
-      daily[dayOf(t) - 1] += cents(t);
-    }
+    if (inMonth(t, key)) daily[dayOf(t) - 1] += spendingCents(t);
   }
 
   let total = 0;
@@ -248,14 +258,15 @@ export function getMonthBudget(budgets, year, month) {
   };
 }
 
-// Expense cents per category id in a "YYYY-MM" month (no folding, unlike
-// spendingByCategory). Transactions without a category are left out.
+// Spending (expenses minus refunds) per category id in a "YYYY-MM" month,
+// with no folding, unlike spendingByCategory. Uncategorized is left out.
 export function expenseCentsByCategory(transactions, key) {
   const spending = {};
 
   for (const t of transactions) {
-    if (t.transaction_type === "expense" && t.category_id && inMonth(t, key)) {
-      spending[t.category_id] = (spending[t.category_id] ?? 0) + cents(t);
+    if (spendingCents(t) && t.category_id && inMonth(t, key)) {
+      spending[t.category_id] =
+        (spending[t.category_id] ?? 0) + spendingCents(t);
     }
   }
 

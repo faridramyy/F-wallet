@@ -21,11 +21,26 @@ import { navigation } from "./lib/navigation";
 const lazyNamed = (load, name) =>
   lazy(() => load().then((module) => ({ default: module[name] })));
 
-const DashboardPage = lazyNamed(() => import("./pages/DashboardPage"), "DashboardPage");
-const TransactionsPage = lazyNamed(() => import("./pages/TransactionsPage"), "TransactionsPage");
-const AccountsPage = lazyNamed(() => import("./pages/AccountsPage"), "AccountsPage");
-const CategoryPage = lazyNamed(() => import("./pages/CategoryPage"), "CategoryPage");
-const SettingsPage = lazyNamed(() => import("./pages/SettingsPage"), "SettingsPage");
+const DashboardPage = lazyNamed(
+  () => import("./pages/DashboardPage"),
+  "DashboardPage",
+);
+const TransactionsPage = lazyNamed(
+  () => import("./pages/TransactionsPage"),
+  "TransactionsPage",
+);
+const AccountsPage = lazyNamed(
+  () => import("./pages/AccountsPage"),
+  "AccountsPage",
+);
+const CategoryPage = lazyNamed(
+  () => import("./pages/CategoryPage"),
+  "CategoryPage",
+);
+const SettingsPage = lazyNamed(
+  () => import("./pages/SettingsPage"),
+  "SettingsPage",
+);
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 
 // Screens shown before the user's settings are known use the last theme
@@ -46,6 +61,8 @@ function AppShell() {
     categories,
     createTransaction,
     updateTransaction,
+    createTransfer,
+    updateTransfer,
     loading,
     error,
     reload,
@@ -69,10 +86,15 @@ function AppShell() {
 
   const editingTransaction = transactionDialog?.transaction ?? null;
 
-  const handleSaveTransaction = (body) =>
-    editingTransaction
-      ? updateTransaction(editingTransaction.transaction_id, body)
-      : createTransaction(body);
+  // Transfers have their own endpoints; income and expense share the rest.
+  const handleSaveTransaction = (body, { isTransfer }) => {
+    const id = editingTransaction?.transaction_id;
+
+    if (isTransfer) {
+      return id ? updateTransfer(id, body) : createTransfer(body);
+    }
+    return id ? updateTransaction(id, body) : createTransaction(body);
+  };
 
   // Nothing renders until all of the user's data has arrived, so pages never
   // have to show their own loading states.
@@ -156,7 +178,10 @@ function AppShell() {
                     />
                   }
                 />
-                <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                <Route
+                  path="*"
+                  element={<Navigate to="/dashboard" replace />}
+                />
               </Routes>
             </Suspense>
           </div>
