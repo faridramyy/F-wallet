@@ -1,7 +1,7 @@
 // Pure calculations over the loaded transactions, for overview cards and
 // dashboard charts. All money is in integer cents.
 
-const monthShort = new Intl.DateTimeFormat("en-CA", { month: "short" });
+import { formatMonthShort } from "./formatters";
 
 // The dashboard can look back this many months (including this one), and
 // its cash-flow chart shows this many months ending at the chosen month.
@@ -62,7 +62,7 @@ export function lastMonths(count, now = new Date()) {
     const month = shiftMonth(current.year, current.month, index - count + 1);
     return {
       ...month,
-      label: monthShort.format(new Date(month.year, month.month - 1, 1)),
+      label: formatMonthShort(month.year, month.month),
     };
   });
 }
@@ -77,7 +77,7 @@ const inMonth = (transaction, key, throughDay = 31) =>
 
 // What a transaction adds to spending: an expense adds its amount and a
 // refund takes it back. Income and transfers are not spending.
-export const spendingCents = (transaction) => {
+const spendingCents = (transaction) => {
   if (transaction.transaction_type === "expense") return cents(transaction);
   if (transaction.transaction_type === "refund") return -cents(transaction);
   return 0;

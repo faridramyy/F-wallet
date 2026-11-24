@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@aws-sdk/credential-providers": "^3.1170.0",
-    "@aws-sdk/dsql-signer": "^3.1170.0",
     "@aws/aurora-dsql-node-postgres-connector": "^0.1.9",
     "aws-jwt-verify": "^5.2.1",
     "cors": "^2.8.6",

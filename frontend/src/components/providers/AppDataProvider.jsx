@@ -261,6 +261,8 @@ export function AppDataProvider({ children }) {
   const value = {
     settings,
     setSettings,
+    // The user's display currency, for every amount that has no account.
+    currency: settings?.currency ?? "CAD",
     accounts,
     setAccounts,
     archivedAccounts,

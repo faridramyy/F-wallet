@@ -20,7 +20,9 @@ function FullScreenMessage({ spinner = false, message, detail, children }) {
       <div>
         {spinner && <Spinner className="mx-auto mb-4" />}
         <p className="text-sm text-muted-foreground">{message}</p>
-        {detail && <p className="mt-1 text-xs text-muted-foreground">{detail}</p>}
+        {detail && (
+          <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+        )}
         {children && <div className="mt-4">{children}</div>}
       </div>
     </div>

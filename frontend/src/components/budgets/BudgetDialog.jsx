@@ -6,11 +6,11 @@ import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { useNotifications } from "../providers/useNotifications";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
-import { getCurrentYearMonth } from "../../lib/formatters";
+import { getMonthContext } from "../../lib/analytics";
 import { MONTH_OPTIONS } from "../../lib/options";
 
 function getInitialForm(budget) {
-  const { year, month } = getCurrentYearMonth();
+  const { year, month } = getMonthContext().current;
 
   return {
     budget_year: String(budget?.budget_year ?? year),

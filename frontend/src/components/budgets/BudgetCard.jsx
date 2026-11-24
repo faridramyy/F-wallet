@@ -2,9 +2,11 @@ import { CalendarDays, Pencil, SlidersHorizontal, Trash2 } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
+import { useAppData } from "../providers/useAppData";
 import { formatCents, formatMonthYear } from "../../lib/formatters";
 
 export function BudgetCard({ budget, onEdit, onManageAllocations, onDelete }) {
+  const { currency } = useAppData();
   const monthLabel = formatMonthYear(budget.budget_year, budget.budget_month);
   const allocations = budget.allocations ?? [];
 
@@ -49,7 +51,7 @@ export function BudgetCard({ budget, onEdit, onManageAllocations, onDelete }) {
       <div className="mt-5">
         <p className="text-xs text-muted-foreground">Total allocated</p>
         <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
-          {formatCents(totalCents)}
+          {formatCents(totalCents, currency)}
         </p>
       </div>
 

@@ -8,7 +8,7 @@ export const getHealth = (req, res) => {
   });
 };
 
-export const getDatabaseHealth = async (req, res, next) => {
+export const getDatabaseHealth = async (req, res) => {
   try {
     const { database, user, latencyMs } = await checkConnection();
 

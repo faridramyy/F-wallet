@@ -38,7 +38,7 @@ export function CategoriesTab({ section, onSectionChange }) {
     accounts,
     budgets,
     transactions,
-    settings,
+    currency,
   } = useAppData();
 
   // "expense" | "income" | "archived"
@@ -263,7 +263,7 @@ export function CategoriesTab({ section, onSectionChange }) {
                   {...sortable}
                   accountNames={accountNames}
                   budgetUsage={budgetUsage}
-                  currency={settings?.currency ?? "CAD"}
+                  currency={currency}
                   onEdit={(item) => setDialog({ category: item })}
                   onArchive={handleArchiveCategory}
                   onReorder={handleReorder}

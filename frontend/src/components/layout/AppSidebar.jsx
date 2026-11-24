@@ -12,7 +12,10 @@ export function AppSidebar({ sidebarOpen }) {
       )}
     >
       <div
-        className={cn("flex items-center py-2", sidebarOpen ? "px-2" : "justify-center")}
+        className={cn(
+          "flex items-center py-2",
+          sidebarOpen ? "px-2" : "justify-center",
+        )}
       >
         <Logo collapsed={!sidebarOpen} />
       </div>

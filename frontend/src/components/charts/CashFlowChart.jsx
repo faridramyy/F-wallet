@@ -3,10 +3,7 @@ import { cn } from "cn";
 
 import { ChartCard, LegendItem } from "./ChartCard";
 import { ChartTooltip, Gridlines } from "./ChartTooltip";
-import {
-  formatCents,
-  formatCompactCents,
-} from "../../lib/formatters";
+import { formatCents, formatCompactCents } from "../../lib/formatters";
 import { niceScale } from "../../lib/analytics";
 
 const SERIES = [
@@ -50,10 +47,7 @@ export function CashFlowChart({ months, currency }) {
       }}
     >
       <div className="pl-12">
-        <div
-          className="relative h-56"
-          onPointerLeave={() => setActive(null)}
-        >
+        <div className="relative h-56" onPointerLeave={() => setActive(null)}>
           <Gridlines
             ticks={ticks}
             max={max}

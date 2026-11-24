@@ -1,3 +1,5 @@
+import { formatShortDate, formatShortDateRange } from "./formatters";
+
 // Date helpers for "YYYY-MM-DD" keys (local time, never UTC) and the
 // preset ranges offered by the date range picker.
 
@@ -5,6 +7,9 @@ const pad = (value) => String(value).padStart(2, "0");
 
 export const toDateKey = (date) =>
   `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+
+// Today as "YYYY-MM-DD", in local time.
+export const todayKey = () => toDateKey(new Date());
 
 export function fromDateKey(key) {
   const [year, month, day] = key.split("-").map(Number);
@@ -72,19 +77,13 @@ export const matchingPreset = (value) =>
     return keys.from === value.from && keys.to === value.to;
   });
 
-const shortDate = new Intl.DateTimeFormat("en-CA", {
-  month: "short",
-  day: "numeric",
-  year: "numeric",
-});
-
 // "Nov 1 – 19, 2026", "Nov 3, 2026", "From Nov 1, 2026", or "Any date".
 export function describeRange({ from, to }) {
   if (!from && !to) return "Any date";
-  if (from && !to) return `From ${shortDate.format(fromDateKey(from))}`;
-  if (!from && to) return `Until ${shortDate.format(fromDateKey(to))}`;
-  if (from === to) return shortDate.format(fromDateKey(from));
-  return shortDate.formatRange(fromDateKey(from), fromDateKey(to));
+  if (from && !to) return `From ${formatShortDate(fromDateKey(from))}`;
+  if (!from && to) return `Until ${formatShortDate(fromDateKey(to))}`;
+  if (from === to) return formatShortDate(fromDateKey(from));
+  return formatShortDateRange(fromDateKey(from), fromDateKey(to));
 }
 
 // The 6×7 grid of days shown for a month, starting on Sunday; days from

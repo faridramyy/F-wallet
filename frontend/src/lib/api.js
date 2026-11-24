@@ -1,5 +1,4 @@
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL;
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const send = (path, user, options) => {
   const headers = {
@@ -23,7 +22,7 @@ const readJson = async (response) => {
   }
 };
 
-export async function apiRequest(path, auth, options = {}) {
+async function apiRequest(path, auth, options = {}) {
   if (!auth?.user?.access_token || !auth?.user?.id_token) {
     throw new Error("You must be signed in to make this request.");
   }

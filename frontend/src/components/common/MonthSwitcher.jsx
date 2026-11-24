@@ -48,7 +48,6 @@ export function MonthSwitcher({ value, min, max, onChange, onReset }) {
           onClick={() => onChange(1)}
         />
       </div>
-
     </div>
   );
 }

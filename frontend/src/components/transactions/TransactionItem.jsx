@@ -46,7 +46,13 @@ function getSubtitle(transaction) {
 }
 
 //   onRefund: shown on expenses that are not fully refunded yet
-export function TransactionItem({ transaction, onEdit, onDelete, onRefund }) {
+export function TransactionItem({
+  transaction,
+  currency,
+  onEdit,
+  onDelete,
+  onRefund,
+}) {
   const type = transaction.transaction_type;
   const { icon: Icon, tone, sign } = KINDS[type] ?? KINDS.expense;
 
@@ -80,11 +86,11 @@ export function TransactionItem({ transaction, onEdit, onDelete, onRefund }) {
           className={cn("text-sm font-semibold tabular-nums", TONES[tone].text)}
         >
           {sign}
-          {formatCents(transaction.amount_cents)}
+          {formatCents(transaction.amount_cents, currency)}
         </p>
         {refundedCents > 0 && (
           <p className="mt-0.5 text-2xs text-muted-foreground">
-            {formatCents(refundedCents)} refunded
+            {formatCents(refundedCents, currency)} refunded
           </p>
         )}
       </div>

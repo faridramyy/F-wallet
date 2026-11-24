@@ -12,7 +12,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-
 export function NotificationProvider({ children }) {
   const [confirmation, setConfirmation] = useState(null);
   const resolver = useRef(null);

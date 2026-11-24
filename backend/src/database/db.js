@@ -51,7 +51,7 @@ const createPool = () => {
 
 let pool;
 
-export const getPool = () => {
+const getPool = () => {
   pool ??= createPool();
   return pool;
 };

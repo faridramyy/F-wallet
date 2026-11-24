@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
 import { createError } from "../../utils/http-error.js";
+import { pickUpdate } from "../../utils/patch.js";
 
 // `::text` makes Postgres send dates as "2026-11-22". Without it the pg driver
 // turns a DATE into a JavaScript Date, and JSON.stringify then shifts it by the
@@ -53,7 +54,7 @@ const signedAmount = (type, cents) => (type === "expense" ? -cents : cents);
 
 // A "run" is any function (text, params) => Promise<result>. It lets the same
 // helper work both inside a DB transaction (client.query) and outside one.
-export const runOnPool = (text, params) => query(text, params);
+const runOnPool = (text, params) => query(text, params);
 
 export const insertEntry = (run, userId, entry) =>
   run(
@@ -292,10 +293,7 @@ export const getTransaction = async (req, res, next) => {
     const found = await findTransaction(runOnPool, req.user.sub, transactionId);
 
     if (!found) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaction not found.",
-      });
+      return next(createError("Transaction not found.", 404));
     }
 
     res.status(200).json({
@@ -436,10 +434,7 @@ export const updateTransaction = async (req, res, next) => {
         throw createError("Transaction has no account entry.", 409);
       }
 
-      // PATCH sends only changed fields. Merge them over what is stored:
-      // `undefined` means "not sent, keep it", while `null` means "clear it".
-      const pick = (key, current) =>
-        updates[key] !== undefined ? updates[key] : current;
+      const pick = pickUpdate(updates);
 
       const final = {
         type: pick("transaction_type", existing.transaction_type),
@@ -554,10 +549,7 @@ export const deleteTransaction = async (req, res, next) => {
     );
 
     if (existing.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaction not found.",
-      });
+      return next(createError("Transaction not found.", 404));
     }
 
     if (!DELETABLE_TYPES.includes(existing.rows[0].transaction_type)) {
@@ -567,10 +559,7 @@ export const deleteTransaction = async (req, res, next) => {
     // A refund must point at a live expense.
     if (existing.rows[0].has_refunds) {
       return next(
-        createError(
-          "This expense has refunds. Delete its refunds first.",
-          400,
-        ),
+        createError("This expense has refunds. Delete its refunds first.", 400),
       );
     }
 

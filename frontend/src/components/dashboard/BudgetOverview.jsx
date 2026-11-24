@@ -13,8 +13,7 @@ import {
 
 // Spending against the budget of the given month.
 export function BudgetOverview({ year, month }) {
-  const { budgets, settings, transactions } = useAppData();
-  const currency = settings?.currency ?? "CAD";
+  const { budgets, currency, transactions } = useAppData();
   const prefix = monthKey(year, month);
 
   const { budget: currentBudget, allocations } = getMonthBudget(

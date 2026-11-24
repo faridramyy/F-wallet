@@ -5,7 +5,11 @@ import { cn } from "cn";
 //   rows: [{ label, value, swatchClassName }]
 export function ChartTooltip({ x, title, rows }) {
   const anchor =
-    x < 20 ? "translate-x-0" : x > 80 ? "-translate-x-full" : "-translate-x-1/2";
+    x < 20
+      ? "translate-x-0"
+      : x > 80
+        ? "-translate-x-full"
+        : "-translate-x-1/2";
 
   return (
     <div

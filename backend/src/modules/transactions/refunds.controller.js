@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { transaction } from "../../database/db.js";
 import { createError } from "../../utils/http-error.js";
+import { pickUpdate } from "../../utils/patch.js";
 import {
   assertAccountUsable,
   findTransaction,
@@ -143,8 +144,7 @@ export const updateRefund = async (req, res, next) => {
         throw createError("Refund has no account entry.", 409);
       }
 
-      const pick = (key, current) =>
-        updates[key] !== undefined ? updates[key] : current;
+      const pick = pickUpdate(updates);
 
       const final = {
         accountId: pick("account_id", entry.account_id),

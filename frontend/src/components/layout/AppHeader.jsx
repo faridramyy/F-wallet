@@ -26,7 +26,11 @@ export function AppHeader({ title, onAddTransaction }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button size="lg" onClick={onAddTransaction} className="h-10 px-3 sm:px-5">
+          <Button
+            size="lg"
+            onClick={onAddTransaction}
+            className="h-10 px-3 sm:px-5"
+          >
             <Plus />
             <span className="hidden sm:inline">Add new Transaction</span>
             <span className="sm:hidden">Add</span>

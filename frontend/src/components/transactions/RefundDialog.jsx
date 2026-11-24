@@ -6,6 +6,7 @@ import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
+import { useAppData } from "../providers/useAppData";
 import {
   centsToInput,
   dollarsToCents,
@@ -13,9 +14,8 @@ import {
   getTransactionTitle,
 } from "../../lib/formatters";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
+import { todayKey } from "../../lib/date-ranges";
 import { accountOptions } from "../../lib/select-options";
-
-const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
 
 // Most this refund can be: what is left on the expense, plus this refund's
 // own amount when editing it. null when the expense is not loaded.
@@ -35,6 +35,7 @@ function maxRefundCents(expense, refund) {
 //   onSave(body) saves it
 function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
   const { toast, confirm } = useNotifications();
+  const { currency } = useAppData();
 
   const isEditing = Boolean(refund);
   const maxCents = maxRefundCents(expense, refund);
@@ -42,7 +43,7 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
   const [initialForm] = useState(() => ({
     amount: centsToInput(refund?.amount_cents ?? maxCents ?? 0),
     account_id: refund?.account_id ?? expense?.account_id ?? "",
-    transaction_date: refund?.transaction_date ?? today(),
+    transaction_date: refund?.transaction_date ?? todayKey(),
     description: refund?.description ?? "",
     notes: refund?.notes ?? "",
   }));
@@ -75,7 +76,9 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
       return setError("Enter a valid amount, for example 12.50.");
     }
     if (maxCents !== null && amountCents > maxCents) {
-      return setError(`You can refund at most ${formatCents(maxCents)}.`);
+      return setError(
+        `You can refund at most ${formatCents(maxCents, currency)}.`,
+      );
     }
     if (!form.account_id) {
       return setError("Choose the account the money went back to.");
@@ -143,7 +146,7 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
           <div>
             <dt className="text-xs text-muted-foreground">Expense</dt>
             <dd className="font-medium tabular-nums">
-              {formatCents(expense.amount_cents)}
+              {formatCents(expense.amount_cents, currency)}
             </dd>
           </div>
           <div>
@@ -152,13 +155,14 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
               {formatCents(
                 Number(expense.refunded_cents ?? 0) -
                   (refund?.amount_cents ?? 0),
+                currency,
               )}
             </dd>
           </div>
           <div>
             <dt className="text-xs text-muted-foreground">Can refund</dt>
             <dd className="font-medium tabular-nums">
-              {formatCents(maxCents)}
+              {formatCents(maxCents, currency)}
             </dd>
           </div>
         </dl>

@@ -24,16 +24,13 @@ import {
   summarizeMonth,
   topMerchant,
 } from "../lib/analytics";
-import { formatMonthYear } from "../lib/formatters";
+import { formatMonthName, formatMonthYear } from "../lib/formatters";
 import { summarizeAccounts } from "../lib/accounts";
 
-const monthName = new Intl.DateTimeFormat("en-CA", { month: "long" });
-const nameOf = ({ year, month }) =>
-  monthName.format(new Date(year, month - 1, 1));
+const nameOf = ({ year, month }) => formatMonthName(year, month);
 
 export function DashboardPage() {
-  const { accounts, settings, transactions } = useAppData();
-  const currency = settings?.currency ?? "CAD";
+  const { accounts, currency, transactions } = useAppData();
 
   // The month every section below describes; defaults to the current one.
   const latest = getMonthContext().current;

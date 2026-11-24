@@ -5,6 +5,7 @@ import { FormDialog } from "../common/FormDialog";
 import { EmptyState } from "../ui/empty-state";
 import { Input } from "../ui/input";
 import { useNotifications } from "../providers/useNotifications";
+import { useAppData } from "../providers/useAppData";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
 import {
   centsToInput,
@@ -22,8 +23,14 @@ function getInitialAmounts(budget) {
   );
 }
 
-function BudgetAllocationDialogContent({ budget, categories, onClose, onSave }) {
+function BudgetAllocationDialogContent({
+  budget,
+  categories,
+  onClose,
+  onSave,
+}) {
   const { toast, confirm } = useNotifications();
+  const { currency } = useAppData();
 
   const [initialAmounts] = useState(() => getInitialAmounts(budget));
   const [amounts, setAmounts] = useState(initialAmounts);
@@ -112,8 +119,8 @@ function BudgetAllocationDialogContent({ budget, categories, onClose, onSave }) 
       ) : (
         <>
           <p className="text-xs text-muted-foreground">
-            Enter the maximum amount you plan to spend in each category. Leave
-            a category at zero if you don't want to allocate a budget to it.
+            Enter the maximum amount you plan to spend in each category. Leave a
+            category at zero if you don't want to allocate a budget to it.
           </p>
 
           {expenseCategories.map((category) => {
@@ -152,7 +159,7 @@ function BudgetAllocationDialogContent({ budget, categories, onClose, onSave }) 
       <div className="flex items-center justify-between rounded-lg border border-border bg-muted/40 p-4">
         <span className="text-sm font-medium">Total allocated</span>
         <span className="text-lg font-semibold tabular-nums">
-          {formatCents(totalCents)}
+          {formatCents(totalCents, currency)}
         </span>
       </div>
     </FormDialog>

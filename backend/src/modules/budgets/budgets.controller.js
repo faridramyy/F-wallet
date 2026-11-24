@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
-import { createError } from "../../utils/http-error.js";
+import { conflictOnDuplicate, createError } from "../../utils/http-error.js";
+import { upsertUser } from "../users/users.service.js";
 
 const budgetColumns = `
   budget_id,
@@ -11,36 +12,10 @@ const budgetColumns = `
   updated_at
 `;
 
-const ensureUserExists = async (user) => {
-  await query(
-    `
-      INSERT INTO f_wallet.users (
-        user_id,
-        email
-      )
-      VALUES ($1, $2)
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        email = EXCLUDED.email,
-        updated_at = CASE
-          WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
-          THEN EXCLUDED.updated_at
-          ELSE f_wallet.users.updated_at
-        END
-    `,
-    [user.sub, user.email],
-  );
-};
-
-const handleControllerError = (error, next) => {
-  if (error.code === "23505") {
-    return next(
-      createError("A budget already exists for this month and year.", 409),
-    );
-  }
-
-  next(error);
-};
+// A duplicate name/position/month becomes a 409 instead of a 500.
+const handleControllerError = conflictOnDuplicate(
+  "A budget already exists for this month and year.",
+);
 
 const getBudgetWithAllocations = async (client, userId, budgetId) => {
   const result = await client.query(
@@ -201,10 +176,7 @@ export const getBudget = async (req, res, next) => {
     );
 
     if (!budget) {
-      return res.status(404).json({
-        success: false,
-        message: "Budget not found.",
-      });
+      return next(createError("Budget not found.", 404));
     }
 
     res.status(200).json({
@@ -221,7 +193,7 @@ export const createBudget = async (req, res, next) => {
   try {
     const { budget_year, budget_month, name } = req.validated.body;
 
-    await ensureUserExists(req.user);
+    await upsertUser(req.user);
 
     const budgetId = randomUUID();
 
@@ -286,10 +258,7 @@ export const updateBudget = async (req, res, next) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Budget not found.",
-      });
+      return next(createError("Budget not found.", 404));
     }
 
     const budget = await getBudgetWithAllocations(

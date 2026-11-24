@@ -6,8 +6,7 @@ import { formatCurrency } from "../../lib/formatters";
 import { getAccountBalance, getAccountType } from "../../lib/accounts";
 
 export function AccountsOverview() {
-  const { accounts, settings } = useAppData();
-  const currency = settings?.currency ?? "CAD";
+  const { accounts, currency } = useAppData();
 
   return (
     <SectionCard

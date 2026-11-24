@@ -18,24 +18,16 @@ import {
   matchingPreset,
   monthGrid,
   toDateKey,
+  todayKey,
 } from "../../lib/date-ranges";
+import { formatFullDay, formatMonthYear } from "../../lib/formatters";
 
-const monthTitle = new Intl.DateTimeFormat("en-CA", {
-  month: "long",
-  year: "numeric",
-});
-const dayLabel = new Intl.DateTimeFormat("en-CA", {
-  weekday: "long",
-  month: "long",
-  day: "numeric",
-  year: "numeric",
-});
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
 // One month of days. Click a start day, then an end day (in either order);
 // while choosing the end, hovering previews the range.
 function Calendar({ value, onSelect }) {
-  const todayKey = toDateKey(new Date());
+  const today = todayKey();
   const initial = value.from ? fromDateKey(value.from) : new Date();
 
   const [shown, setShown] = useState({
@@ -77,7 +69,7 @@ function Calendar({ value, onSelect }) {
           onClick={() => step(-1)}
         />
         <p className="text-sm font-semibold" aria-live="polite">
-          {monthTitle.format(new Date(shown.year, shown.month - 1, 1))}
+          {formatMonthYear(shown.year, shown.month)}
         </p>
         <IconButton
           icon={ChevronRight}
@@ -113,7 +105,7 @@ function Calendar({ value, onSelect }) {
               key={key}
               type="button"
               role="gridcell"
-              aria-label={dayLabel.format(date)}
+              aria-label={formatFullDay(date)}
               aria-selected={isEdge || Boolean(inRange)}
               onClick={() => pick(key)}
               onPointerEnter={() => anchor && setHovered(key)}
@@ -125,7 +117,7 @@ function Calendar({ value, onSelect }) {
                 isEdge
                   ? "bg-primary font-semibold text-primary-foreground"
                   : "hover:bg-muted",
-                key === todayKey && !isEdge && "ring-1 ring-ring",
+                key === today && !isEdge && "ring-1 ring-ring",
               )}
             >
               {date.getDate()}

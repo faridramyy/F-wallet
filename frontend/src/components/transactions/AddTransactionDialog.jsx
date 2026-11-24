@@ -15,11 +15,14 @@ import { Select } from "../ui/select";
 import { TabBar } from "../ui/tab-bar";
 import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
-import { centsToInput, dollarsToCents } from "../../lib/formatters";
+import {
+  centsToInput,
+  currencySymbol,
+  dollarsToCents,
+} from "../../lib/formatters";
 import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
+import { todayKey } from "../../lib/date-ranges";
 import { accountOptions, categoryOptions } from "../../lib/select-options";
-
-const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
 
 const TYPE_TABS = {
   expense: { value: "expense", label: "Expense", icon: ArrowUpRight },
@@ -34,15 +37,6 @@ function typeTabsFor(transaction) {
   return Object.values(TYPE_TABS);
 }
 
-// The symbol shown in front of the amount ("$", "€", …).
-function currencySymbol(currency = "CAD") {
-  return (
-    new Intl.NumberFormat("en-CA", { style: "currency", currency })
-      .formatToParts(0)
-      .find((part) => part.type === "currency")?.value ?? "$"
-  );
-}
-
 function getInitialForm(transaction, accounts) {
   if (!transaction) {
     return {
@@ -51,7 +45,7 @@ function getInitialForm(transaction, accounts) {
       account_id: accounts[0]?.account_id ?? "",
       to_account_id: accounts[1]?.account_id ?? "",
       category_id: "",
-      transaction_date: today(),
+      transaction_date: todayKey(),
       description: "",
       merchant: "",
       notes: "",

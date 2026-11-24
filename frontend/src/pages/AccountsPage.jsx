@@ -29,7 +29,7 @@ export function AccountsPage() {
     setAccounts,
     archivedAccounts,
     setArchivedAccounts,
-    settings,
+    currency,
   } = useAppData();
 
   const [activeTab, setActiveTab] = useState("active");
@@ -117,7 +117,6 @@ export function AccountsPage() {
     }
   }
 
-  const currency = settings?.currency ?? "CAD";
   const money = (cents) => formatCents(cents, currency);
   const totals = summarizeAccounts(accounts);
   const hasCardLimits = totals.limitCents > 0;
@@ -232,7 +231,7 @@ export function AccountsPage() {
       <AccountDialog
         open={dialog !== null}
         account={editingAccount}
-        currency={settings?.currency ?? "CAD"}
+        currency={currency}
         onClose={() => setDialog(null)}
         onSave={handleSaveAccount}
       />

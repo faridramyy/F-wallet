@@ -1,4 +1,5 @@
 import { query } from "../../database/db.js";
+import { upsertUser, ensureUserSettings } from "../users/users.service.js";
 import {
   accountColumns,
   activeAccountsWithTotalsSql,
@@ -18,40 +19,9 @@ export const getBootstrap = async (req, res, next) => {
     // These two writes must run first and in this order: user_settings has a
     // foreign key to users. They also make sure a brand-new user gets a
     // user row and default settings on their very first request.
-    const userResult = await query(
-      `
-        INSERT INTO f_wallet.users (
-          user_id,
-          email
-        )
-        VALUES ($1, $2)
-        ON CONFLICT (user_id)
-        DO UPDATE SET
-          email = EXCLUDED.email,
-          updated_at = CASE
-            WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
-            THEN EXCLUDED.updated_at
-            ELSE f_wallet.users.updated_at
-          END
-        RETURNING
-          user_id,
-          email,
-          created_at,
-          updated_at
-      `,
-      [userId, req.user.email],
-    );
+    const user = await upsertUser(req.user);
 
-    await query(
-      `
-        INSERT INTO f_wallet.user_settings (
-          user_id
-        )
-        VALUES ($1)
-        ON CONFLICT (user_id) DO NOTHING
-      `,
-      [userId],
-    );
+    await ensureUserSettings(userId);
 
     // The reads do not depend on each other, so they run in parallel.
     // The ORDER BY clauses match the individual list endpoints exactly.
@@ -108,7 +78,7 @@ export const getBootstrap = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {
-        user: userResult.rows[0],
+        user,
         settings: settingsResult.rows[0],
         accounts: accountsResult.rows,
         archived_accounts: archivedAccountsResult.rows,

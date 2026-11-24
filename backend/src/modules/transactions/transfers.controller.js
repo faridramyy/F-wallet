@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { transaction } from "../../database/db.js";
 import { createError } from "../../utils/http-error.js";
+import { pickUpdate } from "../../utils/patch.js";
 import {
   assertAccountUsable,
   findTransaction,
@@ -124,9 +125,7 @@ export const updateTransfer = async (req, res, next) => {
         throw createError("Transfer is missing an account entry.", 409);
       }
 
-      // `undefined` means "not sent, keep it"; `null` means "clear it".
-      const pick = (key, current) =>
-        updates[key] !== undefined ? updates[key] : current;
+      const pick = pickUpdate(updates);
 
       const final = {
         fromAccountId: pick("from_account_id", source.account_id),
@@ -203,7 +202,11 @@ export const updateTransfer = async (req, res, next) => {
           [entryId, userId, accountId, amountCents],
         );
 
-      await updateEntry(source.entry_id, final.fromAccountId, -final.amountCents);
+      await updateEntry(
+        source.entry_id,
+        final.fromAccountId,
+        -final.amountCents,
+      );
       await updateEntry(
         destination.entry_id,
         final.toAccountId,

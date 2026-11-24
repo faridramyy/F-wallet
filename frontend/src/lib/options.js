@@ -9,8 +9,18 @@ export const CURRENCY_OPTIONS = [
 ];
 
 export const MONTH_OPTIONS = [
-  "January", "February", "March", "April", "May", "June",
-  "July", "August", "September", "October", "November", "December",
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ].map((label, index) => ({ value: String(index + 1), label }));
 
 export const CATEGORY_TYPE_OPTIONS = [

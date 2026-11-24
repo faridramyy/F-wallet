@@ -2,27 +2,20 @@ import { PiggyBank, Target, TrendingDown, TrendingUp } from "lucide-react";
 
 import { StatCard, StatGrid } from "../ui/stat-card";
 import { useAppData } from "../providers/useAppData";
-import { formatCents } from "../../lib/formatters";
+import { formatCents, formatMonthShortYear } from "../../lib/formatters";
 import {
   getMonthBudget,
   getMonthContext,
   summarizeMonth,
 } from "../../lib/analytics";
 
-const monthShort = new Intl.DateTimeFormat("en-CA", {
-  month: "short",
-  year: "numeric",
-});
-
 // This month's budget at a glance: what was planned, spent, left and earned.
 export function BudgetOverviewCards() {
-  const { budgets, transactions, settings } = useAppData();
-  const money = (cents) => formatCents(cents, settings?.currency ?? "CAD");
+  const { budgets, transactions, currency } = useAppData();
+  const money = (cents) => formatCents(cents, currency);
 
   const { current } = getMonthContext();
-  const monthLabel = monthShort.format(
-    new Date(current.year, current.month - 1, 1),
-  );
+  const monthLabel = formatMonthShortYear(current.year, current.month);
 
   const { budget, totalCents } = getMonthBudget(
     budgets,

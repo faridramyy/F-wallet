@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
-import { createError } from "../../utils/http-error.js";
+import { conflictOnDuplicate, createError } from "../../utils/http-error.js";
+import { upsertUser } from "../users/users.service.js";
 
 export const accountColumns = `
   account_id,
@@ -58,36 +59,10 @@ const creditCardFields = [
   "payment_due_day",
 ];
 
-const ensureUserExists = async (user) => {
-  await query(
-    `
-      INSERT INTO f_wallet.users (
-        user_id,
-        email
-      )
-      VALUES ($1, $2)
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        email = EXCLUDED.email,
-        updated_at = CASE
-          WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
-          THEN EXCLUDED.updated_at
-          ELSE f_wallet.users.updated_at
-        END
-    `,
-    [user.sub, user.email],
-  );
-};
-
-const handleControllerError = (error, next) => {
-  if (error.code === "23505") {
-    return next(
-      createError("An account with this name or position already exists.", 409),
-    );
-  }
-
-  next(error);
-};
+// A duplicate name/position/month becomes a 409 instead of a 500.
+const handleControllerError = conflictOnDuplicate(
+  "An account with this name or position already exists.",
+);
 
 // GET /api/v1/accounts
 export const getAccounts = async (req, res, next) => {
@@ -122,10 +97,7 @@ export const getAccount = async (req, res, next) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Account not found.",
-      });
+      return next(createError("Account not found.", 404));
     }
 
     res.status(200).json({
@@ -144,7 +116,7 @@ export const createAccount = async (req, res, next) => {
   try {
     const data = req.validated.body;
 
-    await ensureUserExists(req.user);
+    await upsertUser(req.user);
 
     const accountId = randomUUID();
 
@@ -322,10 +294,7 @@ export const updateAccount = async (req, res, next) => {
     );
 
     if (existingResult.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Account not found.",
-      });
+      return next(createError("Account not found.", 404));
     }
 
     const existingAccount = existingResult.rows[0];
@@ -377,10 +346,7 @@ export const updateAccount = async (req, res, next) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Account not found.",
-      });
+      return next(createError("Account not found.", 404));
     }
 
     res.status(200).json({
@@ -415,10 +381,7 @@ export const archiveAccount = async (req, res, next) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Account not found.",
-      });
+      return next(createError("Account not found.", 404));
     }
 
     res.status(200).json({
@@ -493,10 +456,7 @@ export const restoreAccount = async (req, res, next) => {
     });
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Archived account not found.",
-      });
+      return next(createError("Archived account not found.", 404));
     }
 
     res.status(200).json({

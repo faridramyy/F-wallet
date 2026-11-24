@@ -2,6 +2,7 @@ import { Receipt } from "lucide-react";
 import { cn } from "cn";
 
 import { EmptyState } from "../ui/empty-state";
+import { useAppData } from "../providers/useAppData";
 import { TransactionItem } from "./TransactionItem";
 import { formatCents, formatDateKey } from "../../lib/formatters";
 
@@ -48,6 +49,8 @@ export function TransactionList({
   onDelete,
   onRefund,
 }) {
+  const { currency } = useAppData();
+
   if (!transactions.length) {
     return (
       <EmptyState
@@ -74,7 +77,7 @@ export function TransactionList({
               )}
             >
               {group.netCents > 0 ? "+" : ""}
-              {formatCents(group.netCents)}
+              {formatCents(group.netCents, currency)}
             </p>
           </div>
 
@@ -86,6 +89,7 @@ export function TransactionList({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 onRefund={onRefund}
+                currency={currency}
               />
             ))}
           </div>

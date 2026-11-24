@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { query, transaction } from "../../database/db.js";
-import { createError } from "../../utils/http-error.js";
+import { conflictOnDuplicate, createError } from "../../utils/http-error.js";
+import { upsertUser } from "../users/users.service.js";
 
 export const categoryColumns = `
   category_id,
@@ -16,34 +17,10 @@ export const categoryColumns = `
   updated_at
 `;
 
-const ensureUserExists = async (user) => {
-  await query(
-    `
-      INSERT INTO f_wallet.users (
-        user_id,
-        email
-      )
-      VALUES ($1, $2)
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        email = EXCLUDED.email,
-        updated_at = CASE
-          WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
-          THEN EXCLUDED.updated_at
-          ELSE f_wallet.users.updated_at
-        END
-    `,
-    [user.sub, user.email],
-  );
-};
-
-const handleControllerError = (error, next) => {
-  if (error.code === "23505") {
-    return next(createError("A category with this name already exists.", 409));
-  }
-
-  next(error);
-};
+// A duplicate name/position/month becomes a 409 instead of a 500.
+const handleControllerError = conflictOnDuplicate(
+  "A category with this name already exists.",
+);
 
 // Validate parent category and default account ownership.
 const validateCategoryReferences = async (
@@ -177,10 +154,7 @@ export const getCategory = async (req, res, next) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found.",
-      });
+      return next(createError("Category not found.", 404));
     }
 
     res.status(200).json({
@@ -200,7 +174,7 @@ export const createCategory = async (req, res, next) => {
     const data = req.validated.body;
     const userId = req.user.sub;
 
-    await ensureUserExists(req.user);
+    await upsertUser(req.user);
 
     const categoryId = randomUUID();
 
@@ -493,10 +467,7 @@ export const archiveCategory = async (req, res, next) => {
     });
 
     if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found.",
-      });
+      return next(createError("Category not found.", 404));
     }
 
     res.status(200).json({
@@ -575,10 +546,7 @@ export const restoreCategory = async (req, res, next) => {
     });
 
     if (!result) {
-      return res.status(404).json({
-        success: false,
-        message: "Archived category not found.",
-      });
+      return next(createError("Archived category not found.", 404));
     }
 
     res.status(200).json({

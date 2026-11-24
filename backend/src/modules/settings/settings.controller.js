@@ -1,4 +1,6 @@
+import { createError } from "../../utils/http-error.js";
 import { query } from "../../database/db.js";
+import { upsertUser, ensureUserSettings } from "../users/users.service.js";
 
 export const settingsColumns = `
   currency,
@@ -18,37 +20,9 @@ export const settingsColumns = `
 
 export const getSettings = async (req, res, next) => {
   try {
-    // Ensure the authenticated user exists.
-    await query(
-      `
-        INSERT INTO f_wallet.users (
-          user_id,
-          email
-        )
-        VALUES ($1, $2)
-        ON CONFLICT (user_id)
-        DO UPDATE SET
-          email = EXCLUDED.email,
-          updated_at = CASE
-            WHEN f_wallet.users.email IS DISTINCT FROM EXCLUDED.email
-            THEN EXCLUDED.updated_at
-            ELSE f_wallet.users.updated_at
-          END
-      `,
-      [req.user.sub, req.user.email],
-    );
+    await upsertUser(req.user);
 
-    // Create settings using database defaults if they do not exist.
-    await query(
-      `
-        INSERT INTO f_wallet.user_settings (
-          user_id
-        )
-        VALUES ($1)
-        ON CONFLICT (user_id) DO NOTHING
-      `,
-      [req.user.sub],
-    );
+    await ensureUserSettings(req.user.sub);
 
     const result = await query(
       `
@@ -93,10 +67,9 @@ export const updateSettings = async (req, res, next) => {
     );
 
     if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Settings not found. Fetch settings before updating.",
-      });
+      return next(
+        createError("Settings not found. Fetch settings before updating.", 404),
+      );
     }
 
     res.status(200).json({

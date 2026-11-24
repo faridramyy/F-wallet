@@ -77,7 +77,10 @@ export function ChartCard({
                   <th
                     key={column}
                     scope="col"
-                    className={cn("py-2 font-medium", index > 0 && "text-right")}
+                    className={cn(
+                      "py-2 font-medium",
+                      index > 0 && "text-right",
+                    )}
                   >
                     {column}
                   </th>
@@ -86,7 +89,10 @@ export function ChartCard({
             </thead>
             <tbody>
               {table.rows.map((row) => (
-                <tr key={row[0]} className="border-b border-border last:border-0">
+                <tr
+                  key={row[0]}
+                  className="border-b border-border last:border-0"
+                >
                   {row.map((cell, index) => (
                     <td
                       key={index}

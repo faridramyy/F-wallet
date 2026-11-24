@@ -32,6 +32,22 @@ const shortDateFormatter = new Intl.DateTimeFormat(LOCALE, {
   year: "numeric",
 });
 
+const fullDayFormatter = new Intl.DateTimeFormat(LOCALE, {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+const monthNameFormatter = new Intl.DateTimeFormat(LOCALE, { month: "long" });
+const monthShortFormatter = new Intl.DateTimeFormat(LOCALE, { month: "short" });
+const monthShortYearFormatter = new Intl.DateTimeFormat(LOCALE, {
+  month: "short",
+  year: "numeric",
+});
+
+const firstOfMonth = (year, month) => new Date(year, month - 1, 1);
+
 const compactFormatters = new Map();
 
 // Short money for chart axes: "$1.2K", "$15K", "$0".
@@ -63,10 +79,33 @@ export function formatCents(cents, currency) {
   return formatCurrency(Number(cents ?? 0) / 100, currency);
 }
 
-// "November 2026"
-export function formatMonthYear(year, month) {
-  return monthYearFormatter.format(new Date(year, month - 1, 1));
-}
+// Months (1-based) as "November 2026", "Nov 2026", "November" and "Nov".
+export const formatMonthYear = (year, month) =>
+  monthYearFormatter.format(firstOfMonth(year, month));
+
+export const formatMonthShortYear = (year, month) =>
+  monthShortYearFormatter.format(firstOfMonth(year, month));
+
+export const formatMonthName = (year, month) =>
+  monthNameFormatter.format(firstOfMonth(year, month));
+
+export const formatMonthShort = (year, month) =>
+  monthShortFormatter.format(firstOfMonth(year, month));
+
+// A Date as "Nov 3, 2026", or a range as "Nov 1–19, 2026".
+export const formatShortDate = (date) => shortDateFormatter.format(date);
+
+export const formatShortDateRange = (from, to) =>
+  shortDateFormatter.formatRange(from, to);
+
+// A Date as "Monday, November 2, 2026" (e.g. for screen readers).
+export const formatFullDay = (date) => fullDayFormatter.format(date);
+
+// The symbol shown before an amount: "$", "€", "£"...
+export const currencySymbol = (currency = "CAD") =>
+  getCurrencyFormatter(currency)
+    .formatToParts(0)
+    .find((part) => part.type === "currency")?.value ?? "$";
 
 // A "YYYY-MM-DD" string from the API, shown as "November 22, 2026".
 // Built from its parts in LOCAL time: new Date("2026-11-22") would be parsed
@@ -113,20 +152,6 @@ export function centsToInput(value) {
   } catch {
     return "0.00";
   }
-}
-
-// Returns the current calendar year, month (1-based), and a YYYY-MM prefix
-// string for filtering transaction_date fields.
-export function getCurrentYearMonth() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth() + 1;
-
-  return {
-    year,
-    month,
-    prefix: `${year}-${String(month).padStart(2, "0")}`,
-  };
 }
 
 // Human-readable title for a transaction, following the same priority used
