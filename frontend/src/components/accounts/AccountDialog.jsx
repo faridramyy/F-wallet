@@ -1,440 +1,278 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 
-import { Button } from "../ui/button";
+import { FormDialog } from "../common/FormDialog";
+import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+import { NativeSelect } from "../ui/native-select";
 import { Textarea } from "../ui/textarea";
-
 import { useNotifications } from "../providers/useNotifications";
 import { centsToInput, dollarsToCents } from "../../lib/formatters";
+import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
+import { ACCOUNT_TYPES } from "../../lib/accounts";
+import { CURRENCY_OPTIONS, renderOptions } from "../../lib/options";
 
-const createInitialForm = (currency) => ({
-  account_name: "",
-  account_type: "checking",
-  institution_name: "",
-  currency,
-  opening_balance: "0.00",
-  credit_limit: "",
-  card_last_four: "",
-  statement_closing_day: "",
-  payment_due_day: "",
-  include_in_net_worth: true,
-  notes: "",
-});
+const optionalNumber = (value) => (value == null ? "" : String(value));
 
-const selectClass =
-  "h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground";
-
-function Field({ id, label, hint, children }) {
-  return (
-    <div className="space-y-2">
-      <Label htmlFor={id}>{label}</Label>
-      {children}
-      {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
-    </div>
-  );
+function getInitialForm(account, currency) {
+  return {
+    account_name: account?.account_name ?? "",
+    account_type: account?.account_type ?? "checking",
+    institution_name: account?.institution_name ?? "",
+    currency: account?.currency ?? currency,
+    opening_balance: account
+      ? centsToInput(account.opening_balance_cents)
+      : "0.00",
+    credit_limit:
+      account?.credit_limit_cents == null
+        ? ""
+        : centsToInput(account.credit_limit_cents),
+    card_last_four: account?.card_last_four ?? "",
+    statement_closing_day: optionalNumber(account?.statement_closing_day),
+    payment_due_day: optionalNumber(account?.payment_due_day),
+    include_in_net_worth: account?.include_in_net_worth ?? true,
+    notes: account?.notes ?? "",
+  };
 }
 
-function getAccountForm(account, currency) {
-  return account
-    ? {
-        account_name: account.account_name || "",
-        account_type: account.account_type || "checking",
-        institution_name: account.institution_name || "",
-        currency: account.currency || currency,
-        opening_balance: centsToInput(account.opening_balance_cents),
-        credit_limit:
-          account.credit_limit_cents == null
-            ? ""
-            : centsToInput(account.credit_limit_cents),
-        card_last_four: account.card_last_four || "",
-        statement_closing_day:
-          account.statement_closing_day == null
-            ? ""
-            : String(account.statement_closing_day),
-        payment_due_day:
-          account.payment_due_day == null
-            ? ""
-            : String(account.payment_due_day),
-        include_in_net_worth: account.include_in_net_worth ?? true,
-        notes: account.notes || "",
-      }
-    : createInitialForm(currency);
+// Signed dollar text ("-12.50") to cents, or null when invalid.
+function signedDollarsToCents(value) {
+  const text = value.trim();
+  const cents = dollarsToCents(text.replace(/^-/, ""));
+
+  if (cents === null) return null;
+
+  return text.startsWith("-") ? -cents : cents;
 }
 
-function AccountDialogContent({
-  onClose,
-  onSave,
-  currency = "CAD",
-  account = null,
-}) {
+function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
   const { toast, confirm } = useNotifications();
 
-  const [form, setForm] = useState(() => getAccountForm(account, currency));
-
+  const [initialForm] = useState(() => getInitialForm(account, currency));
+  const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-
+  const [error, setError] = useState("");
 
   const isCreditCard = form.account_type === "credit_card";
   const isEditing = Boolean(account);
 
   const updateField = (name, value) => {
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
+    setForm((current) => ({ ...current, [name]: value }));
+    setError("");
   };
 
-  const handleClose = async () => {
+  // Props for a text input bound to form[name].
+  const bind = (name) => ({
+    id: name,
+    value: form[name],
+    onChange: (event) => updateField(name, event.target.value),
+  });
+
+  function handleClose() {
     if (saving) return;
 
-    const initialForm = getAccountForm(account, currency);
-
-    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
-
-    if (!hasChanges) {
-      onClose();
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: "Discard changes?",
-      description: "You have unsaved changes. Are you sure you want to close?",
-      confirmText: "Discard changes",
-      cancelText: "Keep editing",
-      variant: "destructive",
+    closeWithConfirm({
+      isDirty: hasChanges(form, initialForm),
+      confirm,
+      onClose,
+      noun: "account",
     });
+  }
 
-    if (confirmed) {
-      onClose();
-    }
-  };
-
-  const handleSubmit = async (event) => {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    if (saving) return;
-
-    if (!form.account_name.trim()) {
-      toast.error("Enter an account name.");
-      return;
-    }
-
-    const openingBalanceCents = dollarsToCents(
-      form.opening_balance.replace(/^-/, ""),
-    );
-    const isNegativeBalance = form.opening_balance.trim().startsWith("-");
-
-    if (openingBalanceCents === null) {
-      toast.error("Enter a valid opening balance.");
-      return;
-    }
-
-    const finalOpeningBalanceCents = isNegativeBalance
-      ? -openingBalanceCents
-      : openingBalanceCents;
-
+    const accountName = form.account_name.trim();
+    const openingBalanceCents = signedDollarsToCents(form.opening_balance);
     const creditLimitCents =
       isCreditCard && form.credit_limit !== ""
         ? dollarsToCents(form.credit_limit)
         : null;
 
-    if (isCreditCard && form.credit_limit !== "" && creditLimitCents === null) {
-      toast.error("Enter a valid credit limit.");
-      return;
+    if (!accountName) return setError("Enter an account name.");
+    if (openingBalanceCents === null) {
+      return setError("Enter a valid opening balance.");
     }
+    if (isCreditCard && form.credit_limit !== "" && creditLimitCents === null) {
+      return setError("Enter a valid credit limit.");
+    }
+
+    const creditCardValue = (value) => (isCreditCard && value ? value : null);
 
     setSaving(true);
 
     try {
       await onSave({
-        account_name: form.account_name.trim(),
+        account_name: accountName,
         account_type: form.account_type,
         institution_name: form.institution_name.trim() || null,
         currency: form.currency,
-        opening_balance_cents: finalOpeningBalanceCents,
-
+        opening_balance_cents: openingBalanceCents,
         credit_limit_cents: creditLimitCents,
-
-        card_last_four: isCreditCard
-          ? form.card_last_four.trim() || null
-          : null,
-
-        statement_closing_day:
-          isCreditCard && form.statement_closing_day
-            ? Number(form.statement_closing_day)
-            : null,
-
-        payment_due_day:
-          isCreditCard && form.payment_due_day
-            ? Number(form.payment_due_day)
-            : null,
-
+        card_last_four: creditCardValue(form.card_last_four.trim()),
+        statement_closing_day: creditCardValue(
+          Number(form.statement_closing_day),
+        ),
+        payment_due_day: creditCardValue(Number(form.payment_due_day)),
         include_in_net_worth: form.include_in_net_worth,
         notes: form.notes.trim() || null,
       });
 
-      toast.success(
-        isEditing
-          ? "Account updated successfully."
-          : "Account created successfully.",
-      );
-
+      toast.success(isEditing ? "Account updated." : "Account created.");
       onClose();
     } catch (err) {
-      toast.error(err.message || "Unable to save account.");
-    } finally {
+      setError(err.message || "Unable to save account.");
       setSaving(false);
     }
-  };
+  }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) {
-          handleClose();
-        }
-      }}
+    <FormDialog
+      title={isEditing ? "Edit account" : "New account"}
+      description="Add a bank account, savings account, cash account, or credit card."
+      onClose={handleClose}
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? "Save changes" : "Create account"}
+      submitDisabled={!form.account_name.trim()}
+      saving={saving}
+      error={error}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card shadow-xl">
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card p-5">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              {isEditing ? "Edit account" : "New account"}
-            </h2>
+      <Field label="Account name" htmlFor="account_name">
+        <Input
+          {...bind("account_name")}
+          maxLength={100}
+          placeholder="e.g. Everyday Checking"
+          autoFocus
+        />
+      </Field>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Account type" htmlFor="account_type">
+          <NativeSelect {...bind("account_type")}>
+            {renderOptions(ACCOUNT_TYPES)}
+          </NativeSelect>
+        </Field>
+
+        <Field label="Currency" htmlFor="currency">
+          <NativeSelect {...bind("currency")}>
+            {renderOptions(CURRENCY_OPTIONS)}
+          </NativeSelect>
+        </Field>
+      </div>
+
+      <Field label="Financial institution" htmlFor="institution_name">
+        <Input
+          {...bind("institution_name")}
+          maxLength={100}
+          placeholder="e.g. TD Canada Trust"
+        />
+      </Field>
+
+      <Field
+        label="Opening balance"
+        htmlFor="opening_balance"
+        hint="The balance of this account when you start tracking it. This is not its live current balance."
+      >
+        <Input
+          {...bind("opening_balance")}
+          type="number"
+          step="0.01"
+          placeholder="0.00"
+        />
+      </Field>
+
+      {isCreditCard && (
+        <fieldset className="space-y-4 rounded-lg border border-border bg-muted/40 p-4">
+          <legend className="sr-only">Credit card details</legend>
+
+          <div>
+            <p className="text-sm font-semibold">Credit card details</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Add a bank account, savings account, cash account, or credit card.
+              Used to track the credit limit and billing cycle.
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={saving}
-            className="rounded-lg p-2 text-muted-foreground hover:bg-muted disabled:opacity-50"
-            aria-label="Close dialog"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
-          <Field id="account_name" label="Account name">
-            <Input
-              id="account_name"
-              value={form.account_name}
-              onChange={(event) =>
-                updateField("account_name", event.target.value)
-              }
-              maxLength={100}
-              placeholder="e.g. Everyday Checking"
-              autoFocus
-            />
-          </Field>
-
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field id="account_type" label="Account type">
-              <select
-                id="account_type"
-                value={form.account_type}
-                onChange={(event) =>
-                  updateField("account_type", event.target.value)
-                }
-                className={selectClass}
-              >
-                <option value="checking">Checking</option>
-                <option value="savings">Savings</option>
-                <option value="cash">Cash</option>
-                <option value="credit_card">Credit card</option>
-              </select>
+            <Field label="Credit limit" htmlFor="credit_limit">
+              <Input
+                {...bind("credit_limit")}
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="15000.00"
+              />
             </Field>
 
-            <Field id="account_currency" label="Currency">
-              <select
-                id="account_currency"
-                value={form.currency}
+            <Field label="Last four digits" htmlFor="card_last_four">
+              <Input
+                {...bind("card_last_four")}
                 onChange={(event) =>
-                  updateField("currency", event.target.value)
+                  updateField(
+                    "card_last_four",
+                    event.target.value.replace(/\D/g, "").slice(0, 4),
+                  )
                 }
-                className={selectClass}
-              >
-                <option value="CAD">CAD — Canadian Dollar</option>
-                <option value="USD">USD — US Dollar</option>
-                <option value="EUR">EUR — Euro</option>
-                <option value="GBP">GBP — British Pound</option>
-              </select>
+                inputMode="numeric"
+                maxLength={4}
+                pattern="[0-9]{4}"
+                placeholder="1234"
+              />
+            </Field>
+
+            <Field label="Statement closing day" htmlFor="statement_closing_day">
+              <Input
+                {...bind("statement_closing_day")}
+                type="number"
+                min="1"
+                max="31"
+                placeholder="18"
+              />
+            </Field>
+
+            <Field label="Payment due day" htmlFor="payment_due_day">
+              <Input
+                {...bind("payment_due_day")}
+                type="number"
+                min="1"
+                max="31"
+                placeholder="9"
+              />
             </Field>
           </div>
+        </fieldset>
+      )}
 
-          <Field id="institution_name" label="Financial institution">
-            <Input
-              id="institution_name"
-              value={form.institution_name}
-              onChange={(event) =>
-                updateField("institution_name", event.target.value)
-              }
-              maxLength={100}
-              placeholder="e.g. TD Canada Trust"
-            />
-          </Field>
+      <Field label="Notes" htmlFor="notes">
+        <Textarea
+          {...bind("notes")}
+          maxLength={2000}
+          placeholder="Optional notes"
+          rows={3}
+        />
+      </Field>
 
-          <Field
-            id="opening_balance"
-            label="Opening balance"
-            hint="The balance of this account when you start tracking it. This is not its live current balance."
-          >
-            <Input
-              id="opening_balance"
-              type="number"
-              step="0.01"
-              value={form.opening_balance}
-              onChange={(event) =>
-                updateField("opening_balance", event.target.value)
-              }
-              placeholder="0.00"
-            />
-          </Field>
+      <label className="flex cursor-pointer items-start gap-3">
+        <input
+          type="checkbox"
+          checked={form.include_in_net_worth}
+          onChange={(event) =>
+            updateField("include_in_net_worth", event.target.checked)
+          }
+          className="mt-0.5 size-4 accent-primary"
+        />
 
-          {isCreditCard && (
-            <div className="space-y-4 rounded-lg border border-border bg-muted/40 p-4">
-              <div>
-                <p className="text-sm font-semibold text-foreground">
-                  Credit card details
-                </p>
-
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Add the card details used to track its credit limit and
-                  billing cycle.
-                </p>
-              </div>
-
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="credit_limit" label="Credit limit">
-                  <Input
-                    id="credit_limit"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={form.credit_limit}
-                    onChange={(event) =>
-                      updateField("credit_limit", event.target.value)
-                    }
-                    placeholder="15000.00"
-                  />
-                </Field>
-
-                <Field id="card_last_four" label="Last four digits">
-                  <Input
-                    id="card_last_four"
-                    inputMode="numeric"
-                    maxLength={4}
-                    pattern="[0-9]{4}"
-                    value={form.card_last_four}
-                    onChange={(event) =>
-                      updateField(
-                        "card_last_four",
-                        event.target.value.replace(/\D/g, "").slice(0, 4),
-                      )
-                    }
-                    placeholder="1234"
-                  />
-                </Field>
-
-                <Field id="statement_closing_day" label="Statement closing day">
-                  <Input
-                    id="statement_closing_day"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={form.statement_closing_day}
-                    onChange={(event) =>
-                      updateField("statement_closing_day", event.target.value)
-                    }
-                    placeholder="18"
-                  />
-                </Field>
-
-                <Field id="payment_due_day" label="Payment due day">
-                  <Input
-                    id="payment_due_day"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={form.payment_due_day}
-                    onChange={(event) =>
-                      updateField("payment_due_day", event.target.value)
-                    }
-                    placeholder="9"
-                  />
-                </Field>
-              </div>
-            </div>
-          )}
-
-          <Field id="account_notes" label="Notes">
-            <Textarea
-              id="account_notes"
-              value={form.notes}
-              onChange={(event) => updateField("notes", event.target.value)}
-              maxLength={2000}
-              placeholder="Optional notes"
-              rows={3}
-            />
-          </Field>
-
-          <label className="flex cursor-pointer items-start gap-3">
-            <input
-              type="checkbox"
-              checked={form.include_in_net_worth}
-              onChange={(event) =>
-                updateField("include_in_net_worth", event.target.checked)
-              }
-              className="mt-0.5 size-4 accent-primary"
-            />
-
-            <span>
-              <span className="block text-sm font-medium text-foreground">
-                Include in net worth
-              </span>
-
-              <span className="mt-1 block text-xs text-muted-foreground">
-                Include this account when calculating your total net worth.
-              </span>
-            </span>
-          </label>
-
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              type="submit"
-              disabled={!form.account_name.trim() || saving}
-            >
-              {saving
-                ? "Saving..."
-                : isEditing
-                  ? "Save changes"
-                  : "Create account"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+        <span>
+          <span className="block text-sm font-medium">Include in net worth</span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Include this account when calculating your total net worth.
+          </span>
+        </span>
+      </label>
+    </FormDialog>
   );
 }
 
 // Mounted only while open, so every opening starts from a fresh form built
-// from the props (no effect needed to reset it).
+// from the props.
 export function AccountDialog(props) {
   if (!props.open) return null;
 

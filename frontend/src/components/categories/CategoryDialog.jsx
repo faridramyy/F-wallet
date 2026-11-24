@@ -1,31 +1,22 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 
-import { Button } from "../ui/button";
+import { FormDialog } from "../common/FormDialog";
+import { Field } from "../ui/field";
 import { Input } from "../ui/input";
-import { Label } from "../ui/label";
+import { NativeSelect } from "../ui/native-select";
 import { Textarea } from "../ui/textarea";
-
 import { useNotifications } from "../providers/useNotifications";
-
-const EMPTY_FORM = {
-  category_name: "",
-  category_type: "expense",
-  parent_category_id: "",
-  default_account_id: "",
-  notes: "",
-};
+import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
+import { CATEGORY_TYPE_OPTIONS, renderOptions } from "../../lib/options";
 
 function getInitialForm(category) {
-  return category
-    ? {
-        category_name: category.category_name ?? "",
-        category_type: category.category_type ?? "expense",
-        parent_category_id: category.parent_category_id ?? "",
-        default_account_id: category.default_account_id ?? "",
-        notes: category.notes ?? "",
-      }
-    : { ...EMPTY_FORM };
+  return {
+    category_name: category?.category_name ?? "",
+    category_type: category?.category_type ?? "expense",
+    parent_category_id: category?.parent_category_id ?? "",
+    default_account_id: category?.default_account_id ?? "",
+    notes: category?.notes ?? "",
+  };
 }
 
 function CategoryDialogContent({
@@ -37,9 +28,10 @@ function CategoryDialogContent({
 }) {
   const { toast, confirm } = useNotifications();
 
-  const [form, setForm] = useState(() => getInitialForm(category));
+  const [initialForm] = useState(() => getInitialForm(category));
+  const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-
+  const [error, setError] = useState("");
 
   const isEditing = Boolean(category);
 
@@ -49,47 +41,33 @@ function CategoryDialogContent({
       item.category_type === form.category_type,
   );
 
-  const updateField = (name, value) => {
-    setForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
+  const updateField = (changes) => {
+    setForm((current) => ({ ...current, ...changes }));
+    setError("");
   };
 
-  const handleClose = async () => {
+  const bind = (name) => ({
+    id: name,
+    value: form[name],
+    onChange: (event) => updateField({ [name]: event.target.value }),
+  });
+
+  function handleClose() {
     if (saving) return;
 
-    const initialForm = getInitialForm(category);
-
-    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
-
-    if (!hasChanges) {
-      onClose();
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: "Discard changes?",
-      description:
-        "You have unsaved category changes. Are you sure you want to close?",
-      confirmText: "Discard changes",
-      cancelText: "Keep editing",
-      variant: "destructive",
+    closeWithConfirm({
+      isDirty: hasChanges(form, initialForm),
+      confirm,
+      onClose,
+      noun: "category",
     });
+  }
 
-    if (confirmed) {
-      onClose();
-    }
-  };
-
-  const handleSubmit = async (event) => {
+  async function handleSubmit(event) {
     event.preventDefault();
 
-    if (saving) return;
-
     if (!form.category_name.trim()) {
-      toast.error("Enter a category name.");
-      return;
+      return setError("Enter a category name.");
     }
 
     setSaving(true);
@@ -103,168 +81,79 @@ function CategoryDialogContent({
         notes: form.notes.trim() || null,
       });
 
-      toast.success(
-        isEditing
-          ? "Category updated successfully."
-          : "Category created successfully.",
-      );
-
+      toast.success(isEditing ? "Category updated." : "Category created.");
       onClose();
     } catch (err) {
-      toast.error(err.message || "Unable to save category.");
-    } finally {
+      setError(err.message || "Unable to save category.");
       setSaving(false);
     }
-  };
+  }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) {
-          handleClose();
-        }
-      }}
+    <FormDialog
+      title={isEditing ? "Edit category" : "New category"}
+      description="Organize your income and expenses."
+      onClose={handleClose}
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? "Save changes" : "Create category"}
+      saving={saving}
+      error={error}
     >
-      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-border bg-card shadow-xl">
-        <div className="flex items-center justify-between border-b border-border p-5">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">
-              {isEditing ? "Edit category" : "New category"}
-            </h2>
+      <Field label="Category name" htmlFor="category_name">
+        <Input
+          {...bind("category_name")}
+          maxLength={100}
+          placeholder="e.g. Groceries"
+          autoFocus
+        />
+      </Field>
 
-            <p className="mt-1 text-xs text-muted-foreground">
-              Organize your income and expenses.
-            </p>
-          </div>
+      <Field label="Category type" htmlFor="category_type">
+        <NativeSelect
+          {...bind("category_type")}
+          // A parent of the other type is no longer valid.
+          onChange={(event) =>
+            updateField({
+              category_type: event.target.value,
+              parent_category_id: "",
+            })
+          }
+        >
+          {renderOptions(CATEGORY_TYPE_OPTIONS)}
+        </NativeSelect>
+      </Field>
 
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={saving}
-            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted disabled:opacity-50"
-            aria-label="Close dialog"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
+      <Field label="Parent category" htmlFor="parent_category_id">
+        <NativeSelect {...bind("parent_category_id")}>
+          <option value="">No parent (top-level)</option>
+          {eligibleParents.map((item) => (
+            <option key={item.category_id} value={item.category_id}>
+              {item.category_name}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
 
-        <form onSubmit={handleSubmit} className="space-y-4 p-5">
-          <div className="space-y-2">
-            <Label htmlFor="category_name">Category name</Label>
+      <Field label="Default account" htmlFor="default_account_id">
+        <NativeSelect {...bind("default_account_id")}>
+          <option value="">No default account</option>
+          {accounts.map((account) => (
+            <option key={account.account_id} value={account.account_id}>
+              {account.account_name}
+            </option>
+          ))}
+        </NativeSelect>
+      </Field>
 
-            <Input
-              id="category_name"
-              value={form.category_name}
-              onChange={(event) =>
-                updateField("category_name", event.target.value)
-              }
-              maxLength={100}
-              placeholder="e.g. Groceries"
-              autoFocus
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category_type">Category type</Label>
-
-            <select
-              id="category_type"
-              value={form.category_type}
-              onChange={(event) => {
-                setForm((current) => ({
-                  ...current,
-                  category_type: event.target.value,
-                  parent_category_id: "",
-                }));
-              }}
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
-            >
-              <option value="expense">Expense</option>
-              <option value="income">Income</option>
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="parent_category_id">Parent category</Label>
-
-            <select
-              id="parent_category_id"
-              value={form.parent_category_id}
-              onChange={(event) =>
-                updateField("parent_category_id", event.target.value)
-              }
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
-            >
-              <option value="">No parent (top-level)</option>
-
-              {eligibleParents.map((item) => (
-                <option key={item.category_id} value={item.category_id}>
-                  {item.category_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="default_account_id">Default account</Label>
-
-            <select
-              id="default_account_id"
-              value={form.default_account_id}
-              onChange={(event) =>
-                updateField("default_account_id", event.target.value)
-              }
-              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground"
-            >
-              <option value="">No default account</option>
-
-              {accounts.map((account) => (
-                <option key={account.account_id} value={account.account_id}>
-                  {account.account_name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="category_notes">Notes</Label>
-
-            <Textarea
-              id="category_notes"
-              value={form.notes}
-              onChange={(event) => updateField("notes", event.target.value)}
-              placeholder="Optional notes"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex justify-end gap-2 border-t border-border pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleClose}
-              disabled={saving}
-            >
-              Cancel
-            </Button>
-
-            <Button type="submit" disabled={saving}>
-              {saving
-                ? "Saving..."
-                : isEditing
-                  ? "Save changes"
-                  : "Create category"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <Field label="Notes" htmlFor="notes">
+        <Textarea {...bind("notes")} placeholder="Optional notes" rows={3} />
+      </Field>
+    </FormDialog>
   );
 }
 
 // Mounted only while open, so every opening starts from a fresh form built
-// from the props (no effect needed to reset it).
+// from the props.
 export function CategoryDialog(props) {
   if (!props.open) return null;
 

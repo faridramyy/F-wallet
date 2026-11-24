@@ -1,21 +1,17 @@
-import { BrandMark } from "@/components/Logo";
 import { useAuth } from "react-oidc-context";
+
+import { BrandMark } from "../components/Logo";
+import { Button } from "../components/ui/button";
 
 export default function LoginPage() {
   const auth = useAuth();
-
-  const handleLogin = () => {
-    auth.signinRedirect();
-  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
       <div className="w-full max-w-md">
         {/* Brand */}
         <div className="mb-10 text-center">
-          <div className="mx-auto mb-5 flex size-14 items-center justify-center rounded-2xl bg-primary text-primary-foreground">
-            <BrandMark />
-          </div>
+          <BrandMark className="mx-auto mb-5 size-14 rounded-2xl text-2xl" />
 
           <h1 className="text-3xl font-bold tracking-tight">F-Wallet</h1>
 
@@ -42,18 +38,20 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
-            type="button"
-            onClick={handleLogin}
+          <Button
+            size="lg"
+            className="h-12 w-full font-semibold"
+            onClick={() => auth.signinRedirect()}
             disabled={auth.isLoading}
-            className="flex h-12 w-full items-center justify-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {auth.isLoading ? "Loading..." : "Sign in"}
-          </button>
+          </Button>
 
           <div className="mt-6 flex items-center gap-3">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-xs text-muted-foreground">SECURE ACCESS</span>
+            <span className="text-xs tracking-widest text-muted-foreground uppercase">
+              Secure access
+            </span>
             <div className="h-px flex-1 bg-border" />
           </div>
 

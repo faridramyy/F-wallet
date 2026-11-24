@@ -1,11 +1,44 @@
 import { useEffect, useState } from "react";
-import { AppDataContext } from "./contexts";
 import { useAuth } from "react-oidc-context";
 
-import { apiRequest } from "../../lib/api";
-
+import { AppDataContext } from "./contexts";
+import { createApi } from "../../lib/api";
+import { removeById, replaceById } from "../../lib/collections";
+import {
+  HISTORY_MONTHS,
+  getMonthContext,
+  shiftMonth,
+} from "../../lib/analytics";
 
 const TRANSACTIONS_PAGE_SIZE = 50;
+
+// The dashboard can analyse any of the last 12 months (with a 6-month cash
+// flow chart), so the first load fetches that much history (in pages of 200,
+// the API maximum). Older history is paged in with "Load more".
+const WINDOW_PAGE_SIZE = 200;
+const MAX_WINDOW_PAGES = 25;
+
+async function loadTransactionWindow(api) {
+  const { current } = getMonthContext();
+  const since = `${shiftMonth(current.year, current.month, 1 - HISTORY_MONTHS).key}-01`;
+
+  let transactions = [];
+  let hasMore = true;
+
+  for (let page = 0; page < MAX_WINDOW_PAGES && hasMore; page += 1) {
+    const { data } = await api.get(
+      `/transactions?limit=${WINDOW_PAGE_SIZE}&offset=${transactions.length}`,
+    );
+
+    transactions = transactions.concat(data.transactions);
+    hasMore = Boolean(data.pagination?.has_more);
+
+    // Newest first, so once a page reaches past the window we have it all.
+    if (transactions.at(-1)?.transaction_date < since) break;
+  }
+
+  return { transactions, hasMore };
+}
 
 // Newest first. The API already sorts this way, but after a local add or edit
 // the order has to be restored.
@@ -16,8 +49,8 @@ const sortTransactions = (list) =>
       b.created_at.localeCompare(a.created_at),
   );
 
-// Loads everything the signed-in user owns (GET /bootstrap plus the first
-// page of GET /transactions, in parallel) and keeps it in state for the
+// Loads everything the signed-in user owns (GET /bootstrap plus at least the
+// last 6 months of transactions, in parallel) and keeps it in state for the
 // whole app.
 //
 // Pages read the data with useAppData() instead of fetching it themselves.
@@ -29,6 +62,7 @@ const sortTransactions = (list) =>
 export function AppDataProvider({ children }) {
   const auth = useAuth();
   const { isAuthenticated } = auth;
+  const api = createApi(auth);
 
   const [settings, setSettings] = useState(null);
   const [accounts, setAccounts] = useState([]);
@@ -38,8 +72,7 @@ export function AppDataProvider({ children }) {
   const [budgets, setBudgets] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [hasMoreTransactions, setHasMoreTransactions] = useState(false);
-  const [loadingMoreTransactions, setLoadingMoreTransactions] =
-    useState(false);
+  const [loadingMoreTransactions, setLoadingMoreTransactions] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -56,12 +89,9 @@ export function AppDataProvider({ children }) {
 
     async function load() {
       try {
-        const [bootstrap, transactionPage] = await Promise.all([
-          apiRequest("/bootstrap", auth),
-          apiRequest(
-            `/transactions?limit=${TRANSACTIONS_PAGE_SIZE}&offset=0`,
-            auth,
-          ),
+        const [bootstrap, transactionWindow] = await Promise.all([
+          api.get("/bootstrap"),
+          loadTransactionWindow(api),
         ]);
         if (cancelled) return;
 
@@ -73,10 +103,8 @@ export function AppDataProvider({ children }) {
         setCategories(data.categories);
         setArchivedCategories(data.archived_categories);
         setBudgets(data.budgets);
-        setTransactions(transactionPage.data.transactions ?? []);
-        setHasMoreTransactions(
-          Boolean(transactionPage.data.pagination?.has_more),
-        );
+        setTransactions(transactionWindow.transactions);
+        setHasMoreTransactions(transactionWindow.hasMore);
       } catch (err) {
         if (cancelled) return;
 
@@ -110,61 +138,48 @@ export function AppDataProvider({ children }) {
     setLoadingMoreTransactions(true);
 
     try {
-      const response = await apiRequest(
+      const { data } = await api.get(
         `/transactions?limit=${TRANSACTIONS_PAGE_SIZE}&offset=${transactions.length}`,
-        auth,
       );
 
       setTransactions((current) => {
         const known = new Set(current.map((item) => item.transaction_id));
-        const fresh = response.data.transactions.filter(
+        const fresh = data.transactions.filter(
           (item) => !known.has(item.transaction_id),
         );
 
         return sortTransactions([...current, ...fresh]);
       });
 
-      setHasMoreTransactions(Boolean(response.data.pagination?.has_more));
+      setHasMoreTransactions(Boolean(data.pagination?.has_more));
     } finally {
       setLoadingMoreTransactions(false);
     }
   };
 
   const createTransaction = async (body) => {
-    const response = await apiRequest("/transactions", auth, {
-      method: "POST",
-      body: JSON.stringify(body),
-    });
+    const { data } = await api.post("/transactions", body);
 
     setTransactions((current) =>
-      sortTransactions([response.data.transaction, ...current]),
+      sortTransactions([data.transaction, ...current]),
     );
   };
 
   const updateTransaction = async (transactionId, changes) => {
-    const response = await apiRequest(`/transactions/${transactionId}`, auth, {
-      method: "PATCH",
-      body: JSON.stringify(changes),
-    });
+    const { data } = await api.patch(`/transactions/${transactionId}`, changes);
 
     setTransactions((current) =>
       sortTransactions(
-        current.map((item) =>
-          item.transaction_id === transactionId
-            ? response.data.transaction
-            : item,
-        ),
+        replaceById(current, "transaction_id", data.transaction),
       ),
     );
   };
 
   const deleteTransaction = async (transactionId) => {
-    await apiRequest(`/transactions/${transactionId}`, auth, {
-      method: "DELETE",
-    });
+    await api.delete(`/transactions/${transactionId}`);
 
     setTransactions((current) =>
-      current.filter((item) => item.transaction_id !== transactionId),
+      removeById(current, "transaction_id", transactionId),
     );
   };
 

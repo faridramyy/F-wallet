@@ -1,10 +1,13 @@
 import {
+  Archive,
   ArrowDownLeft,
   ArrowUpRight,
-  Archive,
-  Pencil,
   GripVertical,
+  Pencil,
 } from "lucide-react";
+import { cn } from "cn";
+
+import { IconButton } from "../ui/icon-button";
 
 export function CategoryCard({
   category,
@@ -19,80 +22,58 @@ export function CategoryCard({
   isDragging = false,
 }) {
   const isIncome = category.category_type === "income";
-
-  // Colors come from the theme tokens in index.css.
-  const tone = isIncome
-    ? "bg-chart-1/10 text-chart-1"
-    : "bg-chart-5/10 text-chart-5";
+  const Icon = isIncome ? ArrowDownLeft : ArrowUpRight;
 
   return (
     <div
       ref={containerRef}
-      style={style}
-      className={`group flex items-center gap-3 rounded-xl border border-border bg-card p-4 transition-colors ${
-        isDragging ? "opacity-50 shadow-lg" : "hover:bg-muted/40"
-      }`}
+      style={{ ...style, marginLeft: `${(category.depth ?? 0) * 1.5}rem` }}
+      className={cn(
+        "group flex items-center gap-3 rounded-xl border border-border bg-card p-4 text-card-foreground transition-colors",
+        isDragging ? "opacity-50 shadow-lg" : "hover:bg-muted/40",
+      )}
     >
-      {/* Drag handle */}
-      <button
+      <IconButton
         ref={dragHandleRef}
-        type="button"
         {...dragHandleProps}
-        className="cursor-grab touch-none rounded-md p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing"
-        aria-label={`Reorder ${category.category_name}`}
-      >
-        <GripVertical className="size-4" />
-      </button>
+        icon={GripVertical}
+        label={`Reorder ${category.category_name}`}
+        className="cursor-grab touch-none active:cursor-grabbing"
+      />
 
-      {/* Category icon */}
       <div
-        className={`flex size-10 shrink-0 items-center justify-center rounded-xl ${tone}`}
-      >
-        {isIncome ? (
-          <ArrowDownLeft className="size-5" />
-        ) : (
-          <ArrowUpRight className="size-5" />
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-xl",
+          isIncome ? "bg-income/10 text-income" : "bg-expense/10 text-expense",
         )}
+      >
+        <Icon className="size-5" />
       </div>
 
-      {/* Category information */}
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="truncate text-sm font-medium text-foreground">
-            {category.category_name}
-          </p>
-        </div>
+        <p className="truncate text-sm font-medium">{category.category_name}</p>
 
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
           {parentName && <span>Under {parentName}</span>}
-
           {accountName && <span>Default: {accountName}</span>}
-
           {category.notes && (
             <span className="max-w-full truncate">{category.notes}</span>
           )}
         </div>
       </div>
 
-      {/* Actions */}
       <div className="flex shrink-0 items-center gap-1">
-        <button
-          type="button"
+        <IconButton
+          icon={Pencil}
+          label={`Edit ${category.category_name}`}
           onClick={() => onEdit(category)}
-          className="rounded-lg p-2 text-muted-foreground hover:bg-muted hover:text-foreground"
-          aria-label={`Edit ${category.category_name}`}
-        >
-          <Pencil className="size-4" />
-        </button>
-
-        <button
-          type="button"
+        />
+        <IconButton
+          icon={Archive}
+          tone="destructive"
+          label={`Archive ${category.category_name}`}
           onClick={() => onArchive(category)}
-          className="rounded-lg p-2 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-          aria-label={`Archive ${category.category_name}`}
-        >
-          <Archive className="size-4" />
-        </button>
+        />
       </div>
     </div>
   );

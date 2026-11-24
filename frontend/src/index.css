@@ -56,6 +56,17 @@
   --chart-4: oklch(0.65 0.18 300);
   --chart-5: oklch(0.62 0.19 25);
 
+  /* Money semantics (reuse the chart palette so both themes stay in sync) */
+  --income: var(--chart-1);
+  --expense: var(--chart-5);
+  --transfer: var(--chart-2);
+  --warning: var(--chart-3);
+
+  /* Chart marks for income vs expense. Validated as a pair for color-vision
+     deficiency (ΔE >= 8) in each theme; marks only, never text. */
+  --chart-income: oklch(0.52 0.12 165);
+  --chart-expense: oklch(0.72 0.16 55);
+
   --radius: 0.4rem;
 
   /* Sidebar */
@@ -114,6 +125,9 @@
   --chart-4: oklch(0.72 0.18 300);
   --chart-5: oklch(0.68 0.19 25);
 
+  --chart-income: oklch(0.66 0.13 165);
+  --chart-expense: oklch(0.52 0.18 25);
+
   /* Sidebar */
   --sidebar: oklch(0.19 0 0);
   --sidebar-foreground: oklch(0.95 0 0);
@@ -128,6 +142,17 @@
 @theme inline {
   --font-sans: "Geist Variable", sans-serif;
   --font-heading: "Geist Variable", sans-serif;
+
+  /* Extra-small text for eyebrow labels and compact captions */
+  --text-2xs: 0.625rem;
+  --text-2xs--line-height: 0.875rem;
+
+  --color-income: var(--income);
+  --color-expense: var(--expense);
+  --color-transfer: var(--transfer);
+  --color-warning: var(--warning);
+  --color-chart-income: var(--chart-income);
+  --color-chart-expense: var(--chart-expense);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

@@ -1,8 +1,85 @@
+const LOCALE = "en-CA";
+
+// Intl formatters are expensive to build, so each one is created once and
+// reused (formatCurrency runs for every row on every render).
+const currencyFormatters = new Map();
+
+function getCurrencyFormatter(currency) {
+  let formatter = currencyFormatters.get(currency);
+
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(LOCALE, { style: "currency", currency });
+    currencyFormatters.set(currency, formatter);
+  }
+
+  return formatter;
+}
+
+const monthYearFormatter = new Intl.DateTimeFormat(LOCALE, {
+  month: "long",
+  year: "numeric",
+});
+
+const longDateFormatter = new Intl.DateTimeFormat(LOCALE, {
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
+
+const shortDateFormatter = new Intl.DateTimeFormat(LOCALE, {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
+const compactFormatters = new Map();
+
+// Short money for chart axes: "$1.2K", "$15K", "$0".
+export function formatCompactCents(cents, currency = "CAD") {
+  let formatter = compactFormatters.get(currency);
+
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(LOCALE, {
+      style: "currency",
+      currency,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    });
+    compactFormatters.set(currency, formatter);
+  }
+
+  return formatter.format(Number(cents ?? 0) / 100);
+}
+
+// A 0-1 ratio as "42%".
+export const formatPercent = (ratio) => `${Math.round(ratio * 100)}%`;
+
 export function formatCurrency(amount, currency = "CAD") {
-  return new Intl.NumberFormat("en-CA", {
-    style: "currency",
-    currency,
-  }).format(Number(amount) || 0);
+  return getCurrencyFormatter(currency).format(Number(amount) || 0);
+}
+
+// Cents (number or numeric string from the API) formatted as money.
+export function formatCents(cents, currency) {
+  return formatCurrency(Number(cents ?? 0) / 100, currency);
+}
+
+// "November 2026"
+export function formatMonthYear(year, month) {
+  return monthYearFormatter.format(new Date(year, month - 1, 1));
+}
+
+// A "YYYY-MM-DD" string from the API, shown as "November 22, 2026".
+// Built from its parts in LOCAL time: new Date("2026-11-22") would be parsed
+// as UTC midnight and show as Nov 21 for anyone west of UTC.
+export function formatDateKey(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+
+  return longDateFormatter.format(new Date(year, month - 1, day));
+}
+
+// An ISO timestamp shown as "Nov 22, 2026".
+export function formatTimestamp(value) {
+  return shortDateFormatter.format(new Date(value));
 }
 
 // Safe BigInt-based dollar string to cents integer.

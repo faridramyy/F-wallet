@@ -1,88 +1,96 @@
-import { ArrowUpRight, Wallet, TrendingUp, TrendingDown } from "lucide-react";
-import { Card, CardContent } from "../ui/card";
-import { formatCurrency, getCurrentYearMonth } from "../../lib/formatters";
-import { useAppData } from "../providers/useAppData";
+import { PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 
-export function OverviewCards() {
-  const { accounts, settings, transactions } = useAppData();
-  const currency = settings?.currency ?? "CAD";
+import { StatCard, StatGrid } from "../ui/stat-card";
+import { formatCents, formatPercent } from "../../lib/formatters";
+import { percentChange } from "../../lib/analytics";
 
-  const { prefix: thisMonth } = getCurrentYearMonth();
+// The dashboard's four headline numbers for the chosen month. Changes
+// compare it with the same days of the month before, so a half-finished
+// month is never measured against a whole one.
+//   thisMonth / lastMonthToDate: summarize() results
+//   period: "this month" / "in October"
+//   vsLabel: "vs last month" / "vs September"
+// Every caption describes the chosen month; only the change arrow refers to
+// the month before (shown when there is something to compare with).
+export function OverviewCards({
+  netWorthCents,
+  accountCount,
+  thisMonth,
+  lastMonthToDate,
+  period,
+  vsLabel,
+  currency,
+}) {
+  const money = (cents) => formatCents(cents, currency);
 
-  const totalBalance = accounts
-    .filter((a) => a.include_in_net_worth)
-    .reduce((sum, a) => sum + Number(a.opening_balance_cents ?? 0) / 100, 0);
-
-  const thisMonthTransactions = transactions.filter((t) =>
-    t.transaction_date?.startsWith(thisMonth),
-  );
-
-  const monthlyIncome = thisMonthTransactions
-    .filter((t) => t.transaction_type === "income")
-    .reduce((sum, t) => sum + Number(t.amount_cents ?? 0) / 100, 0);
-
-  const monthlyExpenses = thisMonthTransactions
-    .filter((t) => t.transaction_type === "expense")
-    .reduce((sum, t) => sum + Number(t.amount_cents ?? 0) / 100, 0);
-
-  const overview = [
-    {
-      label: "Total balance",
-      amount: totalBalance,
-      note: "Across your accounts",
-      icon: Wallet,
-      iconClass: "bg-muted text-muted-foreground",
-      amountClass: "text-card-foreground",
-    },
-    {
-      label: "Monthly income",
-      amount: monthlyIncome,
-      note: "Income received this month",
-      icon: TrendingUp,
-      iconClass: "bg-chart-1/10 text-chart-1",
-      amountClass: "text-chart-1",
-    },
-    {
-      label: "Monthly expenses",
-      amount: monthlyExpenses,
-      note: "Expenses recorded this month",
-      icon: TrendingDown,
-      iconClass: "bg-chart-5/10 text-chart-5",
-      amountClass: "text-card-foreground",
-    },
-  ];
+  // "3 expenses in October" / "No spending in October"
+  const countCaption = (count, singular, plural, none) =>
+    count === 0
+      ? `${none} ${period}`
+      : `${count} ${count === 1 ? singular : plural} ${period}`;
 
   return (
-    <section className="grid gap-4 md:grid-cols-3">
-      {overview.map(
-        ({ label, amount, note, icon: Icon, iconClass, amountClass }) => (
-          <Card
-            key={label}
-            className="rounded-xl border-border bg-card text-card-foreground shadow-sm"
-          >
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">{label}</p>
-
-                <div className={`rounded-lg p-2 ${iconClass}`}>
-                  <Icon size={18} />
-                </div>
-              </div>
-
-              <p
-                className={`mt-4 text-2xl font-bold tracking-tight ${amountClass}`}
-              >
-                {formatCurrency(amount, currency)}
-              </p>
-
-              <p className="mt-2 flex items-center gap-1 text-xs text-muted-foreground">
-                {label === "Total balance" && <ArrowUpRight size={14} />}
-                {note}
-              </p>
-            </CardContent>
-          </Card>
-        ),
-      )}
-    </section>
+    <StatGrid>
+      <StatCard
+        label="Net worth"
+        value={money(netWorthCents)}
+        description={`Across ${accountCount} account${accountCount === 1 ? "" : "s"}`}
+        icon={Wallet}
+      />
+      <StatCard
+        label={`Income ${period}`}
+        value={money(thisMonth.income)}
+        icon={TrendingUp}
+        tone="income"
+        delta={{
+          value: percentChange(thisMonth.income, lastMonthToDate.income),
+          goodWhen: "up",
+          label: vsLabel,
+        }}
+        description={
+          lastMonthToDate.income > 0
+            ? undefined
+            : countCaption(
+                thisMonth.incomeCount,
+                "payment",
+                "payments",
+                "No income",
+              )
+        }
+      />
+      <StatCard
+        label={`Spent ${period}`}
+        value={money(thisMonth.expense)}
+        icon={TrendingDown}
+        tone="expense"
+        delta={{
+          value: percentChange(thisMonth.expense, lastMonthToDate.expense),
+          goodWhen: "down",
+          label: vsLabel,
+        }}
+        description={
+          lastMonthToDate.expense > 0
+            ? undefined
+            : countCaption(
+                thisMonth.expenseCount,
+                "expense",
+                "expenses",
+                "No spending",
+              )
+        }
+      />
+      <StatCard
+        label={`Saved ${period}`}
+        value={money(thisMonth.net)}
+        icon={PiggyBank}
+        tone={thisMonth.net < 0 ? "expense" : "income"}
+        valueClassName={thisMonth.net < 0 ? "text-destructive" : undefined}
+        description={
+          thisMonth.savingsRate === null
+            ? `No income ${period}`
+            : `${formatPercent(thisMonth.savingsRate)} of income kept`
+        }
+      />
+    </StatGrid>
   );
 }

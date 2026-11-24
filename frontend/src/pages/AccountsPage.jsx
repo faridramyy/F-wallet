@@ -1,143 +1,69 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
-import {
-  DndContext,
-  DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  closestCenter,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  rectSortingStrategy,
-  sortableKeyboardCoordinates,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { arrayMove } from "@dnd-kit/sortable";
 import {
   Archive,
-  ArchiveRestore,
   CreditCard,
+  Landmark,
   Plus,
+  Scale,
   Wallet,
 } from "lucide-react";
 
 import { Button } from "../components/ui/button";
+import { EmptyState } from "../components/ui/empty-state";
+import { StatCard, StatGrid } from "../components/ui/stat-card";
+import { TabBar } from "../components/ui/tab-bar";
+import { ArchivedList } from "../components/common/ArchivedList";
+import { PageIntro } from "../components/common/PageIntro";
+import { SortableList } from "../components/common/SortableList";
 import { AccountCard } from "../components/accounts/AccountCard";
 import { AccountDialog } from "../components/accounts/AccountDialog";
-import { AccountSummary } from "../components/accounts/AccountSummary";
-import { apiRequest } from "../lib/api";
 import { useNotifications } from "../components/providers/useNotifications";
 import { useAppData } from "../components/providers/useAppData";
-import { ACCOUNT_TYPE_LABELS } from "../lib/accounts";
+import { createApi } from "../lib/api";
+import { getAccountType } from "../lib/accounts";
+import { formatCents, formatPercent } from "../lib/formatters";
+import { removeById, replaceById } from "../lib/collections";
 
-function SortableAccountCard({ account, onEdit, onArchive, disabled }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
-    id: account.account_id,
-    disabled,
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    position: "relative",
-    zIndex: isDragging ? 1 : undefined,
-  };
-
-  return (
-    <AccountCard
-      account={account}
-      onEdit={onEdit}
-      onArchive={onArchive}
-      containerRef={setNodeRef}
-      dragHandleRef={setActivatorNodeRef}
-      dragHandleProps={{ ...attributes, ...listeners }}
-      style={style}
-      isDragging={isDragging}
-    />
-  );
-}
+const TABS = [
+  { value: "active", label: "Active accounts" },
+  { value: "archived", label: "Archived", icon: Archive },
+];
 
 export function AccountsPage() {
-  const auth = useAuth();
+  const api = createApi(useAuth());
   const { toast, confirm } = useNotifications();
 
   // Loaded once after sign-in (see AppDataProvider); no fetching in this page.
-  const { accounts, setAccounts, archivedAccounts, setArchivedAccounts } =
-    useAppData();
+  const {
+    accounts,
+    setAccounts,
+    archivedAccounts,
+    setArchivedAccounts,
+    settings,
+  } = useAppData();
 
   const [activeTab, setActiveTab] = useState("active");
-
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState(null);
-  const [activeDragAccount, setActiveDragAccount] = useState(null);
-
+  // null = closed, {} = creating, { account } = editing
+  const [dialog, setDialog] = useState(null);
   const [savingOrder, setSavingOrder] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 6 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
+  const editingAccount = dialog?.account ?? null;
 
-  const activeAccounts = accounts.filter((account) => !account.is_archived);
-
-  function openCreateDialog() {
-    setEditingAccount(null);
-    setDialogOpen(true);
-  }
-
-  function openEditDialog(account) {
-    setEditingAccount(account);
-    setDialogOpen(true);
-  }
-
-  function closeDialog() {
-    setDialogOpen(false);
-    setEditingAccount(null);
-  }
-
-  // The AccountDialog handles success and error notifications.
-  // Errors are rethrown so the dialog can handle them.
-  async function handleSaveAccount(data) {
+  // AccountDialog shows its own success/error messages; errors are rethrown.
+  async function handleSaveAccount(body) {
     if (editingAccount) {
-      const response = await apiRequest(
+      const { data } = await api.patch(
         `/accounts/${editingAccount.account_id}`,
-        auth,
-        {
-          method: "PATCH",
-          body: JSON.stringify(data),
-        },
+        body,
       );
-
       setAccounts((current) =>
-        current.map((item) =>
-          item.account_id === editingAccount.account_id
-            ? response.data.account
-            : item,
-        ),
+        replaceById(current, "account_id", data.account),
       );
     } else {
-      const response = await apiRequest("/accounts", auth, {
-        method: "POST",
-        body: JSON.stringify(data),
-      });
-
-      setAccounts((current) => [...current, response.data.account]);
+      const { data } = await api.post("/accounts", body);
+      setAccounts((current) => [...current, data.account]);
     }
   }
 
@@ -146,24 +72,19 @@ export function AccountsPage() {
       title: "Archive account?",
       description: `Are you sure you want to archive "${account.account_name}"? It will no longer appear in your active accounts, and you can restore it from the Archived tab.`,
       confirmText: "Archive account",
-      cancelText: "Cancel",
       variant: "destructive",
     });
 
     if (!confirmed) return;
 
     try {
-      const response = await apiRequest(`/accounts/${account.account_id}`, auth, {
-        method: "DELETE",
-      });
+      const { data } = await api.delete(`/accounts/${account.account_id}`);
 
       setAccounts((current) =>
-        current.filter((item) => item.account_id !== account.account_id),
+        removeById(current, "account_id", account.account_id),
       );
-
       // Newest archived first, matching the order the server returns.
-      setArchivedAccounts((current) => [response.data.account, ...current]);
-
+      setArchivedAccounts((current) => [data.account, ...current]);
       toast.success("Account archived.");
     } catch (err) {
       toast.error(err.message || "Unable to archive account.");
@@ -172,282 +93,152 @@ export function AccountsPage() {
 
   async function handleRestoreAccount(account) {
     try {
-      const response = await apiRequest(
+      const { data } = await api.post(
         `/accounts/${account.account_id}/restore`,
-        auth,
-        { method: "POST" },
       );
 
       setArchivedAccounts((current) =>
-        current.filter((item) => item.account_id !== account.account_id),
+        removeById(current, "account_id", account.account_id),
       );
-
-      setAccounts((current) => [...current, response.data.account]);
-
+      setAccounts((current) => [...current, data.account]);
       toast.success("Account restored.");
     } catch (err) {
       toast.error(err.message || "Unable to restore account.");
     }
   }
 
-  function handleDragStart(event) {
-    const account = accounts.find(
-      (item) => item.account_id === event.active.id,
-    );
+  // Optimistic reorder: show the new order now, roll back if saving fails.
+  async function handleReorder(from, to) {
+    const previous = accounts;
+    const reordered = arrayMove(accounts, from, to);
 
-    setActiveDragAccount(account || null);
-  }
-
-  function handleDragCancel() {
-    setActiveDragAccount(null);
-  }
-
-  async function handleDragEnd(event) {
-    setActiveDragAccount(null);
-
-    const { active, over } = event;
-
-    if (!over || active.id === over.id || savingOrder) return;
-
-    const oldIndex = activeAccounts.findIndex(
-      (item) => item.account_id === active.id,
-    );
-
-    const newIndex = activeAccounts.findIndex(
-      (item) => item.account_id === over.id,
-    );
-
-    if (oldIndex === -1 || newIndex === -1) return;
-
-    const previousAccounts = accounts;
-    const reorderedActive = arrayMove(activeAccounts, oldIndex, newIndex);
-
-    // Archived accounts keep their place at the end of the list.
-    setAccounts([
-      ...reorderedActive,
-      ...accounts.filter((item) => item.is_archived),
-    ]);
-
+    setAccounts(reordered);
     setSavingOrder(true);
 
     try {
-      const response = await apiRequest("/accounts/order", auth, {
-        method: "PATCH",
-        body: JSON.stringify({
-          account_ids: reorderedActive.map((item) => item.account_id),
-        }),
+      const { data } = await api.patch("/accounts/order", {
+        account_ids: reordered.map((item) => item.account_id),
       });
 
-      if (response.data.accounts) {
-        setAccounts(response.data.accounts);
-      }
-
-      toast.success("Account order saved.");
+      if (data.accounts) setAccounts(data.accounts);
     } catch (err) {
-      console.error("Failed to save account order:", err);
-
-      setAccounts(previousAccounts);
-
+      setAccounts(previous);
       toast.error(err.message || "Failed to save account order.");
     } finally {
       setSavingOrder(false);
     }
   }
 
-  const creditCardCount = activeAccounts.filter(
-    (item) => item.account_type === "credit_card",
-  ).length;
+  const currency = settings?.currency ?? "CAD";
+  const count = (predicate) => accounts.filter(predicate).length;
+  const sumCents = (items, field) =>
+    items.reduce((sum, item) => sum + Number(item[field] ?? 0), 0);
 
-  const netWorthCount = activeAccounts.filter(
-    (item) => item.include_in_net_worth,
-  ).length;
+  const netWorthAccounts = accounts.filter((a) => a.include_in_net_worth);
+  const creditCards = accounts.filter((a) => a.account_type === "credit_card");
+  const creditOwed = creditCards.reduce(
+    (sum, card) => sum + Math.max(Number(card.opening_balance_cents ?? 0), 0),
+    0,
+  );
+  const creditLimit = sumCents(creditCards, "credit_limit_cents");
+  const creditUsed = creditLimit > 0 ? creditOwed / creditLimit : null;
+  const openCreate = () => setDialog({});
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <div>
-          <h1 className="text-xl font-semibold text-foreground">Accounts</h1>
-
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage your bank accounts, savings, cash, and credit cards.
-          </p>
-        </div>
-
+      <PageIntro description="Manage your bank accounts, savings, cash, and credit cards.">
         {activeTab === "active" && (
-          <Button onClick={openCreateDialog} className="gap-2">
-            <Plus className="size-4" />
+          <Button onClick={openCreate}>
+            <Plus />
             New account
           </Button>
         )}
-      </div>
+      </PageIntro>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <AccountSummary
+      <StatGrid>
+        <StatCard
           icon={Wallet}
-          label="Total accounts"
-          value={activeAccounts.length}
+          label="Net worth"
+          value={formatCents(
+            sumCents(netWorthAccounts, "opening_balance_cents"),
+            currency,
+          )}
+          description="Included accounts"
         />
-
-        <AccountSummary
+        <StatCard
+          icon={Landmark}
+          label="Accounts"
+          value={accounts.length}
+          description={`${count((a) => a.account_type === "savings")} savings · ${count((a) => a.account_type === "checking")} checking`}
+        />
+        <StatCard
           icon={CreditCard}
-          label="Credit cards"
-          value={creditCardCount}
+          label="Credit used"
+          value={formatCents(creditOwed, currency)}
+          tone={creditUsed !== null && creditUsed > 0.7 ? "warning" : "default"}
+          description={
+            creditUsed === null
+              ? `${creditCards.length} credit card${creditCards.length === 1 ? "" : "s"}, no limits set`
+              : `${formatPercent(creditUsed)} of ${formatCents(creditLimit, currency)} limit`
+          }
         />
+        <StatCard
+          icon={Scale}
+          label="Included in net worth"
+          value={`${netWorthAccounts.length} of ${accounts.length}`}
+          description="Accounts counted in your total"
+        />
+      </StatGrid>
 
-        <AccountSummary label="Included in net worth" value={netWorthCount} />
-      </div>
+      <TabBar value={activeTab} onValueChange={setActiveTab} items={TABS} />
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-border">
-        <button
-          type="button"
-          onClick={() => setActiveTab("active")}
-          className={`border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-            activeTab === "active"
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
+      {activeTab === "archived" ? (
+        <ArchivedList
+          noun="account"
+          onRestore={handleRestoreAccount}
+          items={archivedAccounts.map((account) => ({
+            id: account.account_id,
+            title: account.account_name,
+            subtitle: getAccountType(account.account_type).label,
+            archivedAt: account.archived_at,
+            source: account,
+          }))}
+        />
+      ) : accounts.length === 0 ? (
+        <EmptyState
+          icon={Wallet}
+          title="No accounts yet"
+          description="Add your first account to start organizing your finances."
         >
-          Active accounts
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab("archived")}
-          className={`flex items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition-colors ${
-            activeTab === "archived"
-              ? "border-primary text-foreground"
-              : "border-transparent text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          <Archive className="size-4" />
-          Archived
-        </button>
-      </div>
-
-      {activeTab === "active" ? (
-        <>
-          {savingOrder && (
-            <span className="text-xs text-muted-foreground">
-              Saving order...
-            </span>
-          )}
-
-          {activeAccounts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-              <Wallet className="mx-auto size-8 text-muted-foreground" />
-
-              <h3 className="mt-3 text-sm font-medium text-foreground">
-                No accounts yet
-              </h3>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Add your first account to start organizing your finances.
-              </p>
-
-              <Button onClick={openCreateDialog} className="mt-4 gap-2">
-                <Plus className="size-4" />
-                Create account
-              </Button>
-            </div>
-          ) : (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragCancel={handleDragCancel}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext
-                items={activeAccounts.map((item) => item.account_id)}
-                strategy={rectSortingStrategy}
-              >
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
-                  {activeAccounts.map((account) => (
-                    <SortableAccountCard
-                      key={account.account_id}
-                      account={account}
-                      onEdit={openEditDialog}
-                      onArchive={handleArchiveAccount}
-                      disabled={savingOrder}
-                    />
-                  ))}
-                </div>
-              </SortableContext>
-
-              <DragOverlay>
-                {activeDragAccount ? (
-                  <div className="rotate-1 shadow-xl">
-                    <AccountCard
-                      account={activeDragAccount}
-                      onEdit={() => {}}
-                      onArchive={() => {}}
-                      isDragging
-                    />
-                  </div>
-                ) : null}
-              </DragOverlay>
-            </DndContext>
-          )}
-        </>
+          <Button onClick={openCreate}>
+            <Plus />
+            Create account
+          </Button>
+        </EmptyState>
       ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-muted-foreground">
-            Archived accounts can be restored here.
-          </p>
-
-          {archivedAccounts.length === 0 ? (
-            <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
-              <Archive className="mx-auto size-8 text-muted-foreground" />
-
-              <h3 className="mt-3 text-sm font-medium text-foreground">
-                No archived accounts
-              </h3>
-
-              <p className="mt-1 text-xs text-muted-foreground">
-                Accounts you archive will appear here.
-              </p>
-            </div>
-          ) : (
-            archivedAccounts.map((account) => (
-              <div
-                key={account.account_id}
-                className="flex items-center gap-3 rounded-xl border border-border bg-card p-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {account.account_name}
-                  </p>
-
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {ACCOUNT_TYPE_LABELS[account.account_type] ?? account.account_type}
-                    {account.archived_at
-                      ? ` · Archived ${new Date(
-                          account.archived_at,
-                        ).toLocaleDateString()}`
-                      : ""}
-                  </p>
-                </div>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2"
-                  onClick={() => handleRestoreAccount(account)}
-                >
-                  <ArchiveRestore className="size-4" />
-                  Restore
-                </Button>
-              </div>
-            ))
+        <SortableList
+          layout="grid"
+          items={accounts}
+          getId={(account) => account.account_id}
+          disabled={savingOrder}
+          onReorder={handleReorder}
+          className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4"
+          renderItem={(account, sortable) => (
+            <AccountCard
+              account={account}
+              onEdit={(item) => setDialog({ account: item })}
+              onArchive={handleArchiveAccount}
+              {...sortable}
+            />
           )}
-        </div>
+        />
       )}
 
       <AccountDialog
-        open={dialogOpen}
+        open={dialog !== null}
         account={editingAccount}
-        currency="CAD"
-        onClose={closeDialog}
+        currency={settings?.currency ?? "CAD"}
+        onClose={() => setDialog(null)}
         onSave={handleSaveAccount}
       />
     </div>

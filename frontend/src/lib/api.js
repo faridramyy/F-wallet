@@ -58,3 +58,23 @@ export async function apiRequest(path, auth, options = {}) {
 
   return result;
 }
+
+// Shorthand for the JSON API, bound to the signed-in user:
+//
+//   const api = createApi(useAuth());
+//   const { data } = await api.patch(`/accounts/${id}`, changes);
+export function createApi(auth) {
+  const call = (method) => (path, body) =>
+    apiRequest(path, auth, {
+      method,
+      ...(body !== undefined && { body: JSON.stringify(body) }),
+    });
+
+  return {
+    get: call("GET"),
+    post: call("POST"),
+    put: call("PUT"),
+    patch: call("PATCH"),
+    delete: call("DELETE"),
+  };
+}

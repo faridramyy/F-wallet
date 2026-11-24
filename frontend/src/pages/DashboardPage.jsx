@@ -1,16 +1,147 @@
+import { useState } from "react";
+
 import { OverviewCards } from "../components/dashboard/OverviewCards";
+import { InsightsCard } from "../components/dashboard/InsightsCard";
 import { AccountsOverview } from "../components/dashboard/AccountsOverview";
 import { BudgetOverview } from "../components/dashboard/BudgetOverview";
 import { RecentTransactions } from "../components/dashboard/RecentTransactions";
+import { CashFlowChart } from "../components/charts/CashFlowChart";
+import { SpendingPaceChart } from "../components/charts/SpendingPaceChart";
+import { CategorySpendingChart } from "../components/charts/CategorySpendingChart";
+import { MonthSwitcher } from "../components/common/MonthSwitcher";
+import { useAppData } from "../components/providers/useAppData";
+import {
+  CASH_FLOW_MONTHS,
+  SELECTABLE_MONTHS,
+  cumulativeDailySpending,
+  getMonthContext,
+  getSelectedMonthContext,
+  largestExpense,
+  lastMonths,
+  monthlyCashFlow,
+  shiftMonth,
+  spendingByCategory,
+  summarizeMonth,
+  topMerchant,
+} from "../lib/analytics";
+import { formatMonthYear } from "../lib/formatters";
+
+const monthName = new Intl.DateTimeFormat("en-CA", { month: "long" });
+const nameOf = ({ year, month }) =>
+  monthName.format(new Date(year, month - 1, 1));
 
 export function DashboardPage() {
+  const { accounts, settings, transactions } = useAppData();
+  const currency = settings?.currency ?? "CAD";
+
+  // The month every section below describes; defaults to the current one.
+  const latest = getMonthContext().current;
+  const earliest = shiftMonth(latest.year, latest.month, 1 - SELECTABLE_MONTHS);
+  const [selected, setSelected] = useState(latest);
+
+  const { current, previous, today, days, isCurrent } = getSelectedMonthContext(
+    selected.year,
+    selected.month,
+  );
+
+  // Wording that follows the chosen month.
+  const period = isCurrent ? "this month" : `in ${nameOf(current)}`;
+  const vsLabel = isCurrent ? "vs last month" : `vs ${nameOf(previous)}`;
+  const monthLabel = formatMonthYear(current.year, current.month);
+
+  // Every figure below is derived from the same loaded data, so the cards
+  // and charts always agree.
+  const thisMonth = summarizeMonth(transactions, current.key);
+  const lastMonthToDate = summarizeMonth(transactions, previous.key, today);
+  const categories = spendingByCategory(transactions, current.key);
+
+  const netWorthCents = accounts
+    .filter((account) => account.include_in_net_worth)
+    .reduce(
+      (sum, account) => sum + Number(account.opening_balance_cents ?? 0),
+      0,
+    );
+
+  // The pace chart stops at today for the current month.
+  const currentPace = cumulativeDailySpending(
+    transactions,
+    current.year,
+    current.month,
+  ).slice(0, today);
+  const previousPace = cumulativeDailySpending(
+    transactions,
+    previous.year,
+    previous.month,
+  );
+
   return (
-    <div className="space-y-7">
-      <OverviewCards />
+    <div className="space-y-6">
+      <MonthSwitcher
+        value={current}
+        min={earliest}
+        max={latest}
+        onChange={(offset) =>
+          setSelected(shiftMonth(current.year, current.month, offset))
+        }
+        onReset={() => setSelected(latest)}
+      />
+
+      <OverviewCards
+        netWorthCents={netWorthCents}
+        accountCount={accounts.length}
+        thisMonth={thisMonth}
+        lastMonthToDate={lastMonthToDate}
+        period={period}
+        vsLabel={vsLabel}
+        currency={currency}
+      />
+
+      <section className="grid gap-6 xl:grid-cols-3">
+        <div className="xl:col-span-2">
+          <CashFlowChart
+            months={monthlyCashFlow(
+              transactions,
+              lastMonths(
+                CASH_FLOW_MONTHS,
+                new Date(current.year, current.month - 1, 1),
+              ),
+            )}
+            currency={currency}
+          />
+        </div>
+        <InsightsCard
+          title={
+            isCurrent ? "This month at a glance" : `${monthLabel} at a glance`
+          }
+          isCurrent={isCurrent}
+          thisMonth={thisMonth}
+          today={today}
+          daysInMonth={days}
+          topCategory={categories.find((item) => item.id !== "other")}
+          largest={largestExpense(transactions, current.key)}
+          merchant={topMerchant(transactions, current.key)}
+          currency={currency}
+        />
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-2">
+        <SpendingPaceChart
+          current={currentPace}
+          previous={previousPace}
+          currentLabel={monthLabel}
+          previousLabel={formatMonthYear(previous.year, previous.month)}
+          currency={currency}
+        />
+        <CategorySpendingChart
+          items={categories}
+          monthLabel={monthLabel}
+          currency={currency}
+        />
+      </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <AccountsOverview />
-        <BudgetOverview />
+        <BudgetOverview year={current.year} month={current.month} />
       </section>
 
       <RecentTransactions />

@@ -1,108 +1,99 @@
-import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import { Button } from "../ui/button";
-import { Progress } from "../ui/progress";
-import { useAppData } from "../providers/useAppData";
-import { formatCurrency, getCurrentYearMonth } from "../../lib/formatters";
+import { Link } from "react-router-dom";
 
-export function BudgetOverview() {
-  const navigate = useNavigate();
+import { buttonVariants } from "../ui/button";
+import { Progress } from "../ui/progress";
+import { SectionCard } from "../common/SectionCard";
+import { useAppData } from "../providers/useAppData";
+import { formatCents } from "../../lib/formatters";
+import { monthKey } from "../../lib/analytics";
+
+// Cents spent per category on expenses in the given "YYYY-MM" month.
+function getSpendingByCategory(transactions, monthPrefix) {
+  const spending = {};
+
+  for (const t of transactions) {
+    if (
+      t.transaction_type === "expense" &&
+      t.category_id &&
+      t.transaction_date?.startsWith(monthPrefix)
+    ) {
+      spending[t.category_id] =
+        (spending[t.category_id] ?? 0) + Number(t.amount_cents ?? 0);
+    }
+  }
+
+  return spending;
+}
+
+// Spending against the budget of the given month.
+export function BudgetOverview({ year, month }) {
   const { budgets, settings, transactions } = useAppData();
   const currency = settings?.currency ?? "CAD";
-
-  const { year, month, prefix: thisMonth } = getCurrentYearMonth();
+  const prefix = monthKey(year, month);
 
   const currentBudget = budgets.find(
     (b) => Number(b.budget_year) === year && Number(b.budget_month) === month,
   );
 
-  // Compute spending per category for expense transactions this month.
-  const spendingByCategory = {};
-  transactions
-    .filter(
-      (t) =>
-        t.transaction_type === "expense" &&
-        t.transaction_date?.startsWith(thisMonth),
-    )
-    .forEach((t) => {
-      if (t.category_id) {
-        spendingByCategory[t.category_id] =
-          (spendingByCategory[t.category_id] ?? 0) +
-          Number(t.amount_cents ?? 0);
-      }
+  const spending = getSpendingByCategory(transactions, prefix);
+
+  const items = (currentBudget?.allocations ?? [])
+    .filter((a) => a.category_type === "expense" && !a.category_is_archived)
+    .map((a) => {
+      const spentCents = spending[a.category_id] ?? 0;
+      const limitCents = Number(a.allocated_cents ?? 0);
+
+      return {
+        id: a.budget_category_id ?? a.category_id,
+        name: a.category_name,
+        spentCents,
+        limitCents,
+        percent:
+          limitCents > 0 ? Math.round((spentCents / limitCents) * 100) : 0,
+      };
     });
 
-  const items = currentBudget
-    ? currentBudget.allocations
-        .filter(
-          (a) =>
-            a.category_type === "expense" && !a.category_is_archived,
-        )
-        .map((a) => ({
-          id: a.budget_category_id ?? a.category_id,
-          name: a.category_name,
-          spent: (spendingByCategory[a.category_id] ?? 0) / 100,
-          limit: Number(a.allocated_cents ?? 0) / 100,
-        }))
-    : [];
-
   return (
-    <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
-      <CardHeader>
-        <CardTitle className="text-base">Monthly budgets</CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Spending against monthly limits
+    <SectionCard
+      title="Monthly budgets"
+      description="Spending against monthly limits"
+      contentClassName="space-y-5"
+    >
+      {items.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">
+          {currentBudget
+            ? "No expense budget categories set."
+            : "No budget set for this month."}
         </p>
-      </CardHeader>
+      ) : (
+        items.map((item) => (
+          <div key={item.id}>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <p className="text-sm font-medium">{item.name}</p>
+              <p className="text-xs text-muted-foreground tabular-nums">
+                {formatCents(item.spentCents, currency)} /{" "}
+                {formatCents(item.limitCents, currency)}
+              </p>
+            </div>
 
-      <CardContent className="space-y-5">
-        {items.length === 0 ? (
-          <p className="py-4 text-center text-sm text-muted-foreground">
-            {currentBudget
-              ? "No expense budget categories set."
-              : "No budget for this month."}
-          </p>
-        ) : (
-          items.map((item) => {
-            const percentage =
-              item.limit > 0
-                ? Math.round((item.spent / item.limit) * 100)
-                : 0;
+            <Progress
+              value={Math.min(item.percent, 100)}
+              aria-label={`${item.name} budget used`}
+            />
 
-            return (
-              <div key={item.id}>
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <p className="text-sm font-medium text-card-foreground">
-                    {item.name}
-                  </p>
+            <p className="mt-1.5 text-right text-xs text-muted-foreground">
+              {item.percent}% used
+            </p>
+          </div>
+        ))
+      )}
 
-                  <p className="text-xs tabular-nums text-muted-foreground">
-                    {formatCurrency(item.spent, currency)} /{" "}
-                    {formatCurrency(item.limit, currency)}
-                  </p>
-                </div>
-
-                <Progress
-                  value={Math.min(percentage, 100)}
-                  className="h-2 bg-muted"
-                />
-
-                <p className="mt-1.5 text-right text-xs text-muted-foreground">
-                  {percentage}% used
-                </p>
-              </div>
-            );
-          })
-        )}
-
-        <Button
-          variant="outline"
-          className="w-full rounded-lg"
-          onClick={() => navigate("/categories")}
-        >
-          Manage budgets
-        </Button>
-      </CardContent>
-    </Card>
+      <Link
+        to="/categories"
+        className={buttonVariants({ variant: "outline", className: "w-full" })}
+      >
+        Manage budgets
+      </Link>
+    </SectionCard>
   );
 }

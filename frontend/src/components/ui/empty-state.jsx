@@ -1,9 +1,23 @@
-export function EmptyState({ icon: Icon, title, description, children }) {
+import { cn } from "cn";
+
+function EmptyState({ icon: Icon, title, description, className, children }) {
   return (
-    <div className="rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center">
+    <div
+      className={cn(
+        "rounded-xl border border-dashed border-border bg-card px-6 py-12 text-center",
+        className,
+      )}
+    >
       {Icon && <Icon className="mx-auto size-8 text-muted-foreground" />}
 
-      <h3 className="mt-3 text-sm font-medium text-card-foreground">{title}</h3>
+      <h3
+        className={cn(
+          "text-sm font-medium text-card-foreground",
+          Icon && "mt-3",
+        )}
+      >
+        {title}
+      </h3>
 
       {description && (
         <p className="mt-1 text-xs text-muted-foreground">{description}</p>
@@ -13,3 +27,5 @@ export function EmptyState({ icon: Icon, title, description, children }) {
     </div>
   );
 }
+
+export { EmptyState };

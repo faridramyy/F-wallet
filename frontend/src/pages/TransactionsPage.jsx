@@ -1,56 +1,74 @@
 import { useState } from "react";
-import { Search } from "lucide-react";
-
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
+  ArrowLeftRight,
+  Search,
+  TrendingDown,
+  TrendingUp,
+  Scale,
+} from "lucide-react";
 
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { StatCard, StatGrid } from "../components/ui/stat-card";
+import { SectionCard } from "../components/common/SectionCard";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { useNotifications } from "../components/providers/useNotifications";
 import { useAppData } from "../components/providers/useAppData";
-import { getTransactionTitle } from "../lib/formatters";
+import {
+  formatCents,
+  formatPercent,
+  getTransactionTitle,
+} from "../lib/formatters";
+import { summarize } from "../lib/analytics";
+
+const SEARCH_FIELDS = [
+  "description",
+  "merchant",
+  "category_name",
+  "account_name",
+  "notes",
+];
+
+const matches = (transaction, term) =>
+  SEARCH_FIELDS.some((field) =>
+    transaction[field]?.toLowerCase().includes(term),
+  );
 
 export function TransactionsPage({ onEdit }) {
   const { toast, confirm } = useNotifications();
   const {
     transactions,
-    hasMoreTransactions: hasMore,
-    loadingMoreTransactions: loadingMore,
+    hasMoreTransactions,
+    loadingMoreTransactions,
     loadMoreTransactions,
     deleteTransaction,
+    settings,
   } = useAppData();
+  const currency = settings?.currency ?? "CAD";
+
   const [search, setSearch] = useState("");
+
+  const term = search.trim().toLowerCase();
 
   // Note: this only searches the transactions already loaded (50 per page).
   // Searching the whole history would need a `search` query param on the API.
-  const term = search.trim().toLowerCase();
-  const filtered = !term
-    ? transactions
-    : transactions.filter((transaction) =>
-      [
-        transaction.description,
-        transaction.merchant,
-        transaction.category_name,
-        transaction.account_name,
-        transaction.notes,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(term),
-      );
+  const filtered = term
+    ? transactions.filter((transaction) => matches(transaction, term))
+    : transactions;
+
+  // The cards describe exactly the rows below, including the search filter.
+  const totals = summarize(filtered);
+  const scope = term
+    ? "Matching your search"
+    : hasMoreTransactions
+      ? "Loaded so far"
+      : "All time";
 
   async function handleDelete(transaction) {
     const confirmed = await confirm({
       title: "Delete transaction?",
       description: `Are you sure you want to delete "${getTransactionTitle(transaction)}"? It will no longer appear in your transactions.`,
       confirmText: "Delete transaction",
-      cancelText: "Cancel",
       variant: "destructive",
     });
 
@@ -73,55 +91,76 @@ export function TransactionsPage({ onEdit }) {
   }
 
   return (
-    <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm transition-colors duration-200">
-      <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <CardTitle className="text-base text-card-foreground">
-            All transactions
-          </CardTitle>
+    <div className="space-y-6">
+      <StatGrid>
+        <StatCard
+          label="Transactions"
+          value={filtered.length.toLocaleString("en-CA")}
+          description={scope}
+          icon={ArrowLeftRight}
+        />
+        <StatCard
+          label="Income"
+          value={formatCents(totals.income, currency)}
+          description={scope}
+          icon={TrendingUp}
+          tone="income"
+        />
+        <StatCard
+          label="Expenses"
+          value={formatCents(totals.expense, currency)}
+          description={scope}
+          icon={TrendingDown}
+          tone="expense"
+        />
+        <StatCard
+          label="Net"
+          value={formatCents(totals.net, currency)}
+          valueClassName={totals.net < 0 ? "text-destructive" : undefined}
+          description={
+            totals.savingsRate === null
+              ? scope
+              : `${formatPercent(totals.savingsRate)} of income kept`
+          }
+          icon={Scale}
+        />
+      </StatGrid>
 
-          <p className="mt-1 text-xs text-muted-foreground">
-            Review your financial activity
-          </p>
-        </div>
-
-        <div className="relative w-full sm:max-w-xs">
-          <Search
-            className="absolute left-3 top-2.5 text-muted-foreground"
-            size={16}
-          />
-
-          <Input
-            aria-label="Search transactions"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search transactions..."
-            className="rounded-lg border-input bg-background pl-9 text-foreground placeholder:text-muted-foreground"
-          />
-        </div>
-      </CardHeader>
-
-      <CardContent>
-        <>
-            <TransactionList
-              transactions={filtered}
-              onEdit={onEdit}
-              onDelete={handleDelete}
+      <SectionCard
+        title="All transactions"
+        description="Review your financial activity"
+        action={
+          <div className="relative w-44 sm:w-72">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              aria-label="Search transactions"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Search transactions..."
+              className="pl-9"
             />
+          </div>
+        }
+      >
+        <TransactionList
+          transactions={filtered}
+          onEdit={onEdit}
+          onDelete={handleDelete}
+        />
 
-            {hasMore && (
-              <div className="mt-6 flex justify-center">
-                <Button
-                  variant="outline"
-                  onClick={handleLoadMore}
-                  disabled={loadingMore}
-                >
-                  {loadingMore ? "Loading..." : "Load more"}
-                </Button>
-              </div>
-            )}
-        </>
-      </CardContent>
-    </Card>
+        {hasMoreTransactions && (
+          <div className="mt-6 flex justify-center">
+            <Button
+              variant="outline"
+              onClick={handleLoadMore}
+              disabled={loadingMoreTransactions}
+            >
+              {loadingMoreTransactions ? "Loading..." : "Load more"}
+            </Button>
+          </div>
+        )}
+      </SectionCard>
+    </div>
   );
 }

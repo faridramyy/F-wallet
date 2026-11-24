@@ -1,243 +1,126 @@
 import { useState } from "react";
-import { X } from "lucide-react";
 
+import { FormDialog } from "../common/FormDialog";
+import { Field } from "../ui/field";
+import { Input } from "../ui/input";
+import { NativeSelect } from "../ui/native-select";
 import { useNotifications } from "../providers/useNotifications";
-
-const inputClass =
-  "w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/10";
-
-const labelClass = "mb-1.5 block text-sm font-medium text-foreground";
-
-function getCurrentPeriod() {
-  const now = new Date();
-
-  return {
-    budget_year: now.getFullYear(),
-    budget_month: now.getMonth() + 1,
-  };
-}
+import { closeWithConfirm, hasChanges } from "../../lib/dialogs";
+import { getCurrentYearMonth } from "../../lib/formatters";
+import { MONTH_OPTIONS, renderOptions } from "../../lib/options";
 
 function getInitialForm(budget) {
-  if (budget) {
-    return {
-      budget_year: String(budget.budget_year),
-      budget_month: String(budget.budget_month),
-      name: budget.name || "",
-    };
-  }
-
-  const period = getCurrentPeriod();
+  const { year, month } = getCurrentYearMonth();
 
   return {
-    budget_year: String(period.budget_year),
-    budget_month: String(period.budget_month),
-    name: "",
+    budget_year: String(budget?.budget_year ?? year),
+    budget_month: String(budget?.budget_month ?? month),
+    name: budget?.name ?? "",
   };
 }
 
-const MONTH_NAMES = [
-  "January", "February", "March", "April",
-  "May", "June", "July", "August",
-  "September", "October", "November", "December",
-];
-
-function BudgetDialogContent({ budget = null, onClose, onSave }) {
+function BudgetDialogContent({ budget, onClose, onSave }) {
   const { toast, confirm } = useNotifications();
 
-  const [form, setForm] = useState(() => getInitialForm(budget));
+  const [initialForm] = useState(() => getInitialForm(budget));
+  const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-
+  const [error, setError] = useState("");
 
   const isEditing = Boolean(budget);
 
-  function updateField(field, value) {
-    setForm((current) => ({
-      ...current,
-      [field]: value,
-    }));
-  }
+  const bind = (name) => ({
+    id: `budget_${name}`,
+    value: form[name],
+    onChange: (event) => {
+      setForm((current) => ({ ...current, [name]: event.target.value }));
+      setError("");
+    },
+  });
 
-  async function handleClose() {
+  function handleClose() {
     if (saving) return;
 
-    const initialForm = getInitialForm(budget);
-
-    const hasChanges = JSON.stringify(form) !== JSON.stringify(initialForm);
-
-    if (!hasChanges) {
-      onClose();
-      return;
-    }
-
-    const confirmed = await confirm({
-      title: "Discard changes?",
-      description:
-        "You have unsaved budget changes. Are you sure you want to close?",
-      confirmText: "Discard changes",
-      cancelText: "Keep editing",
-      variant: "destructive",
+    closeWithConfirm({
+      isDirty: hasChanges(form, initialForm),
+      confirm,
+      onClose,
+      noun: "budget",
     });
-
-    if (confirmed) {
-      onClose();
-    }
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (saving) return;
-
     const year = Number(form.budget_year);
     const month = Number(form.budget_month);
 
     if (!Number.isInteger(year) || year < 2000 || year > 9999) {
-      toast.error("Enter a valid year between 2000 and 9999.");
-      return;
+      return setError("Enter a valid year between 2000 and 9999.");
     }
 
     if (!Number.isInteger(month) || month < 1 || month > 12) {
-      toast.error("Select a valid month.");
-      return;
+      return setError("Select a valid month.");
     }
 
-    try {
-      setSaving(true);
+    setSaving(true);
 
+    try {
       await onSave({
         budget_year: year,
         budget_month: month,
         name: form.name.trim() || null,
       });
 
-      toast.success(
-        isEditing
-          ? "Budget updated successfully."
-          : "Budget created successfully.",
-      );
-
+      toast.success(isEditing ? "Budget updated." : "Budget created.");
       onClose();
     } catch (err) {
-      toast.error(err.message || "Unable to save budget.");
-    } finally {
+      setError(err.message || "Unable to save budget.");
       setSaving(false);
     }
   }
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-overlay p-4"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !saving) {
-          handleClose();
-        }
-      }}
+    <FormDialog
+      title={isEditing ? "Edit budget" : "Create monthly budget"}
+      description="Set up a budget for a specific month."
+      onClose={handleClose}
+      onSubmit={handleSubmit}
+      submitLabel={isEditing ? "Save changes" : "Create budget"}
+      saving={saving}
+      error={error}
     >
-      <div className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-border bg-card text-card-foreground shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-6 py-4">
-          <div>
-            <h2 className="text-lg font-semibold">
-              {isEditing ? "Edit budget" : "Create monthly budget"}
-            </h2>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Month" htmlFor="budget_budget_month">
+          <NativeSelect {...bind("budget_month")}>
+            {renderOptions(MONTH_OPTIONS)}
+          </NativeSelect>
+        </Field>
 
-            <p className="mt-1 text-sm text-muted-foreground">
-              Set up a budget for a specific month.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={saving}
-            className="rounded-lg p-2 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
-            aria-label="Close dialog"
-          >
-            <X size={19} />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-5 p-6">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className={labelClass}>Month</label>
-
-                <select
-                  value={form.budget_month}
-                  onChange={(event) =>
-                    updateField("budget_month", event.target.value)
-                  }
-                  className={inputClass}
-                >
-                  {MONTH_NAMES.map((month, index) => (
-                    <option key={month} value={index + 1}>
-                      {month}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className={labelClass}>Year</label>
-
-                <input
-                  type="number"
-                  min="2000"
-                  max="9999"
-                  required
-                  value={form.budget_year}
-                  onChange={(event) =>
-                    updateField("budget_year", event.target.value)
-                  }
-                  className={inputClass}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className={labelClass}>Budget name (optional)</label>
-
-              <input
-                type="text"
-                maxLength={100}
-                value={form.name}
-                onChange={(event) => updateField("name", event.target.value)}
-                placeholder="e.g. Monthly household budget"
-                className={inputClass}
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-3 border-t border-border bg-muted/20 px-6 py-4">
-            <button
-              type="button"
-              onClick={handleClose}
-              disabled={saving}
-              className="rounded-lg border border-border px-4 py-2 text-sm font-medium text-foreground transition hover:bg-muted disabled:opacity-50"
-            >
-              Cancel
-            </button>
-
-            <button
-              type="submit"
-              disabled={saving}
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {saving
-                ? "Saving..."
-                : isEditing
-                  ? "Save changes"
-                  : "Create budget"}
-            </button>
-          </div>
-        </form>
+        <Field label="Year" htmlFor="budget_budget_year">
+          <Input
+            {...bind("budget_year")}
+            type="number"
+            min="2000"
+            max="9999"
+            required
+          />
+        </Field>
       </div>
-    </div>
+
+      <Field label="Budget name (optional)" htmlFor="budget_name">
+        <Input
+          {...bind("name")}
+          maxLength={100}
+          placeholder="e.g. Monthly household budget"
+        />
+      </Field>
+    </FormDialog>
   );
 }
 
 // Mounted only while open, so every opening starts from a fresh form built
-// from the props (no effect needed to reset it).
+// from the props.
 export function BudgetDialog(props) {
   if (!props.open) return null;
 

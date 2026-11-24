@@ -1,8 +1,13 @@
-export function BrandMark() {
+import { cn } from "cn";
+
+export function BrandMark({ className }) {
   return (
     <div
       aria-hidden="true"
-      className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground"
+      className={cn(
+        "flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary text-lg font-bold text-primary-foreground",
+        className,
+      )}
     >
       f.
     </div>

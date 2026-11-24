@@ -5,37 +5,37 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
-import { formatCurrency, getTransactionTitle } from "../../lib/formatters";
+import { cn } from "cn";
+
+import { IconButton } from "../ui/icon-button";
+import { formatCents, getTransactionTitle } from "../../lib/formatters";
+
+// Icon, color and sign for each kind of transaction.
+const KINDS = {
+  income: { icon: ArrowDownLeft, tone: "income", sign: "+" },
+  expense: { icon: ArrowUpRight, tone: "expense", sign: "-" },
+  transfer: { icon: ArrowLeftRight, tone: "transfer", sign: "" },
+};
+
+const TONES = {
+  income: { text: "text-income", badge: "bg-income/10 text-income" },
+  expense: { text: "text-expense", badge: "bg-expense/10 text-expense" },
+  transfer: { text: "text-transfer", badge: "bg-transfer/10 text-transfer" },
+};
+
+function getKind(type) {
+  if (type === "income" || type === "refund") return KINDS.income;
+  if (type === "transfer") return KINDS.transfer;
+  return KINDS.expense;
+}
 
 // The API only lets income and expense be edited or deleted for now.
-const EDITABLE_TYPES = ["income", "expense"];
+const EDITABLE_TYPES = new Set(["income", "expense"]);
 
 export function TransactionItem({ transaction, onEdit, onDelete }) {
-  const type = transaction.transaction_type;
-
-  const isIncome = type === "income" || type === "refund";
-  const isTransfer = type === "transfer";
-  const canModify = EDITABLE_TYPES.includes(type);
-
-  const Icon = isTransfer
-    ? ArrowLeftRight
-    : isIncome
-      ? ArrowDownLeft
-      : ArrowUpRight;
-
-  const amountColor = isTransfer
-    ? "text-chart-2"
-    : isIncome
-      ? "text-chart-1"
-      : "text-destructive";
-
-  const iconColor = isTransfer
-    ? "bg-chart-2/10 text-chart-2"
-    : isIncome
-      ? "bg-chart-1/10 text-chart-1"
-      : "bg-destructive/10 text-destructive";
-
-  const title = getTransactionTitle(transaction);
+  const { icon: Icon, tone, sign } = getKind(transaction.transaction_type);
+  const canModify =
+    EDITABLE_TYPES.has(transaction.transaction_type) && (onEdit || onDelete);
 
   // Don't repeat the merchant when it is already the title.
   const subtitle = [
@@ -49,58 +49,51 @@ export function TransactionItem({ transaction, onEdit, onDelete }) {
   return (
     <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-muted/30 sm:gap-4">
       <div
-        className={`flex size-10 shrink-0 items-center justify-center rounded-full ${iconColor}`}
+        className={cn(
+          "flex size-10 shrink-0 items-center justify-center rounded-full",
+          TONES[tone].badge,
+        )}
       >
         <Icon size={18} strokeWidth={1.8} />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-card-foreground">
-          {title}
+        <p className="truncate text-sm font-semibold">
+          {getTransactionTitle(transaction)}
         </p>
-
         <p className="mt-1 truncate text-xs text-muted-foreground">
           {subtitle || "Uncategorized"}
         </p>
       </div>
 
-      <div className="shrink-0 text-right">
-        <p className={`text-sm font-semibold tabular-nums ${amountColor}`}>
-          {isIncome ? "+" : isTransfer ? "" : "-"}
-          {formatCurrency(transaction.amount_cents / 100)}
-        </p>
-      </div>
+      <p
+        className={cn(
+          "shrink-0 text-right text-sm font-semibold tabular-nums",
+          TONES[tone].text,
+        )}
+      >
+        {sign}
+        {formatCents(transaction.amount_cents)}
+      </p>
 
-      {canModify && (onEdit || onDelete) && (
-        <>
-          <div className="mx-1 h-8 w-px shrink-0 bg-border" />
-
-          <div className="flex shrink-0 items-center gap-1">
-            {onEdit && (
-              <button
-                type="button"
-                onClick={() => onEdit(transaction)}
-                aria-label="Edit transaction"
-                title="Edit transaction"
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Pencil size={16} strokeWidth={1.8} />
-              </button>
-            )}
-
-            {onDelete && (
-              <button
-                type="button"
-                onClick={() => onDelete(transaction)}
-                aria-label="Delete transaction"
-                title="Delete transaction"
-                className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-              >
-                <Trash2 size={16} strokeWidth={1.8} />
-              </button>
-            )}
-          </div>
-        </>
+      {canModify && (
+        <div className="flex shrink-0 items-center gap-1 border-l border-border pl-2">
+          {onEdit && (
+            <IconButton
+              icon={Pencil}
+              label="Edit transaction"
+              onClick={() => onEdit(transaction)}
+            />
+          )}
+          {onDelete && (
+            <IconButton
+              icon={Trash2}
+              tone="destructive"
+              label="Delete transaction"
+              onClick={() => onDelete(transaction)}
+            />
+          )}
+        </div>
       )}
     </div>
   );

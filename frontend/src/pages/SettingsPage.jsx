@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
-import {
-  UserRound,
-  Palette,
-  Bell,
-  RefreshCw,
-  Save,
-  LogOut,
-} from "lucide-react";
+import { Bell, LogOut, Palette, RefreshCw, Save, UserRound } from "lucide-react";
 
-import { Card, CardContent, CardHeader } from "../components/ui/card";
-import { apiRequest } from "../lib/api";
-import { getCognitoLogoutUrl } from "../lib/authConfig";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Field } from "../components/ui/field";
+import { Input } from "../components/ui/input";
+import { NativeSelect } from "../components/ui/native-select";
+import { Switch } from "../components/ui/switch";
 import { useNotifications } from "../components/providers/useNotifications";
+import { createApi } from "../lib/api";
+import { getCognitoLogoutUrl } from "../lib/authConfig";
+import { CURRENCY_OPTIONS, renderOptions } from "../lib/options";
 
 const notificationOptions = [
   {
@@ -50,61 +55,48 @@ const notificationOptions = [
   },
 ];
 
-function SectionHeading({ icon: Icon, title, description }) {
-  return (
-    <div className="mb-6 flex items-start gap-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-        <Icon size={19} strokeWidth={1.8} />
-      </div>
+const TIMEZONE_OPTIONS = [
+  "America/New_York",
+  "America/Toronto",
+  "America/Chicago",
+  "America/Los_Angeles",
+  "Europe/London",
+  "Europe/Paris",
+  "Asia/Dubai",
+  "Asia/Tokyo",
+].map((zone) => ({ value: zone, label: zone }));
 
-      <div>
-        <h2 className="text-base font-semibold text-card-foreground">
-          {title}
-        </h2>
-        <p className="mt-1 text-sm text-muted-foreground">{description}</p>
-      </div>
-    </div>
+const DATE_FORMAT_OPTIONS = ["YYYY-MM-DD", "MM/DD/YYYY", "DD/MM/YYYY"].map(
+  (format) => ({ value: format, label: format }),
+);
+
+const THEME_OPTIONS = [
+  { value: "light", label: "Light" },
+  { value: "dark", label: "Dark" },
+  { value: "system", label: "System default" },
+];
+
+function SettingsSection({ icon: Icon, title, description, children }) {
+  return (
+    <Card>
+      <CardHeader className="flex items-start gap-3">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+          <Icon size={19} strokeWidth={1.8} />
+        </div>
+
+        <div>
+          <CardTitle className="font-semibold">{title}</CardTitle>
+          <CardDescription className="mt-1">{description}</CardDescription>
+        </div>
+      </CardHeader>
+
+      <CardContent className="pt-2">{children}</CardContent>
+    </Card>
   );
 }
 
-function Field({ label, description, children }) {
-  return (
-    <div className="space-y-2">
-      <label className="block text-sm font-medium text-foreground">
-        {label}
-      </label>
-
-      {children}
-
-      {description && (
-        <p className="text-xs text-muted-foreground">{description}</p>
-      )}
-    </div>
-  );
-}
-
-const inputClass =
-  "h-11 w-full rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none transition placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/20 focus-visible:border-ring";
-
-function Toggle({ checked, onChange }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
-        checked ? "bg-primary" : "bg-muted"
-      }`}
-    >
-      <span
-        className={`inline-block size-5 rounded-full bg-primary-foreground shadow-sm transition-transform ${
-          checked ? "translate-x-5.5" : "translate-x-0.5"
-        }`}
-      />
-    </button>
-  );
-}
+// Fields the API manages itself; never sent back in a PATCH.
+const READ_ONLY_FIELDS = new Set(["created_at", "updated_at"]);
 
 export function SettingsPage({
   settings: savedSettings,
@@ -115,7 +107,7 @@ export function SettingsPage({
   const auth = useAuth();
   const { toast } = useNotifications();
 
-  // Editable draft. The saved settings live in App (loaded from the database).
+  // Editable draft. The saved settings live in AppDataProvider.
   const [settings, setSettings] = useState(savedSettings);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -126,60 +118,49 @@ export function SettingsPage({
 
   const updateSetting = (key, value) => {
     setSettings((current) => ({ ...current, [key]: value }));
-
-    if (key === "theme") {
-      onThemePreview(value);
-    }
-
+    if (key === "theme") onThemePreview(value);
     setSaved(false);
   };
 
-  const handleSave = async () => {
-    if (saving) return;
+  // Props for a select bound to settings[key].
+  const bind = (key) => ({
+    id: key,
+    value: settings[key],
+    onChange: (event) => updateSetting(key, event.target.value),
+  });
+
+  async function handleSave() {
+    setSaving(true);
 
     try {
-      setSaving(true);
-
       const updates = Object.fromEntries(
-        Object.entries(settings).filter(
-          ([key]) => key !== "created_at" && key !== "updated_at",
-        ),
+        Object.entries(settings).filter(([key]) => !READ_ONLY_FIELDS.has(key)),
       );
+      const { data } = await createApi(auth).patch("/settings", updates);
 
-      const response = await apiRequest("/settings", auth, {
-        method: "PATCH",
-        body: JSON.stringify(updates),
-      });
-
-      const updatedSettings = response.data.settings;
-
-      setSettings(updatedSettings);
-      onSaved(updatedSettings);
+      setSettings(data.settings);
+      onSaved(data.settings);
       onThemePreview(null);
       setSaved(true);
-
       toast.success("Your settings have been saved.");
     } catch (error) {
-      console.error("Failed to save settings:", error);
       toast.error(error.message || "Failed to save your settings.");
     } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const handleSignOut = async () => {
+  async function handleSignOut() {
+    setSigningOut(true);
+
     try {
-      setSigningOut(true);
-
       await auth.removeUser();
-
       window.location.assign(getCognitoLogoutUrl());
-    } catch (error) {
-      console.error("Sign-out failed:", error);
+    } catch {
       toast.error("Sign-out failed. Please try again.");
       setSigningOut(false);
     }
-  };
+  }
 
   if (!settings) {
     return (
@@ -187,199 +168,128 @@ export function SettingsPage({
         <p className="text-sm text-muted-foreground">
           We couldn't load your settings.
         </p>
-
-        <button
-          type="button"
-          onClick={onRetry}
-          className="rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground"
-        >
-          Try again
-        </button>
+        <Button onClick={onRetry}>Try again</Button>
       </div>
     );
   }
 
   return (
     <div className="space-y-7">
-      {/* Account preferences */}
-      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
-        <CardHeader className="pb-2">
-          <SectionHeading
-            icon={UserRound}
-            title="Account preferences"
-            description="Your account information and regional preferences."
-          />
-        </CardHeader>
+      <SettingsSection
+        icon={UserRound}
+        title="Account preferences"
+        description="Your account information and regional preferences."
+      >
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Currency" htmlFor="currency">
+            <NativeSelect {...bind("currency")}>
+              {renderOptions(CURRENCY_OPTIONS)}
+            </NativeSelect>
+          </Field>
 
-        <CardContent className="space-y-6">
-          <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Currency">
-              <select
-                value={settings.currency}
-                onChange={(e) => updateSetting("currency", e.target.value)}
-                className={inputClass}
-              >
-                <option value="USD">USD — US Dollar</option>
-                <option value="CAD">CAD — Canadian Dollar</option>
-                <option value="EUR">EUR — Euro</option>
-                <option value="GBP">GBP — British Pound</option>
-                <option value="AUD">AUD — Australian Dollar</option>
-              </select>
-            </Field>
+          <Field label="Timezone" htmlFor="timezone">
+            <NativeSelect {...bind("timezone")}>
+              {renderOptions(TIMEZONE_OPTIONS)}
+            </NativeSelect>
+          </Field>
 
-            <Field label="Timezone">
-              <select
-                value={settings.timezone}
-                onChange={(e) => updateSetting("timezone", e.target.value)}
-                className={inputClass}
-              >
-                <option value="America/New_York">America/New_York</option>
-                <option value="America/Toronto">America/Toronto</option>
-                <option value="America/Chicago">America/Chicago</option>
-                <option value="America/Los_Angeles">America/Los_Angeles</option>
-                <option value="Europe/London">Europe/London</option>
-                <option value="Europe/Paris">Europe/Paris</option>
-                <option value="Asia/Dubai">Asia/Dubai</option>
-                <option value="Asia/Tokyo">Asia/Tokyo</option>
-              </select>
-            </Field>
+          <Field label="Date format" htmlFor="date_format">
+            <NativeSelect {...bind("date_format")}>
+              {renderOptions(DATE_FORMAT_OPTIONS)}
+            </NativeSelect>
+          </Field>
+        </div>
+      </SettingsSection>
 
-            <Field label="Date format">
-              <select
-                value={settings.date_format}
-                onChange={(e) => updateSetting("date_format", e.target.value)}
-                className={inputClass}
-              >
-                <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-              </select>
-            </Field>
-          </div>
-        </CardContent>
-      </Card>
+      <SettingsSection
+        icon={Palette}
+        title="Appearance"
+        description="Customize how F-Wallet looks on your devices."
+      >
+        <Field label="Application theme" htmlFor="theme">
+          <NativeSelect {...bind("theme")}>
+            {renderOptions(THEME_OPTIONS)}
+          </NativeSelect>
+        </Field>
+      </SettingsSection>
 
-      {/* Appearance */}
-      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
-        <CardHeader className="pb-2">
-          <SectionHeading
-            icon={Palette}
-            title="Appearance"
-            description="Customize how F-Wallet looks on your devices."
-          />
-        </CardHeader>
-
-        <CardContent>
-          <Field label="Application theme">
-            <select
-              value={settings.theme}
-              onChange={(e) => updateSetting("theme", e.target.value)}
-              className={inputClass}
+      <SettingsSection
+        icon={Bell}
+        title="Notifications"
+        description="Choose which financial updates and alerts you want to receive."
+      >
+        <div className="divide-y divide-border">
+          {notificationOptions.map((option) => (
+            <div
+              key={option.key}
+              className="flex items-center justify-between gap-5 py-4 first:pt-0 last:pb-0"
             >
-              <option value="light">Light</option>
-              <option value="dark">Dark</option>
-              <option value="system">System default</option>
-            </select>
-          </Field>
-        </CardContent>
-      </Card>
-
-      {/* Notifications */}
-      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
-        <CardHeader className="pb-2">
-          <SectionHeading
-            icon={Bell}
-            title="Notifications"
-            description="Choose which financial updates and alerts you want to receive."
-          />
-        </CardHeader>
-
-        <CardContent>
-          <div className="divide-y divide-border">
-            {notificationOptions.map((option) => (
-              <div
-                key={option.key}
-                className="flex items-center justify-between gap-5 py-4 first:pt-0 last:pb-0"
-              >
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    {option.title}
-                  </p>
-
-                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                    {option.description}
-                  </p>
-                </div>
-
-                <Toggle
-                  checked={settings[option.key]}
-                  onChange={(value) => updateSetting(option.key, value)}
-                />
+              <div className="min-w-0">
+                <p id={`${option.key}-label`} className="text-sm font-medium">
+                  {option.title}
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                  {option.description}
+                </p>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Recurring transactions */}
-      <Card className="rounded-xl border-border bg-card text-card-foreground shadow-sm">
-        <CardHeader className="pb-2">
-          <SectionHeading
-            icon={RefreshCw}
-            title="Recurring transactions"
-            description="Configure how far ahead recurring transactions are generated."
-          />
-        </CardHeader>
-
-        <CardContent>
-          <Field
-            label="Generation window"
-            description="Number of days ahead to generate upcoming recurring transactions."
-          >
-            <div className="relative">
-              <input
-                type="number"
-                min="1"
-                max="90"
-                value={settings.recurring_generation_window_days}
-                onChange={(e) =>
-                  updateSetting(
-                    "recurring_generation_window_days",
-                    Math.min(90, Math.max(1, Number(e.target.value))),
-                  )
-                }
-                className={`${inputClass} pr-16`}
+              <Switch
+                aria-labelledby={`${option.key}-label`}
+                checked={Boolean(settings[option.key])}
+                onCheckedChange={(value) => updateSetting(option.key, value)}
               />
-
-              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                days
-              </span>
             </div>
-          </Field>
-        </CardContent>
-      </Card>
+          ))}
+        </div>
+      </SettingsSection>
 
-      {/* Actions */}
-      <div className="flex flex-col-reverse items-start justify-between gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
-        <button
-          type="button"
+      <SettingsSection
+        icon={RefreshCw}
+        title="Recurring transactions"
+        description="Configure how far ahead recurring transactions are generated."
+      >
+        <Field
+          label="Generation window"
+          htmlFor="recurring_generation_window_days"
+          hint="Number of days ahead to generate upcoming recurring transactions."
+        >
+          <div className="relative">
+            <Input
+              id="recurring_generation_window_days"
+              type="number"
+              min="1"
+              max="90"
+              value={settings.recurring_generation_window_days}
+              onChange={(event) =>
+                updateSetting(
+                  "recurring_generation_window_days",
+                  Math.min(90, Math.max(1, Number(event.target.value))),
+                )
+              }
+              className="pr-14"
+            />
+            <span className="pointer-events-none absolute top-1/2 right-3 -translate-y-1/2 text-sm text-muted-foreground">
+              days
+            </span>
+          </div>
+        </Field>
+      </SettingsSection>
+
+      <div className="flex flex-col-reverse justify-between gap-3 border-t border-border pt-5 sm:flex-row sm:items-center">
+        <Button
+          variant="destructive"
+          size="lg"
           onClick={handleSignOut}
-          disabled={signingOut || auth.isLoading}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg border border-red-500/30 px-5 text-sm font-semibold text-red-500 transition hover:bg-red-500/10 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+          disabled={signingOut}
         >
-          <LogOut size={16} />
+          <LogOut />
           {signingOut ? "Signing out..." : "Sign out"}
-        </button>
+        </Button>
 
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving}
-          className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
-        >
-          <Save size={16} />
+        <Button size="lg" onClick={handleSave} disabled={saving}>
+          <Save />
           {saving ? "Saving..." : saved ? "Changes saved" : "Save changes"}
-        </button>
+        </Button>
       </div>
     </div>
   );
