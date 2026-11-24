@@ -2,9 +2,21 @@ import { useState } from "react";
 import { cn } from "cn";
 
 import { SectionCard } from "../common/SectionCard";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import { TransactionList } from "../transactions/TransactionList";
 import { useAppData } from "../providers/useAppData";
-import { monthGrid, toDateKey, todayKey } from "../../lib/date-ranges";
+import {
+  fromDateKey,
+  monthGrid,
+  toDateKey,
+  todayKey,
+} from "../../lib/date-ranges";
 import {
   formatCents,
   formatFullDay,
@@ -53,16 +65,15 @@ function Entry({ transaction, currency }) {
 }
 
 // A month calendar, like Google or Apple Calendar, with each day's
-// transactions. Selecting a day lists its transactions underneath.
+// transactions. Clicking a day opens its details in a dialog.
 export function TransactionCalendar({ year, month }) {
   const { transactions, currency } = useAppData();
   const key = monthKey(year, month);
   const today = todayKey();
 
   const days = groupByDay(transactions, key);
-  const [selected, setSelected] = useState(
-    today.startsWith(key) ? today : null,
-  );
+  // The day whose details are open in the dialog ("YYYY-MM-DD"), if any.
+  const [selected, setSelected] = useState(null);
 
   // Only as many weeks as the month needs (4 to 6).
   const first = new Date(year, month - 1, 1);
@@ -100,9 +111,9 @@ export function TransactionCalendar({ year, month }) {
               key={dateKey}
               type="button"
               disabled={!inMonth}
-              aria-pressed={isSelected}
+              aria-haspopup="dialog"
               aria-label={`${formatFullDay(date)}: ${entries.length} transaction${entries.length === 1 ? "" : "s"}`}
-              onClick={() => setSelected(isSelected ? null : dateKey)}
+              onClick={() => setSelected(dateKey)}
               className={cn(
                 "flex min-h-14 min-w-0 flex-col gap-1 bg-card p-1 text-left transition-colors outline-none focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:ring-inset md:min-h-24 md:p-1.5",
                 inMonth ? "hover:bg-muted/50" : "bg-muted/30",
@@ -158,38 +169,36 @@ export function TransactionCalendar({ year, month }) {
         })}
       </div>
 
-      <div className="mt-5" aria-live="polite">
-        {!selected ? (
-          <p className="text-center text-sm text-muted-foreground">
-            Select a day to see its transactions.
-          </p>
-        ) : (
-          <>
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-              <h3 className="text-sm font-semibold">
-                {formatFullDay(new Date(`${selected}T00:00`))}
-              </h3>
-              {selectedTransactions.length > 0 && (
-                <p className="text-xs text-muted-foreground tabular-nums">
-                  In {formatCents(selectedTotals.income, currency)} · Out{" "}
-                  {formatCents(selectedTotals.expense, currency)}
-                </p>
-              )}
-            </div>
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(open) => !open && setSelected(null)}
+      >
+        <DialogContent className="flex max-h-[85vh] flex-col gap-4 sm:max-w-lg">
+          {selected && (
+            <>
+              <DialogHeader className="pr-8">
+                <DialogTitle className="text-base font-semibold">
+                  {formatFullDay(fromDateKey(selected))}
+                </DialogTitle>
+                <DialogDescription className="tabular-nums">
+                  {selectedTransactions.length === 0
+                    ? "No transactions on this day."
+                    : `${selectedTransactions.length} transaction${selectedTransactions.length === 1 ? "" : "s"} · In ${formatCents(selectedTotals.income, currency)} · Out ${formatCents(selectedTotals.expense, currency)}`}
+                </DialogDescription>
+              </DialogHeader>
 
-            {selectedTransactions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No transactions on this day.
-              </p>
-            ) : (
-              <TransactionList
-                transactions={selectedTransactions}
-                showDayHeaders={false}
-              />
-            )}
-          </>
-        )}
-      </div>
+              {selectedTransactions.length > 0 && (
+                <div className="-mx-1 min-h-0 overflow-y-auto px-1">
+                  <TransactionList
+                    transactions={selectedTransactions}
+                    showDayHeaders={false}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </SectionCard>
   );
 }
