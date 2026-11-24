@@ -8,6 +8,7 @@ import { EmptyState } from "../components/ui/empty-state";
 import { StatCard, StatGrid } from "../components/ui/stat-card";
 import { TabBar } from "../components/ui/tab-bar";
 import { ArchivedList } from "../components/common/ArchivedList";
+import { CountLabel, PageToolbar } from "../components/common/PageToolbar";
 import { SortableList } from "../components/common/SortableList";
 import { AccountCard } from "../components/accounts/AccountCard";
 import { AccountDialog } from "../components/accounts/AccountDialog";
@@ -17,11 +18,6 @@ import { createApi } from "../lib/api";
 import { getAccountType, summarizeAccounts } from "../lib/accounts";
 import { formatCents } from "../lib/formatters";
 import { removeById, replaceById } from "../lib/collections";
-
-const TABS = [
-  { value: "active", label: "Active accounts" },
-  { value: "archived", label: "Archived", icon: Archive },
-];
 
 export function AccountsPage() {
   const api = createApi(useAuth());
@@ -158,10 +154,7 @@ export function AccountsPage() {
         />
       </StatGrid>
 
-      <TabBar
-        value={activeTab}
-        onValueChange={setActiveTab}
-        items={TABS}
+      <PageToolbar
         actions={
           activeTab === "active" && (
             <Button onClick={openCreate}>
@@ -170,7 +163,29 @@ export function AccountsPage() {
             </Button>
           )
         }
-      />
+      >
+        <TabBar
+          variant="segmented"
+          aria-label="Accounts to show"
+          value={activeTab}
+          onValueChange={setActiveTab}
+          className="lg:w-72"
+          items={[
+            {
+              value: "active",
+              icon: Wallet,
+              label: <CountLabel label="Active" count={accounts.length} />,
+            },
+            {
+              value: "archived",
+              icon: Archive,
+              label: (
+                <CountLabel label="Archived" count={archivedAccounts.length} />
+              ),
+            },
+          ]}
+        />
+      </PageToolbar>
 
       {activeTab === "archived" ? (
         <ArchivedList

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
-import { Archive, Plus, Tags } from "lucide-react";
+import { Archive, ArrowDownLeft, ArrowUpRight, Plus, Tags } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
@@ -9,6 +9,8 @@ import { ArchivedList } from "../common/ArchivedList";
 import { SortableList } from "../common/SortableList";
 import { CategoryBlock } from "./CategoryBlock";
 import { CategoryDialog } from "./CategoryDialog";
+import { CategoryToolbar } from "./CategoryToolbar";
+import { CountLabel } from "../common/PageToolbar";
 import { useNotifications } from "../providers/useNotifications";
 import { useAppData } from "../providers/useAppData";
 import { createApi } from "../../lib/api";
@@ -24,17 +26,8 @@ import {
   moveWithinParent,
 } from "../../lib/categories";
 
-const STATUS_TABS = [
-  { value: "active", label: "Active categories" },
-  { value: "archived", label: "Archived", icon: Archive },
-];
-
-const TYPE_FILTERS = [
-  { value: "expense", label: "Expenses" },
-  { value: "income", label: "Income" },
-];
-
-export function CategoriesTab() {
+// The Categories section: one switch for Expenses / Income / Archived.
+export function CategoriesTab({ section, onSectionChange }) {
   const api = createApi(useAuth());
   const { toast, confirm } = useNotifications();
   const {
@@ -48,8 +41,10 @@ export function CategoriesTab() {
     settings,
   } = useAppData();
 
-  const [status, setStatus] = useState("active");
-  const [filter, setFilter] = useState("expense");
+  // "expense" | "income" | "archived"
+  const [view, setView] = useState("expense");
+  const isArchived = view === "archived";
+  const filter = isArchived ? "expense" : view;
   // null = closed, {} = creating, { category } = editing
   const [dialog, setDialog] = useState(null);
   const [savingOrder, setSavingOrder] = useState(false);
@@ -72,6 +67,9 @@ export function CategoriesTab() {
       ],
     ),
   );
+
+  const countOf = (type) =>
+    categories.filter((c) => c.category_type === type).length;
 
   // Looked up once per render instead of once per card.
   const accountNames = new Map(
@@ -174,23 +172,53 @@ export function CategoriesTab() {
 
   return (
     <>
-      <TabBar
-        value={status}
-        onValueChange={setStatus}
-        items={STATUS_TABS}
+      <CategoryToolbar
+        section={section}
+        onSectionChange={onSectionChange}
         actions={
-          status === "active" && (
+          !isArchived && (
             <Button onClick={openCreate}>
               <Plus />
               New category
             </Button>
           )
         }
-      />
+      >
+        <TabBar
+          variant="segmented"
+          aria-label="Categories to show"
+          value={view}
+          onValueChange={setView}
+          className="w-full sm:w-auto"
+          items={[
+            {
+              value: "expense",
+              icon: ArrowUpRight,
+              label: <CountLabel label="Expenses" count={countOf("expense")} />,
+            },
+            {
+              value: "income",
+              icon: ArrowDownLeft,
+              label: <CountLabel label="Income" count={countOf("income")} />,
+            },
+            {
+              value: "archived",
+              icon: Archive,
+              label: (
+                <CountLabel
+                  label="Archived"
+                  count={archivedCategories.length}
+                />
+              ),
+            },
+          ]}
+        />
+      </CategoryToolbar>
 
-      {status === "archived" ? (
+      {isArchived ? (
         <ArchivedList
           noun="category"
+          plural="categories"
           onRestore={handleRestoreCategory}
           items={archivedCategories.map((category) => ({
             id: category.category_id,
@@ -203,14 +231,6 @@ export function CategoriesTab() {
         />
       ) : (
         <>
-          <TabBar
-            variant="pill"
-            aria-label="Category type"
-            value={filter}
-            onValueChange={setFilter}
-            items={TYPE_FILTERS}
-          />
-
           {tree.length === 0 ? (
             <EmptyState
               icon={Tags}

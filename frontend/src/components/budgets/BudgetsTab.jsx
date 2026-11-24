@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useAuth } from "react-oidc-context";
-import { CalendarDays, Plus } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 import { Button } from "../ui/button";
 import { EmptyState } from "../ui/empty-state";
-import { Field } from "../ui/field";
-import { Input } from "../ui/input";
+import { IconButton } from "../ui/icon-button";
 import { BudgetCard } from "./BudgetCard";
+import { CategoryToolbar } from "../categories/CategoryToolbar";
 import { BudgetDialog } from "./BudgetDialog";
 import { BudgetAllocationDialog } from "./BudgetAllocationDialog";
 import { useNotifications } from "../providers/useNotifications";
@@ -15,7 +15,8 @@ import { createApi } from "../../lib/api";
 import { removeById, replaceById } from "../../lib/collections";
 import { formatMonthYear } from "../../lib/formatters";
 
-export function BudgetsTab() {
+// The Budgets section: a year stepper and the year's monthly budgets.
+export function BudgetsTab({ section, onSectionChange }) {
   const api = createApi(useAuth());
   const { toast, confirm } = useNotifications();
   const { budgets, setBudgets, categories } = useAppData();
@@ -84,23 +85,42 @@ export function BudgetsTab() {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <Field label="Budget year" htmlFor="budget-year" className="w-40">
-          <Input
-            id="budget-year"
-            type="number"
-            min="2000"
-            max="9999"
-            value={year}
-            onChange={(event) => setYear(event.target.value)}
+      <CategoryToolbar
+        section={section}
+        onSectionChange={onSectionChange}
+        actions={
+          <Button onClick={openCreate}>
+            <Plus />
+            New budget
+          </Button>
+        }
+      >
+        <div
+          role="group"
+          aria-label="Budget year"
+          className="flex items-center rounded-lg bg-muted p-1"
+        >
+          <IconButton
+            icon={ChevronLeft}
+            label="Previous year"
+            onClick={() => setYear((y) => String(Number(y) - 1))}
           />
-        </Field>
-
-        <Button onClick={openCreate}>
-          <Plus />
-          New budget
-        </Button>
-      </div>
+          <span
+            aria-live="polite"
+            className="min-w-14 px-1 text-center text-sm font-semibold tabular-nums"
+          >
+            {year}
+          </span>
+          <IconButton
+            icon={ChevronRight}
+            label="Next year"
+            onClick={() => setYear((y) => String(Number(y) + 1))}
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">
+          {yearBudgets.length} {yearBudgets.length === 1 ? "budget" : "budgets"}
+        </span>
+      </CategoryToolbar>
 
       {yearBudgets.length === 0 ? (
         <EmptyState

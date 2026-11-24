@@ -1,26 +1,20 @@
 import { useState } from "react";
-import { Tags, Wallet } from "lucide-react";
 
-import { TabBar } from "../components/ui/tab-bar";
 import { CategoriesTab } from "../components/categories/CategoriesTab";
 import { BudgetsTab } from "../components/budgets/BudgetsTab";
 import { BudgetOverviewCards } from "../components/categories/BudgetOverviewCards";
 
-const TABS = [
-  { value: "categories", label: "Categories", icon: Tags },
-  { value: "budgets", label: "Budgets", icon: Wallet },
-];
-
 export function CategoryPage() {
-  const [tab, setTab] = useState("categories");
+  const [section, setSection] = useState("categories");
+  const Section = section === "categories" ? CategoriesTab : BudgetsTab;
 
   return (
     <div className="space-y-6">
-      {/* Shown on both tabs: this month's budget at a glance. */}
+      {/* Shown in both sections: this month's budget at a glance. */}
       <BudgetOverviewCards />
 
-      <TabBar value={tab} onValueChange={setTab} items={TABS} />
-      {tab === "categories" ? <CategoriesTab /> : <BudgetsTab />}
+      {/* Each section renders the shared toolbar with its own controls. */}
+      <Section section={section} onSectionChange={setSection} />
     </div>
   );
 }

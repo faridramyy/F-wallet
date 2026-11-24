@@ -6,18 +6,21 @@ import { formatTimestamp } from "../../lib/formatters";
 
 // The "Archived" tab used by accounts and categories.
 // items: [{ id, title, subtitle, archivedAt, source }]
-export function ArchivedList({ noun, items, onRestore }) {
+// plural: e.g. "categories"; defaults to the noun plus "s"
+export function ArchivedList({ noun, plural = `${noun}s`, items, onRestore }) {
+  const Plural = plural[0].toUpperCase() + plural.slice(1);
+
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Archived {noun}s can be restored here.
+        Archived {plural} can be restored here.
       </p>
 
       {items.length === 0 ? (
         <EmptyState
           icon={Archive}
-          title={`No archived ${noun}s`}
-          description={`${noun[0].toUpperCase()}${noun.slice(1)}s you archive will appear here.`}
+          title={`No archived ${plural}`}
+          description={`${Plural} you archive will appear here.`}
         />
       ) : (
         items.map((item) => (
