@@ -1,39 +1,18 @@
 import { useState } from "react";
-import {
-  ArrowLeftRight,
-  Search,
-  TrendingDown,
-  TrendingUp,
-  Scale,
-} from "lucide-react";
 
 import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { StatCard, StatGrid } from "../components/ui/stat-card";
 import { SectionCard } from "../components/common/SectionCard";
+import { TransactionFilters } from "../components/transactions/TransactionFilters";
 import { TransactionList } from "../components/transactions/TransactionList";
 import { RefundDialog } from "../components/transactions/RefundDialog";
 import { useNotifications } from "../components/providers/useNotifications";
 import { useAppData } from "../components/providers/useAppData";
+import { formatDateKey, getTransactionTitle } from "../lib/formatters";
 import {
-  formatCents,
-  formatPercent,
-  getTransactionTitle,
-} from "../lib/formatters";
-import { summarize } from "../lib/analytics";
-
-const SEARCH_FIELDS = [
-  "description",
-  "merchant",
-  "category_name",
-  "account_name",
-  "notes",
-];
-
-const matches = (transaction, term) =>
-  SEARCH_FIELDS.some((field) =>
-    transaction[field]?.toLowerCase().includes(term),
-  );
+  EMPTY_FILTERS,
+  filterTransactions,
+  hasActiveFilters,
+} from "../lib/transaction-filters";
 
 export function TransactionsPage({ onEdit }) {
   const { toast, confirm } = useNotifications();
@@ -46,9 +25,8 @@ export function TransactionsPage({ onEdit }) {
     createRefund,
     updateRefund,
     accounts,
-    settings,
+    categories,
   } = useAppData();
-  const currency = settings?.currency ?? "CAD";
 
   // null = closed; { expense } = new refund; { expense?, refund } = editing
   const [refundDialog, setRefundDialog] = useState(null);
@@ -73,23 +51,17 @@ export function TransactionsPage({ onEdit }) {
       ? updateRefund(refundDialog.refund.transaction_id, body)
       : createRefund(refundDialog.expense.transaction_id, body);
 
-  const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState(EMPTY_FILTERS);
 
-  const term = search.trim().toLowerCase();
+  // Filters run over the loaded history (the last 17 months at sign-in,
+  // plus anything paged in with "Load more").
+  const filtered = filterTransactions(transactions, filters, categories);
+  const isFiltering = hasActiveFilters(filters);
+  const oldestLoaded = transactions.at(-1)?.transaction_date;
 
-  // Note: this only searches the transactions already loaded (50 per page).
-  // Searching the whole history would need a `search` query param on the API.
-  const filtered = term
-    ? transactions.filter((transaction) => matches(transaction, term))
-    : transactions;
-
-  // The cards describe exactly the rows below, including the search filter.
-  const totals = summarize(filtered);
-  const scope = term
-    ? "Matching your search"
-    : hasMoreTransactions
-      ? "Loaded so far"
-      : "All time";
+  const countLabel = `${filtered.length.toLocaleString("en-CA")} ${
+    filtered.length === 1 ? "transaction" : "transactions"
+  }`;
 
   async function handleDelete(transaction) {
     const confirmed = await confirm({
@@ -119,66 +91,42 @@ export function TransactionsPage({ onEdit }) {
 
   return (
     <div className="space-y-6">
-      <StatGrid>
-        <StatCard
-          label="Transactions"
-          value={filtered.length.toLocaleString("en-CA")}
-          description={scope}
-          icon={ArrowLeftRight}
-        />
-        <StatCard
-          label="Income"
-          value={formatCents(totals.income, currency)}
-          description={scope}
-          icon={TrendingUp}
-          tone="income"
-        />
-        <StatCard
-          label="Expenses"
-          value={formatCents(totals.expense, currency)}
-          description={scope}
-          icon={TrendingDown}
-          tone="expense"
-        />
-        <StatCard
-          label="Net"
-          value={formatCents(totals.net, currency)}
-          valueClassName={totals.net < 0 ? "text-destructive" : undefined}
-          description={
-            totals.savingsRate === null
-              ? scope
-              : `${formatPercent(totals.savingsRate)} of income kept`
-          }
-          icon={Scale}
-        />
-      </StatGrid>
+      <TransactionFilters
+        filters={filters}
+        onChange={setFilters}
+        accounts={accounts}
+        categories={categories}
+      />
 
       <SectionCard
-        title="All transactions"
-        description="Review your financial activity"
-        action={
-          <div className="relative w-44 sm:w-72">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              aria-label="Search transactions"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search transactions..."
-              className="pl-9"
-            />
-          </div>
+        title={isFiltering ? "Matching transactions" : "All transactions"}
+        description={
+          isFiltering
+            ? countLabel
+            : `${countLabel} · Review your financial activity`
         }
       >
-        <TransactionList
-          transactions={filtered}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-          onRefund={(expense) => setRefundDialog({ expense })}
-        />
+        {isFiltering && filtered.length === 0 ? (
+          <p className="py-12 text-center text-sm text-muted-foreground">
+            No transactions match these filters.
+          </p>
+        ) : (
+          <TransactionList
+            transactions={filtered}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onRefund={(expense) => setRefundDialog({ expense })}
+          />
+        )}
 
         {hasMoreTransactions && (
-          <div className="mt-6 flex justify-center">
+          <div className="mt-6 flex flex-col items-center gap-2">
+            {isFiltering && oldestLoaded && (
+              <p className="text-xs text-muted-foreground">
+                Searching back to {formatDateKey(oldestLoaded)}. Load more to
+                include older transactions.
+              </p>
+            )}
             <Button
               variant="outline"
               onClick={handleLoadMore}

@@ -1,9 +1,18 @@
 import { useState } from "react";
+import {
+  ArrowDownLeft,
+  ArrowLeftRight,
+  ArrowRight,
+  ArrowUpRight,
+  Plus,
+} from "lucide-react";
 
 import { FormDialog } from "../common/FormDialog";
+import { Button } from "../ui/button";
 import { Field } from "../ui/field";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
+import { TabBar } from "../ui/tab-bar";
 import { Textarea } from "../ui/textarea";
 import { useNotifications } from "../providers/useNotifications";
 import { centsToInput, dollarsToCents } from "../../lib/formatters";
@@ -12,18 +21,26 @@ import { accountOptions, categoryOptions } from "../../lib/select-options";
 
 const today = () => new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local time
 
-const TYPE_OPTIONS = {
-  expense: { value: "expense", label: "Expense" },
-  income: { value: "income", label: "Income" },
-  transfer: { value: "transfer", label: "Transfer between accounts" },
+const TYPE_TABS = {
+  expense: { value: "expense", label: "Expense", icon: ArrowUpRight },
+  income: { value: "income", label: "Income", icon: ArrowDownLeft },
+  transfer: { value: "transfer", label: "Transfer", icon: ArrowLeftRight },
 };
 
 // Income and expense can switch into each other; a transfer stays a transfer.
-function typeOptionsFor(transaction) {
-  if (transaction?.transaction_type === "transfer")
-    return [TYPE_OPTIONS.transfer];
-  if (transaction) return [TYPE_OPTIONS.expense, TYPE_OPTIONS.income];
-  return Object.values(TYPE_OPTIONS);
+function typeTabsFor(transaction) {
+  if (transaction?.transaction_type === "transfer") return [TYPE_TABS.transfer];
+  if (transaction) return [TYPE_TABS.expense, TYPE_TABS.income];
+  return Object.values(TYPE_TABS);
+}
+
+// The symbol shown in front of the amount ("$", "€", …).
+function currencySymbol(currency = "CAD") {
+  return (
+    new Intl.NumberFormat("en-CA", { style: "currency", currency })
+      .formatToParts(0)
+      .find((part) => part.type === "currency")?.value ?? "$"
+  );
 }
 
 function getInitialForm(transaction, accounts) {
@@ -55,7 +72,8 @@ function getInitialForm(transaction, accounts) {
   };
 }
 
-// The request body for a form, in API shape.
+// The request body for a form, in API shape. Only the fields that belong to
+// the type are sent: income has no merchant, a transfer no category.
 function toPayload(form, amountCents) {
   const shared = {
     amount_cents: amountCents,
@@ -76,10 +94,19 @@ function toPayload(form, amountCents) {
     transaction_type: form.transaction_type,
     account_id: form.account_id,
     category_id: form.category_id || null,
-    merchant: form.merchant.trim() || null,
+    merchant:
+      form.transaction_type === "expense" ? form.merchant.trim() || null : null,
     ...shared,
   };
 }
+
+const NOUNS = { expense: "expense", income: "income", transfer: "transfer" };
+
+const DESCRIPTIONS = {
+  expense: "Money you spent.",
+  income: "Money you received.",
+  transfer: "Money moved between your own accounts, like paying a credit card.",
+};
 
 //   onSave(body, { isTransfer }) saves a new or changed transaction
 function AddTransactionDialogContent({
@@ -93,20 +120,25 @@ function AddTransactionDialogContent({
 
   const [initialForm] = useState(() => getInitialForm(transaction, accounts));
   const [form, setForm] = useState(initialForm);
+  const [showNotes, setShowNotes] = useState(Boolean(initialForm.notes));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  const type = form.transaction_type;
   const isEditing = Boolean(transaction);
-  const isTransfer = form.transaction_type === "transfer";
-  const typeOptions = typeOptionsFor(transaction);
+  const isTransfer = type === "transfer";
+  const tabs = typeTabsFor(transaction);
   const close = () => onOpenChange(false);
+
+  const account = accounts.find((a) => a.account_id === form.account_id);
+  const symbol = currencySymbol(account?.currency);
 
   // Categories of the chosen type, parents with their sub-categories. If the
   // transaction's category was archived later it is no longer listed, so it
   // is kept as an extra option rather than the field silently going blank.
   const categorySelectOptions = isTransfer
     ? []
-    : categoryOptions(categories, form.transaction_type, {
+    : categoryOptions(categories, type, {
         none: "Uncategorized",
         extra: form.category_id
           ? {
@@ -118,7 +150,7 @@ function AddTransactionDialogContent({
 
   // A transfer cannot go to the account it comes from.
   const toAccountOptions = accountOptions(
-    accounts.filter((account) => account.account_id !== form.account_id),
+    accounts.filter((a) => a.account_id !== form.account_id),
   );
 
   function updateField(changes) {
@@ -126,17 +158,32 @@ function AddTransactionDialogContent({
     setError("");
   }
 
-  function changeType(type) {
-    const changes = { transaction_type: type, category_id: "" };
+  function changeType(nextType) {
+    // A category belongs to one type, so it is cleared on every switch.
+    const changes = { transaction_type: nextType, category_id: "" };
 
     // Make sure "to" differs from "from" when switching to a transfer.
-    if (type === "transfer" && form.to_account_id === form.account_id) {
+    if (nextType === "transfer" && form.to_account_id === form.account_id) {
       changes.to_account_id =
         accounts.find((a) => a.account_id !== form.account_id)?.account_id ??
         "";
     }
 
     updateField(changes);
+  }
+
+  // Picking a category also picks its default account, when it has one that
+  // is still active. The account can still be changed afterwards.
+  function changeCategory(categoryId) {
+    const category = categories.find((c) => c.category_id === categoryId);
+    const defaultAccount = accounts.find(
+      (a) => a.account_id === category?.default_account_id,
+    );
+
+    updateField({
+      category_id: categoryId,
+      ...(defaultAccount && { account_id: defaultAccount.account_id }),
+    });
   }
 
   function changeFromAccount(accountId) {
@@ -153,7 +200,7 @@ function AddTransactionDialogContent({
       isDirty: hasChanges(form, initialForm),
       confirm,
       onClose: close,
-      noun: isTransfer ? "transfer" : "transaction",
+      noun: NOUNS[type],
     });
   }
 
@@ -197,9 +244,12 @@ function AddTransactionDialogContent({
 
     try {
       await onSave(body, { isTransfer });
-      toast.success(
-        `${isTransfer ? "Transfer" : "Transaction"} ${isEditing ? "updated" : "added"}.`,
-      );
+      const label = isTransfer
+        ? "Transfer"
+        : type === "income"
+          ? "Income"
+          : "Expense";
+      toast.success(`${label} ${isEditing ? "updated" : "added"}.`);
       close();
     } catch (err) {
       setError(err.message || "Unable to save transaction.");
@@ -207,54 +257,47 @@ function AddTransactionDialogContent({
     }
   }
 
-  const noun = isTransfer ? "transfer" : "transaction";
+  const noun = NOUNS[type];
+  const needsAccounts = isTransfer
+    ? accounts.length < 2
+    : accounts.length === 0;
 
   return (
     <FormDialog
       size="lg"
-      title={isEditing ? `Edit ${noun}` : `Add ${noun}`}
-      description={
-        isTransfer
-          ? "Move money between your own accounts, like paying a credit card."
-          : isEditing
-            ? "Update your transaction information."
-            : "Record income, an expense or a transfer in your F-Wallet."
-      }
+      title={isEditing ? `Edit ${noun}` : "Add transaction"}
+      description={DESCRIPTIONS[type]}
       onClose={handleClose}
       onSubmit={handleSubmit}
       submitLabel={isEditing ? "Save changes" : `Add ${noun}`}
-      submitDisabled={
-        accounts.length === 0 || (isTransfer && accounts.length < 2)
-      }
+      submitDisabled={needsAccounts}
       saving={saving}
       error={error}
     >
-      {accounts.length === 0 && (
+      {tabs.length > 1 && (
+        <TabBar
+          variant="segmented"
+          aria-label="Transaction type"
+          value={type}
+          onValueChange={changeType}
+          items={tabs}
+        />
+      )}
+
+      {needsAccounts && (
         <p className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
-          You need an account before you can add a transaction. Create one on
-          the Accounts page first.
+          {isTransfer
+            ? "A transfer needs two accounts. Create another one on the Accounts page first."
+            : "You need an account first. Create one on the Accounts page."}
         </p>
       )}
 
-      {isTransfer && accounts.length === 1 && (
-        <p className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
-          A transfer needs two accounts. Create another one on the Accounts page
-          first.
-        </p>
-      )}
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Type" htmlFor="transaction_type">
-          <Select
-            id="transaction_type"
-            value={form.transaction_type}
-            options={typeOptions}
-            disabled={typeOptions.length === 1}
-            onValueChange={changeType}
-          />
-        </Field>
-
-        <Field label="Amount" htmlFor="amount">
+      {/* The amount leads, large, with the account's currency symbol. */}
+      <Field label="Amount" htmlFor="amount">
+        <div className="relative">
+          <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-lg text-muted-foreground">
+            {symbol}
+          </span>
           <Input
             id="amount"
             required
@@ -263,54 +306,65 @@ function AddTransactionDialogContent({
             onChange={(event) => updateField({ amount: event.target.value })}
             placeholder="0.00"
             autoFocus
+            className="h-12 pl-9 text-2xl font-semibold tabular-nums md:text-2xl"
           />
-        </Field>
+        </div>
+      </Field>
 
-        {isTransfer ? (
-          <>
-            <Field label="From account" htmlFor="account_id">
-              <Select
-                id="account_id"
-                value={form.account_id}
-                options={accountOptions(accounts)}
-                placeholder="Choose an account"
-                onValueChange={changeFromAccount}
-              />
-            </Field>
+      {isTransfer ? (
+        <div className="grid items-end gap-4 sm:grid-cols-[1fr_auto_1fr]">
+          <Field label="From" htmlFor="account_id">
+            <Select
+              id="account_id"
+              value={form.account_id}
+              options={accountOptions(accounts)}
+              placeholder="Choose an account"
+              onValueChange={changeFromAccount}
+            />
+          </Field>
 
-            <Field label="To account" htmlFor="to_account_id">
-              <Select
-                id="to_account_id"
-                value={form.to_account_id}
-                options={toAccountOptions}
-                placeholder="Choose an account"
-                onValueChange={(value) => updateField({ to_account_id: value })}
-              />
-            </Field>
-          </>
-        ) : (
-          <>
-            <Field label="Account" htmlFor="account_id">
-              <Select
-                id="account_id"
-                value={form.account_id}
-                options={accountOptions(accounts)}
-                placeholder="Choose an account"
-                onValueChange={(value) => updateField({ account_id: value })}
-              />
-            </Field>
+          <ArrowRight
+            aria-hidden="true"
+            className="mx-auto mb-2 hidden size-4 text-muted-foreground sm:block"
+          />
 
-            <Field label="Category" htmlFor="category_id">
-              <Select
-                id="category_id"
-                value={form.category_id}
-                options={categorySelectOptions}
-                onValueChange={(value) => updateField({ category_id: value })}
-              />
-            </Field>
-          </>
-        )}
+          <Field label="To" htmlFor="to_account_id">
+            <Select
+              id="to_account_id"
+              value={form.to_account_id}
+              options={toAccountOptions}
+              placeholder="Choose an account"
+              onValueChange={(value) => updateField({ to_account_id: value })}
+            />
+          </Field>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Category" htmlFor="category_id">
+            <Select
+              id="category_id"
+              value={form.category_id}
+              options={categorySelectOptions}
+              onValueChange={changeCategory}
+            />
+          </Field>
 
+          <Field
+            label={type === "income" ? "Received in" : "Paid from"}
+            htmlFor="account_id"
+          >
+            <Select
+              id="account_id"
+              value={form.account_id}
+              options={accountOptions(accounts)}
+              placeholder="Choose an account"
+              onValueChange={(value) => updateField({ account_id: value })}
+            />
+          </Field>
+        </div>
+      )}
+
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Date" htmlFor="transaction_date">
           <Input
             id="transaction_date"
@@ -323,7 +377,7 @@ function AddTransactionDialogContent({
           />
         </Field>
 
-        {!isTransfer && (
+        {type === "expense" ? (
           <Field label="Merchant" htmlFor="merchant">
             <Input
               id="merchant"
@@ -335,30 +389,58 @@ function AddTransactionDialogContent({
               placeholder="e.g. Metro"
             />
           </Field>
+        ) : (
+          <Field label="Description" htmlFor="description">
+            <Input
+              id="description"
+              maxLength={255}
+              value={form.description}
+              onChange={(event) =>
+                updateField({ description: event.target.value })
+              }
+              placeholder={isTransfer ? "e.g. Card payment" : "e.g. Salary"}
+            />
+          </Field>
         )}
       </div>
 
-      <Field label="Description" htmlFor="description">
-        <Input
-          id="description"
-          maxLength={255}
-          value={form.description}
-          onChange={(event) => updateField({ description: event.target.value })}
-          placeholder={
-            isTransfer ? "e.g. Credit card payment" : "e.g. Grocery shopping"
-          }
-        />
-      </Field>
+      {type === "expense" && (
+        <Field label="Description" htmlFor="description">
+          <Input
+            id="description"
+            maxLength={255}
+            value={form.description}
+            onChange={(event) =>
+              updateField({ description: event.target.value })
+            }
+            placeholder="e.g. Weekly groceries"
+          />
+        </Field>
+      )}
 
-      <Field label="Notes" htmlFor="notes">
-        <Textarea
-          id="notes"
-          rows={2}
-          value={form.notes}
-          onChange={(event) => updateField({ notes: event.target.value })}
-          placeholder="Optional notes"
-        />
-      </Field>
+      {showNotes ? (
+        <Field label="Notes" htmlFor="notes">
+          <Textarea
+            id="notes"
+            rows={2}
+            value={form.notes}
+            onChange={(event) => updateField({ notes: event.target.value })}
+            placeholder="Anything else to remember"
+            autoFocus={!initialForm.notes}
+          />
+        </Field>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="-ml-2 text-muted-foreground"
+          onClick={() => setShowNotes(true)}
+        >
+          <Plus />
+          Add a note
+        </Button>
+      )}
     </FormDialog>
   );
 }

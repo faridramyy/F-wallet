@@ -11,6 +11,11 @@ const variants = {
     list: "flex flex-wrap gap-2",
     tab: "rounded-lg bg-muted px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground aria-selected:bg-primary aria-selected:text-primary-foreground",
   },
+  // Equal-width segments on a muted track, for switching a form's mode.
+  segmented: {
+    list: "grid auto-cols-fr grid-flow-col gap-1 rounded-lg bg-muted p-1",
+    tab: "justify-center rounded-md px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground aria-selected:bg-background aria-selected:text-foreground aria-selected:shadow-sm",
+  },
 };
 
 // items: [{ value, label, icon? }]
