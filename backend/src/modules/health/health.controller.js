@@ -20,12 +20,26 @@ export const getDatabaseHealth = async (req, res) => {
       latencyMs,
       timestamp: new Date().toISOString(),
     });
+
   } catch (error) {
+    
+    console.error("[db] Health check failed:", error.message);
+
     res.status(503).json({
       status: "error",
       message: "Database connection failed",
       timestamp: new Date().toISOString(),
     });
-    console.error("[db] Health check failed:", error.message);
   }
+};
+
+export const getAuthHealth = (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Authentication successful",
+    user: {
+      sub: req.user.sub,
+      email: req.user.email,
+    },
+  });
 };

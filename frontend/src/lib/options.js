@@ -3,9 +3,7 @@
 export const CURRENCY_OPTIONS = [
   { value: "CAD", label: "CAD — Canadian Dollar" },
   { value: "USD", label: "USD — US Dollar" },
-  { value: "EUR", label: "EUR — Euro" },
-  { value: "GBP", label: "GBP — British Pound" },
-  { value: "AUD", label: "AUD — Australian Dollar" },
+  { value: "EGP", label: "EGP — Egyptian Pound" },
 ];
 
 export const MONTH_OPTIONS = [

@@ -8,10 +8,10 @@ export const ACCOUNT_TYPES = [
     tone: "bg-chart-2/10 text-chart-2",
   },
   {
-    value: "savings",
-    label: "Savings",
-    icon: PiggyBank,
-    tone: "bg-chart-1/10 text-chart-1",
+    value: "credit_card",
+    label: "Credit card",
+    icon: CreditCard,
+    tone: "bg-chart-4/10 text-chart-4",
   },
   {
     value: "cash",
@@ -20,10 +20,10 @@ export const ACCOUNT_TYPES = [
     tone: "bg-chart-3/10 text-chart-3",
   },
   {
-    value: "credit_card",
-    label: "Credit card",
-    icon: CreditCard,
-    tone: "bg-chart-4/10 text-chart-4",
+    value: "savings",
+    label: "Savings",
+    icon: PiggyBank,
+    tone: "bg-chart-1/10 text-chart-1",
   },
 ];
 
