@@ -1,6 +1,7 @@
 import { Router } from "express";
 
-import requireAuth from "../../middleware/auth.js";
+import requireAuth, { allowApiToken } from "../../middleware/auth.js";
+import idempotency from "../../middleware/idempotency.js";
 import validate from "../../middleware/validate.js";
 
 import {
@@ -26,10 +27,21 @@ import {
 
 const router = Router();
 
+// Adding an income or expense also works with a personal API token (e.g. an
+// iPhone Shortcut). Token requests may send an Idempotency-Key header so a
+// retry cannot create a duplicate.
+router.post(
+  "/",
+  allowApiToken,
+  idempotency,
+  validate(createTransactionSchema),
+  createTransaction,
+);
+
+// Everything else needs a real sign-in.
 router.use(requireAuth);
 
 router.get("/", validate(listTransactionsSchema), getTransactions);
-router.post("/", validate(createTransactionSchema), createTransaction);
 
 // Transfers between the user's own accounts.
 router.post("/transfers", validate(createTransferSchema), createTransfer);

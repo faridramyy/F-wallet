@@ -13,7 +13,13 @@ app.use(
   cors({
     origin: env.corsOrigin,
     methods: ["GET", "POST", "PATCH", "PUT", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-ID-Token"],
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "X-ID-Token",
+      "Idempotency-Key",
+    ],
+    exposedHeaders: ["Idempotent-Replayed"],
   }),
 );
 

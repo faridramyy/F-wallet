@@ -2,8 +2,23 @@ import { CognitoJwtVerifier } from "aws-jwt-verify";
 import { JwtExpiredError } from "aws-jwt-verify/error";
 import env from "../config/env.js";
 import { createError } from "../utils/http-error.js";
+import {
+  TOKEN_PREFIX,
+  findTokenByValue,
+  touchToken,
+} from "../modules/api-tokens/api-tokens.service.js";
 
-// Every protected request carries two Cognito tokens from the same sign-in:
+// Two ways to authenticate:
+//
+// 1. requireAuth (every protected route): a Cognito sign-in.
+// 2. allowApiToken (only on POST /transactions): a Cognito sign-in OR a
+//    personal API token ("Authorization: Bearer fw_..."), for scripts such
+//    as an iPhone Shortcut. A token can add transactions and nothing else.
+//
+// Either way req.user is { sub, email, ... }; token requests also carry
+// req.user.apiTokenId.
+//
+// Every Cognito request carries two Cognito tokens from the same sign-in:
 //
 //   Authorization: Bearer <access token>  -> proves the caller may use the API
 //   X-ID-Token:    <id token>             -> carries the verified email
@@ -30,10 +45,11 @@ const idVerifier = CognitoJwtVerifier.create({
 // doesn't wait for them, and so a wrong pool ID shows up in the logs early.
 export const warmUpAuth = () => accessVerifier.hydrate();
 
+const bearerToken = (req) =>
+  /^Bearer\s+(\S+)$/i.exec(req.headers.authorization ?? "")?.[1];
+
 const requireAuth = async (req, res, next) => {
-  const accessToken = /^Bearer\s+(\S+)$/i.exec(
-    req.headers.authorization ?? "",
-  )?.[1];
+  const accessToken = bearerToken(req);
   const idToken = req.headers["x-id-token"];
 
   if (!accessToken || typeof idToken !== "string" || !idToken) {
@@ -88,6 +104,49 @@ const requireAuth = async (req, res, next) => {
   };
 
   next();
+};
+
+// Accepts a personal API token as well as a Cognito sign-in.
+export const allowApiToken = async (req, res, next) => {
+  const token = bearerToken(req);
+
+  if (!token?.startsWith(TOKEN_PREFIX)) {
+    return requireAuth(req, res, next);
+  }
+
+  try {
+    const found = await findTokenByValue(token);
+
+    if (!found) {
+      return next(createError("Invalid API token.", 401, "token_invalid"));
+    }
+    if (found.status !== "active") {
+      return next(
+        createError("This API token was revoked.", 401, "token_revoked"),
+      );
+    }
+    if (found.expires_at && new Date(found.expires_at) <= new Date()) {
+      return next(
+        createError("This API token has expired.", 401, "token_expired"),
+      );
+    }
+
+    req.user = {
+      sub: found.user_id,
+      email: found.email,
+      scopes: [],
+      apiTokenId: found.api_token_id,
+    };
+
+    // Bookkeeping only: a failure here must not fail the request.
+    touchToken(found.api_token_id).catch((error) =>
+      console.error("[auth] Could not record token use:", error.message),
+    );
+
+    next();
+  } catch (error) {
+    next(error);
+  }
 };
 
 export default requireAuth;

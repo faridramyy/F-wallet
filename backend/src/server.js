@@ -2,6 +2,7 @@ import app from "./app.js";
 import env from "./config/env.js";
 import { checkConnection, closePool } from "./database/db.js";
 import { warmUpAuth } from "./middleware/auth.js";
+import { deleteExpiredIdempotencyKeys } from "./middleware/idempotency.js";
 
 const server = app.listen(env.port, () => {
   console.log(
@@ -29,6 +30,22 @@ const server = app.listen(env.port, () => {
     });
 });
 
+// Idempotency keys only matter for 24 hours; clear out old ones hourly.
+const CLEANUP_INTERVAL_MS = 60 * 60 * 1000;
+
+const cleanupTimer = setInterval(() => {
+  deleteExpiredIdempotencyKeys()
+    .then((count) => {
+      if (count > 0) console.log(`Deleted ${count} expired idempotency keys`);
+    })
+    .catch((error) =>
+      console.error("Idempotency key cleanup failed:", error.message),
+    );
+}, CLEANUP_INTERVAL_MS);
+
+// Don't keep the process alive just for the cleanup timer.
+cleanupTimer.unref();
+
 let isShuttingDown = false;
 
 const shutdown = (signal) => {
@@ -37,6 +54,7 @@ const shutdown = (signal) => {
   }
 
   isShuttingDown = true;
+  clearInterval(cleanupTimer);
 
   console.log(`${signal} received. Starting graceful shutdown...`);
 

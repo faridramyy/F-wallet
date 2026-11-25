@@ -13,6 +13,7 @@ import {
   SettingsGroup,
 } from "../components/settings/SettingsGroup";
 import { ThemePicker } from "../components/settings/ThemePicker";
+import { ApiTokensSection } from "../components/settings/ApiTokens";
 import { useNotifications } from "../components/providers/useNotifications";
 import { createApi } from "../lib/api";
 import { getCognitoLogoutUrl } from "../lib/authConfig";
@@ -286,6 +287,8 @@ export function SettingsPage({
           </div>
         </SettingRow>
       </SettingsGroup>
+
+      <ApiTokensSection />
 
       {/* Appears only with unsaved changes; stays above the phone nav bar. */}
       <div
