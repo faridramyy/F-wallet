@@ -21,6 +21,7 @@ export const hashToken = (token) =>
 export const apiTokenColumns = `
   api_token_id,
   token_name,
+  token_last_four,
   status,
   last_used_at,
   expires_at,

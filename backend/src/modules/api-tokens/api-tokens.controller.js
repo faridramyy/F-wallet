@@ -74,17 +74,26 @@ export const createApiToken = async (req, res, next) => {
           user_id,
           token_name,
           token_hash,
+          token_last_four,
           expires_at
         )
         VALUES (
-          $1, $2, $3, $4,
+          $1, $2, $3, $4, $6,
           CASE WHEN $5::int IS NULL THEN NULL
                ELSE now() + make_interval(days => $5::int)
           END
         )
         RETURNING ${apiTokenColumns}
       `,
-      [randomUUID(), userId, tokenName, hashToken(token), expiresInDays],
+      [
+        randomUUID(),
+        userId,
+        tokenName,
+        hashToken(token),
+        expiresInDays,
+        // Shown in Settings to tell tokens apart; too short to guess from.
+        token.slice(-4),
+      ],
     );
 
     res.status(201).json({

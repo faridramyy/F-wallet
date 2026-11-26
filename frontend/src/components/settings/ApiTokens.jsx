@@ -347,6 +347,14 @@ function TokenRow({ token, onRevoke }) {
           )}
         >
           <span className="truncate">{token.token_name}</span>
+          {token.token_last_four && (
+            <code
+              className="shrink-0 text-xs font-normal text-muted-foreground"
+              title="Last 4 characters of the token"
+            >
+              fw_…{token.token_last_four}
+            </code>
+          )}
           {status && (
             <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-normal">
               {status}
