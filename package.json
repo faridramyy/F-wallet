@@ -1,5 +1,5 @@
 {
-  "name": "f-wallet-dev",
+  "name": "f-wallet",
   "version": "1.0.0",
   "private": true,
   "description": "Personal finance tracker",
@@ -19,7 +19,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/faridramyy/F-wallet-dev.git"
+    "url": "git+https://github.com/faridramyy/F-wallet.git"
   },
-  "license": "ISC"
+  "license": "ISC",
+  "devDependencies": {
+    "prettier": "3.10.1"
+  }
 }

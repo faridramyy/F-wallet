@@ -1,0 +1,57 @@
+name: CI
+
+# Checks every pull request and every push to a branch other than main.
+# Pushes to main run these same checks through deploy.yml before deploying.
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint, format and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Check formatting (Prettier)
+        run: npx prettier --check frontend backend
+
+      - name: Lint frontend (ESLint)
+        run: npm run lint
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check backend syntax
+        run: find backend/src -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      # Loads every backend module (routes, middleware, database code) without
+      # connecting to anything, so a broken import fails here, not in AWS.
+      - name: Load backend
+        env:
+          NODE_ENV: test
+          COGNITO_USER_POOL_ID: ca-central-1_Placeholder
+          COGNITO_CLIENT_ID: placeholder
+        run: node -e 'await import("./backend/src/app.js"); console.log("Backend loads")'
+
+      - name: Package Lambda
+        run: ./scripts/package-lambda.sh

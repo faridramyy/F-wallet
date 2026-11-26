@@ -1,1 +1,1 @@
-# F-wallet-dev
+# F-wallet

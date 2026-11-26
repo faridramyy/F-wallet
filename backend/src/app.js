@@ -23,7 +23,7 @@ app.use(
   }),
 );
 
-app.use(morgan("dev"));
+app.use(morgan(env.nodeEnv === "production" ? "tiny" : "dev"));
 app.use(express.json());
 
 app.use("/api", apiRoutes);
