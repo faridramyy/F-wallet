@@ -346,7 +346,7 @@ export const createTransaction = async (req, res, next) => {
           )
           VALUES (
             $1, $2, $3, $4, 'posted', $5, $6::date, $6::date,
-            $7, $8, 'manual', $9
+            $7, $8, $10, $9
           )
         `,
         [
@@ -359,6 +359,8 @@ export const createTransaction = async (req, res, next) => {
           data.description ?? null,
           data.merchant ?? null,
           data.notes ?? null,
+          // Added with a personal API token (the iPhone Shortcut) or in the app.
+          req.user.apiTokenId ? "iphone_shortcut" : "manual",
         ],
       );
 
