@@ -27,7 +27,6 @@ export function FormDialog({
   submitLabel,
   submitDisabled = false,
   saving = false,
-  error,
   size = "md",
   children,
 }) {
@@ -52,12 +51,6 @@ export function FormDialog({
         <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-x-hidden overflow-y-auto p-5">
             {children}
-
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
           </div>
 
           <DialogFooter className="mx-0 mb-0">

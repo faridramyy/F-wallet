@@ -35,7 +35,6 @@ function BudgetAllocationDialogContent({
   const [initialAmounts] = useState(() => getInitialAmounts(budget));
   const [amounts, setAmounts] = useState(initialAmounts);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const expenseCategories = categories.filter(
     (category) => category.category_type === "expense" && !category.is_archived,
@@ -69,7 +68,7 @@ function BudgetAllocationDialogContent({
       const cents = centsFor(category);
 
       if (cents === null) {
-        return setError(
+        return toast.error(
           `Enter a valid amount with no more than two decimal places for "${category.category_name}".`,
         );
       }
@@ -89,7 +88,7 @@ function BudgetAllocationDialogContent({
       toast.success("Budget allocations saved.");
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save allocations.");
+      toast.error(err.message || "Unable to save allocations.");
       setSaving(false);
     }
   }
@@ -107,7 +106,6 @@ function BudgetAllocationDialogContent({
       submitLabel="Save allocations"
       submitDisabled={expenseCategories.length === 0}
       saving={saving}
-      error={error}
     >
       {expenseCategories.length === 0 ? (
         <EmptyState
@@ -147,7 +145,6 @@ function BudgetAllocationDialogContent({
                       ...current,
                       [category.category_id]: event.target.value,
                     }));
-                    setError("");
                   }}
                 />
               </div>

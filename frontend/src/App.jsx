@@ -1,4 +1,4 @@
-import { Suspense, lazy, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
@@ -10,6 +10,7 @@ import { MobileNavigation } from "./components/layout/MobileNavigation";
 import { NotificationProvider } from "./components/providers/NotificationProvider";
 import { AppDataProvider } from "./components/providers/AppDataProvider";
 import { useAppData } from "./components/providers/useAppData";
+import { useNotifications } from "./components/providers/useNotifications";
 import { AddTransactionDialog } from "./components/transactions/AddTransactionDialog";
 import { Button } from "./components/ui/button";
 import { FullScreenMessage, Spinner } from "./components/ui/spinner";
@@ -72,6 +73,7 @@ function AppShell() {
   const [transactionDialog, setTransactionDialog] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [themePreview, setThemePreview] = useState(null);
+  const { toast } = useNotifications();
 
   // The theme comes from the database. An unsaved preview from the settings
   // page wins until it is saved or discarded, and is not remembered.
@@ -79,6 +81,11 @@ function AppShell() {
     themePreview ?? settings?.theme ?? getStoredTheme(),
     themePreview === null,
   );
+
+  // A failed load shows a "Try again" screen; the reason goes in a toast.
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error, toast]);
 
   const title =
     navigation.find((item) => item.path === location.pathname)?.label ??
@@ -104,7 +111,7 @@ function AppShell() {
 
   if (error) {
     return (
-      <FullScreenMessage message="We couldn't load your data." detail={error}>
+      <FullScreenMessage message="We couldn't load your data.">
         <Button variant="outline" onClick={reload}>
           Try again
         </Button>
@@ -115,7 +122,7 @@ function AppShell() {
   const contentOffset = sidebarOpen ? "md:pl-62" : "md:pl-19";
 
   return (
-    <NotificationProvider>
+    <>
       <div className="min-h-screen bg-background text-foreground">
         <AppSidebar sidebarOpen={sidebarOpen} />
         <MobileNavigation />
@@ -196,11 +203,21 @@ function AppShell() {
           categories={categories}
         />
       </div>
+    </>
+  );
+}
+
+// Toasts and confirm dialogs work on every screen, including sign-in and the
+// "couldn't load your data" screen.
+export default function App() {
+  return (
+    <NotificationProvider>
+      <AuthGate />
     </NotificationProvider>
   );
 }
 
-export default function App() {
+function AuthGate() {
   const auth = useAuth();
 
   if (auth.isLoading) {

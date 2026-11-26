@@ -1,10 +1,21 @@
+import { useEffect } from "react";
 import { useAuth } from "react-oidc-context";
 
 import { BrandMark } from "../components/Logo";
 import { Button } from "../components/ui/button";
+import { useNotifications } from "../components/providers/useNotifications";
 
 export default function LoginPage() {
   const auth = useAuth();
+  const { toast } = useNotifications();
+  const signInError = auth.error?.message;
+
+  useEffect(() => {
+    if (auth.error) {
+      toast.error(signInError || "Unable to sign in. Please try again.");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [auth.error]);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-background px-6 py-12 text-foreground">
@@ -31,12 +42,6 @@ export default function LoginPage() {
               Sign in to access your personal finance dashboard.
             </p>
           </div>
-
-          {auth.error && (
-            <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-              {auth.error.message || "Unable to sign in. Please try again."}
-            </div>
-          )}
 
           <Button
             size="lg"

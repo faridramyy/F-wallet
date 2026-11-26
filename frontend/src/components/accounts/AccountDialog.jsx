@@ -50,14 +50,12 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
   const [initialForm] = useState(() => getInitialForm(account, currency));
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const isCreditCard = form.account_type === "credit_card";
   const isEditing = Boolean(account);
 
   const updateField = (name, value) => {
     setForm((current) => ({ ...current, [name]: value }));
-    setError("");
   };
 
   // Props for a text input bound to form[name].
@@ -95,12 +93,12 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
         ? dollarsToCents(form.credit_limit)
         : null;
 
-    if (!accountName) return setError("Enter an account name.");
+    if (!accountName) return toast.error("Enter an account name.");
     if (openingBalanceCents === null) {
-      return setError("Enter a valid opening balance.");
+      return toast.error("Enter a valid opening balance.");
     }
     if (isCreditCard && form.credit_limit !== "" && creditLimitCents === null) {
-      return setError("Enter a valid credit limit.");
+      return toast.error("Enter a valid credit limit.");
     }
 
     const creditCardValue = (value) => (isCreditCard && value ? value : null);
@@ -127,7 +125,7 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
       toast.success(isEditing ? "Account updated." : "Account created.");
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save account.");
+      toast.error(err.message || "Unable to save account.");
       setSaving(false);
     }
   }
@@ -141,7 +139,6 @@ function AccountDialogContent({ onClose, onSave, currency = "CAD", account }) {
       submitLabel={isEditing ? "Save changes" : "Create account"}
       submitDisabled={!form.account_name.trim()}
       saving={saving}
-      error={error}
     >
       <Field label="Account name" htmlFor="account_name">
         <Input

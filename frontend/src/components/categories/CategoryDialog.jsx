@@ -32,13 +32,11 @@ function CategoryDialogContent({
   const [initialForm] = useState(() => getInitialForm(category));
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const isEditing = Boolean(category);
 
   const updateField = (changes) => {
     setForm((current) => ({ ...current, ...changes }));
-    setError("");
   };
 
   const bind = (name) => ({
@@ -69,7 +67,7 @@ function CategoryDialogContent({
     event.preventDefault();
 
     if (!form.category_name.trim()) {
-      return setError("Enter a category name.");
+      return toast.error("Enter a category name.");
     }
 
     setSaving(true);
@@ -86,7 +84,7 @@ function CategoryDialogContent({
       toast.success(isEditing ? "Category updated." : "Category created.");
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save category.");
+      toast.error(err.message || "Unable to save category.");
       setSaving(false);
     }
   }
@@ -99,7 +97,6 @@ function CategoryDialogContent({
       onSubmit={handleSubmit}
       submitLabel={isEditing ? "Save changes" : "Create category"}
       saving={saving}
-      error={error}
     >
       <Field label="Category name" htmlFor="category_name">
         <Input

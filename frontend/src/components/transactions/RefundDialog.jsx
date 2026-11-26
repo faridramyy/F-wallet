@@ -49,11 +49,9 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
   }));
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const updateField = (changes) => {
     setForm((current) => ({ ...current, ...changes }));
-    setError("");
   };
 
   function handleClose() {
@@ -73,15 +71,15 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
     const amountCents = dollarsToCents(form.amount);
 
     if (amountCents === null || amountCents <= 0) {
-      return setError("Enter a valid amount, for example 12.50.");
+      return toast.error("Enter a valid amount, for example 12.50.");
     }
     if (maxCents !== null && amountCents > maxCents) {
-      return setError(
+      return toast.error(
         `You can refund at most ${formatCents(maxCents, currency)}.`,
       );
     }
     if (!form.account_id) {
-      return setError("Choose the account the money went back to.");
+      return toast.error("Choose the account the money went back to.");
     }
 
     const payload = {
@@ -122,7 +120,7 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
       toast.success(isEditing ? "Refund updated." : "Refund recorded.");
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save refund.");
+      toast.error(err.message || "Unable to save refund.");
       setSaving(false);
     }
   }
@@ -139,7 +137,6 @@ function RefundDialogContent({ expense, refund, accounts, onClose, onSave }) {
       onSubmit={handleSubmit}
       submitLabel={isEditing ? "Save changes" : "Record refund"}
       saving={saving}
-      error={error}
     >
       {expense && (
         <dl className="grid grid-cols-3 gap-3 rounded-lg border border-border bg-muted/40 p-3 text-sm">

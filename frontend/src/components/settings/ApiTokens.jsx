@@ -132,15 +132,14 @@ function CopyField({ label, value, mono = true }) {
 
 function CreateTokenDialog({ onClose, onCreated }) {
   const auth = useAuth();
+  const { toast } = useNotifications();
   const [name, setName] = useState("");
   const [expiry, setExpiry] = useState("90");
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   async function handleSubmit(event) {
     event.preventDefault();
     setSaving(true);
-    setError("");
 
     try {
       const { data } = await createApi(auth).post("/api-tokens", {
@@ -149,7 +148,7 @@ function CreateTokenDialog({ onClose, onCreated }) {
       });
       onCreated(data);
     } catch (requestError) {
-      setError(requestError.message || "Couldn't create the token.");
+      toast.error(requestError.message || "Couldn't create the token.");
       setSaving(false);
     }
   }
@@ -163,7 +162,6 @@ function CreateTokenDialog({ onClose, onCreated }) {
       submitLabel="Create token"
       submitDisabled={!name.trim()}
       saving={saving}
-      error={error}
     >
       <Field label="Name" htmlFor="token_name" hint="So you know what uses it.">
         <Input
@@ -399,7 +397,11 @@ export function ApiTokensSection() {
     createApi(auth)
       .get("/api-tokens")
       .then(({ data }) => !cancelled && setTokens(data.api_tokens))
-      .catch(() => !cancelled && setLoadFailed(true));
+      .catch((error) => {
+        if (cancelled) return;
+        setLoadFailed(true);
+        toast.error(error.message || "Couldn't load your API tokens.");
+      });
 
     return () => {
       cancelled = true;
@@ -448,9 +450,7 @@ export function ApiTokensSection() {
   if (loadFailed) {
     body = (
       <div className="flex items-center justify-between gap-3 px-4 py-4 sm:px-5">
-        <p className="text-sm text-muted-foreground">
-          We couldn't load your tokens.
-        </p>
+        <p className="text-sm text-muted-foreground">Tokens didn't load.</p>
         <Button variant="outline" size="sm" onClick={handleRetry}>
           Try again
         </Button>

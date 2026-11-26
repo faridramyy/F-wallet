@@ -116,7 +116,6 @@ function AddTransactionDialogContent({
   const [form, setForm] = useState(initialForm);
   const [showNotes, setShowNotes] = useState(Boolean(initialForm.notes));
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const type = form.transaction_type;
   const isEditing = Boolean(transaction);
@@ -149,7 +148,6 @@ function AddTransactionDialogContent({
 
   function updateField(changes) {
     setForm((current) => ({ ...current, ...changes }));
-    setError("");
   }
 
   function changeType(nextType) {
@@ -204,17 +202,17 @@ function AddTransactionDialogContent({
     const amountCents = dollarsToCents(form.amount);
 
     if (amountCents === null || amountCents <= 0) {
-      return setError("Enter a valid amount, for example 12.50.");
+      return toast.error("Enter a valid amount, for example 12.50.");
     }
     if (!form.account_id) {
-      return setError(
+      return toast.error(
         isTransfer
           ? "Choose the account to move money from."
           : "Choose an account.",
       );
     }
     if (isTransfer && !form.to_account_id) {
-      return setError("Choose the account to move money to.");
+      return toast.error("Choose the account to move money to.");
     }
 
     let body = toPayload(form, amountCents);
@@ -246,7 +244,7 @@ function AddTransactionDialogContent({
       toast.success(`${label} ${isEditing ? "updated" : "added"}.`);
       close();
     } catch (err) {
-      setError(err.message || "Unable to save transaction.");
+      toast.error(err.message || "Unable to save transaction.");
       setSaving(false);
     }
   }
@@ -266,7 +264,6 @@ function AddTransactionDialogContent({
       submitLabel={isEditing ? "Save changes" : `Add ${noun}`}
       submitDisabled={needsAccounts}
       saving={saving}
-      error={error}
     >
       {tabs.length > 1 && (
         <TabBar

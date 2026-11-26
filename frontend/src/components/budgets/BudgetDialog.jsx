@@ -25,7 +25,6 @@ function BudgetDialogContent({ budget, onClose, onSave }) {
   const [initialForm] = useState(() => getInitialForm(budget));
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   const isEditing = Boolean(budget);
 
@@ -34,7 +33,6 @@ function BudgetDialogContent({ budget, onClose, onSave }) {
     value: form[name],
     onChange: (event) => {
       setForm((current) => ({ ...current, [name]: event.target.value }));
-      setError("");
     },
   });
 
@@ -56,11 +54,11 @@ function BudgetDialogContent({ budget, onClose, onSave }) {
     const month = Number(form.budget_month);
 
     if (!Number.isInteger(year) || year < 2000 || year > 9999) {
-      return setError("Enter a valid year between 2000 and 9999.");
+      return toast.error("Enter a valid year between 2000 and 9999.");
     }
 
     if (!Number.isInteger(month) || month < 1 || month > 12) {
-      return setError("Select a valid month.");
+      return toast.error("Select a valid month.");
     }
 
     setSaving(true);
@@ -75,7 +73,7 @@ function BudgetDialogContent({ budget, onClose, onSave }) {
       toast.success(isEditing ? "Budget updated." : "Budget created.");
       onClose();
     } catch (err) {
-      setError(err.message || "Unable to save budget.");
+      toast.error(err.message || "Unable to save budget.");
       setSaving(false);
     }
   }
@@ -88,7 +86,6 @@ function BudgetDialogContent({ budget, onClose, onSave }) {
       onSubmit={handleSubmit}
       submitLabel={isEditing ? "Save changes" : "Create budget"}
       saving={saving}
-      error={error}
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Month" htmlFor="budget_budget_month">
