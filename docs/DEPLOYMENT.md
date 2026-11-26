@@ -176,6 +176,16 @@ Keep the `http://localhost:5173` entries for local development.
 Then edit its **Trust relationships** so only the approved `production`
 environment of this repository can use it:
 
+This repository uses GitHub's immutable subject claims: the repository is
+identified by its owner and repository IDs, not by name, so renaming either
+never breaks (or hands over) the role. Check the prefix with:
+
+```bash
+gh api repos/faridramyy/F-wallet/actions/oidc/customization/sub
+```
+
+The `sub` is that `sub_claim_prefix` followed by `:environment:production`.
+
 ```json
 {
   "Version": "2012-10-17",
@@ -189,7 +199,7 @@ environment of this repository can use it:
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:faridramyy/F-wallet:environment:production"
+          "token.actions.githubusercontent.com:sub": "repo:faridramyy@68161438/F-wallet@1460880005:environment:production"
         }
       }
     }
@@ -206,10 +216,7 @@ Add an **inline policy** with only what the deploy does:
     {
       "Sid": "UpdateApiCode",
       "Effect": "Allow",
-      "Action": [
-        "lambda:UpdateFunctionCode",
-        "lambda:GetFunctionConfiguration"
-      ],
+      "Action": ["lambda:UpdateFunctionCode", "lambda:GetFunction"],
       "Resource": "arn:aws:lambda:ca-central-1:<ACCOUNT_ID>:function:f-wallet-api"
     },
     {
