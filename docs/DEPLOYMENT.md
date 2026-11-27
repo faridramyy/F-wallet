@@ -31,6 +31,60 @@ jobs_. It deploys that run's commit again.
 
 ---
 
+## Current production setup
+
+Set up on 2026-11-27 with the AWS CLI in **AWS CloudShell** (ca-central-1),
+signed in as `farid-admin`, following the one-time setup below. Leftovers
+from an earlier attempt were deleted first: the role
+`f-wallet-api-role-979rnlnp`, the log group `/aws/lambda/f-wallet-api`, a
+CloudFront origin access control, and the DSQL mapping for the old role
+`role/f-wallet-api`.
+
+| What                    | Value                                                                          |
+| ----------------------- | ------------------------------------------------------------------------------ |
+| App (frontend)          | https://ds20dfzroj2qz.cloudfront.net                                           |
+| API (backend)           | https://kefcjdthb53p5utkghr3hpl5py0tkrhu.lambda-url.ca-central-1.on.aws/api/v1 |
+| Lambda function         | `f-wallet-api` (Node.js 24.x, arm64, 512 MB, 15 s)                             |
+| Lambda execution role   | `f-wallet-api-role`: basic logging + inline `dsql-connect`                     |
+| DSQL grant              | `AWS IAM GRANT f_wallet_app TO '…:role/f-wallet-api-role'`                     |
+| S3 bucket               | `f-wallet-frontend-422673326027` (all public access blocked)                   |
+| CloudFront distribution | `E28L0LDC43UA7U`, origin access control `f-wallet-frontend-oac`                |
+| Hourly schedule         | `f-wallet-cleanup-idempotency-keys`, role `f-wallet-scheduler-role`            |
+| GitHub OIDC provider    | `token.actions.githubusercontent.com`                                          |
+| GitHub deploy role      | `f-wallet-github-deploy`: inline policy `deploy`                               |
+| Cognito app client      | callback and sign-out URLs: `http://localhost:5173/` and the app URL + `/`     |
+| GitHub environment      | `production`: reviewer `faridramyy`, branch `main`, 10 variables               |
+
+Differences from the steps below:
+
+- **Roles have fixed names** (`f-wallet-api-role`, `f-wallet-scheduler-role`)
+  instead of the console's generated ones.
+- **Function URL permissions:** the URL needs two resource-policy statements:
+  `lambda:InvokeFunctionUrl` and `lambda:InvokeFunction` (with
+  `--invoked-via-function-url`). The console adds both; with the CLI, add
+  both yourself.
+- **Reserved concurrency is not set.** New accounts often can't reserve any.
+- **Cognito sign-out URL has a trailing slash.** The app sends
+  `logout_uri=<app URL>/`, so the sign-out URL ends in `/` like the callback.
+- **The Deploy workflow had been disabled** in GitHub; it was enabled again.
+- **First deploy:** the function was created with placeholder code (it
+  answers 503). The first Deploy run (Actions run `45973241592`, approved
+  through the API) replaced it with the real backend.
+
+Checked after that deploy:
+
+- `/health` and `/health/db` answer `ok`, and the database user is
+  `f_wallet_app`.
+- CORS allows the app URL.
+- Direct links such as `/groceries` load.
+- Signing in and loading data work in the live app.
+
+**Cognito update warning:** `update-user-pool-client` resets every setting
+you leave out, so read the client first and send all of its settings back
+with only the URLs changed.
+
+---
+
 ## One-time setup
 
 Do the steps in order; later steps use values from earlier ones. Write the
@@ -154,7 +208,8 @@ pages → Edit**
 
 - Allowed callback URLs: add `https://d1234abcd.cloudfront.net/` (with the
   trailing slash)
-- Allowed sign-out URLs: add `https://d1234abcd.cloudfront.net` (no slash)
+- Allowed sign-out URLs: add `https://d1234abcd.cloudfront.net/` (with the
+  trailing slash; the app sends `logout_uri=<app URL>/`)
 
 Keep the `http://localhost:5173` entries for local development.
 
