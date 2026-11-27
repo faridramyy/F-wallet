@@ -34,26 +34,31 @@ jobs_. It deploys that run's commit again.
 ## Current production setup
 
 Set up on 2026-11-27 with the AWS CLI in **AWS CloudShell** (ca-central-1),
-signed in as `farid-admin`, following the one-time setup below. Leftovers
+signed in as an admin IAM user, following the one-time setup below. Leftovers
 from an earlier attempt were deleted first: the role
-`f-wallet-api-role-979rnlnp`, the log group `/aws/lambda/f-wallet-api`, a
+`f-wallet-api-role-…`, the log group `/aws/lambda/f-wallet-api`, a
 CloudFront origin access control, and the DSQL mapping for the old role
-`role/f-wallet-api`.
+`role/f-wallet-api`. In Cognito, the URL of the deleted CloudFront
+distribution was replaced by the new app URL.
 
-| What                    | Value                                                                          |
-| ----------------------- | ------------------------------------------------------------------------------ |
-| App (frontend)          | https://ds20dfzroj2qz.cloudfront.net                                           |
-| API (backend)           | https://kefcjdthb53p5utkghr3hpl5py0tkrhu.lambda-url.ca-central-1.on.aws/api/v1 |
-| Lambda function         | `f-wallet-api` (Node.js 24.x, arm64, 512 MB, 15 s)                             |
-| Lambda execution role   | `f-wallet-api-role`: basic logging + inline `dsql-connect`                     |
-| DSQL grant              | `AWS IAM GRANT f_wallet_app TO '…:role/f-wallet-api-role'`                     |
-| S3 bucket               | `f-wallet-frontend-422673326027` (all public access blocked)                   |
-| CloudFront distribution | `E28L0LDC43UA7U`, origin access control `f-wallet-frontend-oac`                |
-| Hourly schedule         | `f-wallet-cleanup-idempotency-keys`, role `f-wallet-scheduler-role`            |
-| GitHub OIDC provider    | `token.actions.githubusercontent.com`                                          |
-| GitHub deploy role      | `f-wallet-github-deploy`: inline policy `deploy`                               |
-| Cognito app client      | callback and sign-out URLs: `http://localhost:5173/` and the app URL + `/`     |
-| GitHub environment      | `production`: reviewer `faridramyy`, branch `main`, 10 variables               |
+Account-specific values (account ID, URLs, resource IDs) are not written
+here. They live in the GitHub `production` environment variables (see
+[step 6](#6-github-environment)) and in `backend/.env` / `frontend/.env`.
+
+| What                    | Value                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| App (frontend)          | GitHub variable `APP_URL`                                                            |
+| API (backend)           | GitHub variable `VITE_API_BASE_URL`                                                  |
+| Lambda function         | `f-wallet-api` (Node.js 24.x, arm64, 512 MB, 15 s)                                   |
+| Lambda execution role   | `f-wallet-api-role`: basic logging + inline `dsql-connect`                           |
+| DSQL grant              | `AWS IAM GRANT f_wallet_app TO '…:role/f-wallet-api-role'`                           |
+| S3 bucket               | `f-wallet-frontend-<ACCOUNT_ID>` (all public access blocked)                         |
+| CloudFront distribution | GitHub variable `CLOUDFRONT_DISTRIBUTION_ID`; access control `f-wallet-frontend-oac` |
+| Hourly schedule         | `f-wallet-cleanup-idempotency-keys`, role `f-wallet-scheduler-role`                  |
+| GitHub OIDC provider    | `token.actions.githubusercontent.com`                                                |
+| GitHub deploy role      | `f-wallet-github-deploy`: inline policy `deploy`                                     |
+| Cognito app client      | callback and sign-out URLs: `http://localhost:5173/` and the app URL + `/`           |
+| GitHub environment      | `production`: you as required reviewer, branch `main`, 10 variables                  |
 
 Differences from the steps below:
 
@@ -68,8 +73,7 @@ Differences from the steps below:
   `logout_uri=<app URL>/`, so the sign-out URL ends in `/` like the callback.
 - **The Deploy workflow had been disabled** in GitHub; it was enabled again.
 - **First deploy:** the function was created with placeholder code (it
-  answers 503). The first Deploy run (Actions run `45973241592`, approved
-  through the API) replaced it with the real backend.
+  answers 503). The first Deploy run (approved through the API) replaced it with the real backend.
 
 Checked after that deploy:
 
@@ -82,6 +86,67 @@ Checked after that deploy:
 **Cognito update warning:** `update-user-pool-client` resets every setting
 you leave out, so read the client first and send all of its settings back
 with only the URLs changed.
+
+---
+
+## AWS account
+
+The AWS account holds only F-Wallet resources, the account's own
+users, cost alerts, and the free defaults AWS creates in every account.
+Everything else was deleted on 2026-11-27.
+
+### What is in the account
+
+| Kind              | Items                                                                                                                                                     |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-Wallet          | everything in [Current production setup](#current-production-setup), plus the DSQL cluster (`DB_HOST` in `backend/.env`) and the Cognito user pool        |
+| IAM users         | an admin user for the console, and a development user whose keys are in `backend/.env`                                                                    |
+| Cost alerts       | budgets `My Zero-Spend Budget` and `Monthly $5 budget`, plus Cost Anomaly Detection (monitor and subscription)                                            |
+| Resource Explorer | aggregator index in ca-central-1 (searches every region)                                                                                                  |
+| Free AWS defaults | default VPC, subnets and security groups per region; default event buses, parameter groups, X-Ray and Athena settings; AWS-managed keys and service roles |
+
+**To list everything again**, run this in CloudShell. Resource Explorer
+covers every region, but not every resource type, so also check WAF,
+certificates, Route 53, alarms, SNS and SES directly.
+
+```bash
+aws resource-explorer-2 search --region ca-central-1 --query-string '*' \
+  --max-results 1000 --query 'Resources[].[ResourceType,Region,Arn]' --output text
+```
+
+### Deleted
+
+- **f-stamp** (another project): its DSQL cluster (deletion
+  protection turned off first), its Cognito user pool with its users and
+  domain, and its IAM user with its access key.
+- **Old `f-wallet` CloudFormation stack** from the September MongoDB version,
+  with its stored parameters. Its API Gateway and role were already gone, but
+  it still listed `f-wallet-api` and `/aws/lambda/f-wallet-api`, the names
+  the new function and its log group now use.
+  - A plain `delete-stack` would have deleted the live function.
+  - Adding `DeletionPolicy: Retain` first failed, because updating the stack
+    needed its missing role.
+  - What worked: delete the stack through a temporary role,
+    `cfn-f-wallet-cleanup`, that may only touch API Gateway and the old IAM
+    role. The Lambda and log-group deletions failed with AccessDenied, and
+    the next `delete-stack --retain-resources …` calls kept them out of the
+    deletion. The temporary role was removed afterwards.
+
+  The live function was unchanged: same `LastModified`, role and URL
+  permissions.
+
+### Cost
+
+- **Budgets** email the Gmail address on the zero-spend budget.
+  - `My Zero-Spend Budget` ($1): alerts when actual spend goes over $0.01.
+    It fires once a month, as soon as anything is spent.
+  - `Monthly $5 budget`, added on 2026-11-27: alerts when actual spend
+    passes 80% ($4), or when the month's forecast passes $5.
+- **November 2026:** $0.10, almost all AWS WAF ($0.089 on Nov 26–27). A web
+  ACL most likely came with the deleted CloudFront distribution of the earlier
+  attempt. No web ACL exists now; keep WAF off when creating distributions.
+- **Expected:** close to $0 a month at personal use. Lambda, CloudFront, S3,
+  DSQL and Cognito are all pay-per-use.
 
 ---
 
@@ -254,7 +319,7 @@ The `sub` is that `sub_claim_prefix` followed by `:environment:production`.
       "Condition": {
         "StringEquals": {
           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-          "token.actions.githubusercontent.com:sub": "repo:faridramyy@68161438/F-wallet@1460880005:environment:production"
+          "token.actions.githubusercontent.com:sub": "<sub_claim_prefix>:environment:production"
         }
       }
     }
