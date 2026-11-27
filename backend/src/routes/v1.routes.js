@@ -9,6 +9,7 @@ import budgetsRoutes from "../modules/budgets/budgets.routes.js";
 import transactionsRoutes from "../modules/transactions/transactions.routes.js";
 import bootstrapRoutes from "../modules/bootstrap/bootstrap.routes.js";
 import apiTokensRoutes from "../modules/api-tokens/api-tokens.routes.js";
+import groceriesRoutes from "../modules/groceries/groceries.routes.js";
 
 const router = Router();
 
@@ -21,5 +22,6 @@ router.use("/budgets", budgetsRoutes);
 router.use("/transactions", transactionsRoutes);
 router.use("/bootstrap", bootstrapRoutes);
 router.use("/api-tokens", apiTokensRoutes);
+router.use("/groceries", groceriesRoutes);
 
 export default router;

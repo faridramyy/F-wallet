@@ -5,18 +5,19 @@ import { IconButton } from "../ui/icon-button";
 import { formatMonthYear } from "../../lib/formatters";
 
 // Right-aligned ‹ November 2026 › with a jump back to the current month.
-//   value / min / max: { year, month }
-//   onChange(offset) is called with -1 or +1; onReset returns to `max`.
-export function MonthSwitcher({ value, min, max, onChange, onReset }) {
+//   value / min / max / today: { year, month }
+//   onChange(offset) is called with -1 or +1; onReset returns to `today`.
+export function MonthSwitcher({ value, min, max, today, onChange, onReset }) {
   const index = (m) => m.year * 12 + m.month;
   const atMin = index(value) <= index(min);
   const atMax = index(value) >= index(max);
+  const atToday = index(value) === index(today);
   const label = formatMonthYear(value.year, value.month);
 
   return (
     <div className="flex items-center justify-end gap-2">
       {/* Left of the month box, so the box stays put when it appears. */}
-      {!atMax && (
+      {!atToday && (
         <Button variant="ghost" size="sm" onClick={onReset}>
           This month
         </Button>

@@ -38,6 +38,10 @@ const CategoryPage = lazyNamed(
   () => import("./pages/CategoryPage"),
   "CategoryPage",
 );
+const GroceriesPage = lazyNamed(
+  () => import("./pages/GroceriesPage"),
+  "GroceriesPage",
+);
 const SettingsPage = lazyNamed(
   () => import("./pages/SettingsPage"),
   "SettingsPage",
@@ -174,6 +178,7 @@ function AppShell() {
                 />
                 <Route path="/accounts" element={<AccountsPage />} />
                 <Route path="/categories" element={<CategoryPage />} />
+                <Route path="/groceries" element={<GroceriesPage />} />
                 <Route
                   path="/settings"
                   element={

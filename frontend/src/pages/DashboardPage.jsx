@@ -13,6 +13,7 @@ import { MonthSwitcher } from "../components/common/MonthSwitcher";
 import { useAppData } from "../components/providers/useAppData";
 import {
   CASH_FLOW_MONTHS,
+  FUTURE_MONTHS,
   SELECTABLE_MONTHS,
   cumulativeDailySpending,
   getMonthContext,
@@ -34,9 +35,19 @@ export function DashboardPage() {
   const { accounts, currency, transactions } = useAppData();
 
   // The month every section below describes; defaults to the current one.
-  const latest = getMonthContext().current;
-  const earliest = shiftMonth(latest.year, latest.month, 1 - SELECTABLE_MONTHS);
-  const [selected, setSelected] = useState(latest);
+  // From SELECTABLE_MONTHS back to FUTURE_MONTHS ahead.
+  const thisMonthNow = getMonthContext().current;
+  const earliest = shiftMonth(
+    thisMonthNow.year,
+    thisMonthNow.month,
+    1 - SELECTABLE_MONTHS,
+  );
+  const furthest = shiftMonth(
+    thisMonthNow.year,
+    thisMonthNow.month,
+    FUTURE_MONTHS,
+  );
+  const [selected, setSelected] = useState(thisMonthNow);
 
   const { current, previous, today, days, isCurrent } = getSelectedMonthContext(
     selected.year,
@@ -73,11 +84,12 @@ export function DashboardPage() {
       <MonthSwitcher
         value={current}
         min={earliest}
-        max={latest}
+        max={furthest}
+        today={thisMonthNow}
         onChange={(offset) =>
           setSelected(shiftMonth(current.year, current.month, offset))
         }
-        onReset={() => setSelected(latest)}
+        onReset={() => setSelected(thisMonthNow)}
       />
 
       <OverviewCards

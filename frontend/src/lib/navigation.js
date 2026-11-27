@@ -3,6 +3,7 @@ import {
   CreditCard,
   LayoutDashboard,
   Settings,
+  ShoppingCart,
   Tags,
 } from "lucide-react";
 
@@ -33,6 +34,12 @@ export const navigation = [
     label: "Categories & Budgets",
     mobileLabel: "Categories",
     icon: Tags,
+  },
+  {
+    path: "/groceries",
+    label: "Groceries",
+    mobileLabel: "Groceries",
+    icon: ShoppingCart,
   },
   {
     path: "/settings",

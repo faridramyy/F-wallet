@@ -7,6 +7,8 @@ import { formatMonthShort } from "./formatters";
 // its cash-flow chart shows this many months ending at the chosen month.
 // The app loads enough history to cover both.
 export const SELECTABLE_MONTHS = 12;
+// How far ahead the dashboard can look (future-dated transactions).
+export const FUTURE_MONTHS = 12;
 export const CASH_FLOW_MONTHS = 12;
 export const HISTORY_MONTHS = SELECTABLE_MONTHS + CASH_FLOW_MONTHS - 1;
 
@@ -39,8 +41,8 @@ export function getMonthContext(now = new Date()) {
 }
 
 // Context for a chosen month: that month, the one before, how many of its
-// days have happened ("today" for the current month, all of them for a past
-// one), and whether it is the current month.
+// days count ("today" for the current month, all of them for a past or
+// future one), and whether it is the current month.
 export function getSelectedMonthContext(year, month, now = new Date()) {
   const isCurrent = year === now.getFullYear() && month === now.getMonth() + 1;
   const days = daysInMonth(year, month);
