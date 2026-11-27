@@ -34,9 +34,13 @@ export function ArchivedList({ noun, plural = `${noun}s`, items, onRestore }) {
               </p>
 
               <p className="mt-1 text-xs text-muted-foreground">
-                {item.subtitle}
-                {item.archivedAt &&
-                  ` · Archived ${formatTimestamp(item.archivedAt)}`}
+                {[
+                  item.subtitle,
+                  item.archivedAt &&
+                    `Archived ${formatTimestamp(item.archivedAt)}`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
               </p>
             </div>
 

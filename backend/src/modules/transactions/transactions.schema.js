@@ -19,7 +19,7 @@ const isRealDate = (value) => {
   );
 };
 
-const dateString = z
+export const dateString = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}$/, "Use the format YYYY-MM-DD")
   .refine(isRealDate, "Enter a real calendar date");
